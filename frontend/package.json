@@ -5,7 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:citizen": "vite --config vite.config.citizen.js --port 5173",
+    "dev:cutter": "vite --config vite.config.cutter.js --port 5174",
+    "dev:admin": "vite --config vite.config.admin.js --port 5175",
     "build": "vite build",
+    "build:citizen": "vite build --config vite.config.citizen.js",
+    "build:cutter": "vite build --config vite.config.cutter.js",
+    "build:admin": "vite build --config vite.config.admin.js",
+    "build:all": "npm run build:citizen && npm run build:cutter && npm run build:admin",
     "lint": "eslint .",
     "preview": "vite preview"
   },

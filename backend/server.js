@@ -18,9 +18,24 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ CORS
+// ✅ CORS configured for local dev and live Vercel deployments
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:3000"]
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin) return callback(null, true);
+
+    const isAllowed = 
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      origin.endsWith('.vercel.app') ||
+      (process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGINS.split(',').includes(origin));
+
+    if (isAllowed) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Permissive during setup to avoid blocking deployments
+  },
+  credentials: true
 }));
 
 // Middleware

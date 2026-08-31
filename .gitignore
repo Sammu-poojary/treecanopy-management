@@ -12,8 +12,10 @@ node_modules/
 # Build outputs
 dist/
 dist-ssr/
-frontend/dist/
-frontend/dist-ssr/
+dist-citizen/
+dist-cutter/
+dist-admin/
+frontend/dist*/
 build/
 
 # Logs

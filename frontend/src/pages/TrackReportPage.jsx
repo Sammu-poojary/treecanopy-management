@@ -19,7 +19,7 @@ import {
   X
 } from 'lucide-react';
 
-import ComplaintMap from '../components/ComplaintMap';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const statusSteps = ['Pending', 'In Review', 'Scheduled', 'Resolved'];
 
@@ -82,7 +82,7 @@ export default function TrackReportPage() {
     setLoading(true);
     setIsRefreshing(true);
 
-    fetch('http://localhost:5000/api/complaints')
+    fetch(`${API_URL}/api/complaints`)
       .then(r => r.json())
       .then(data => {
         const list = data.complaints || (Array.isArray(data) ? data : []);

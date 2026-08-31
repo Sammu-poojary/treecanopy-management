@@ -4988,7 +4988,7 @@ export function AdminConsolePage() {
   };
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/complaints')
+    fetch(`${API_URL}/api/complaints`)
       .then(r => r.json())
       .then(data => setComplaints(data.complaints || []))
       .catch(() => setComplaints([]))
@@ -4997,7 +4997,7 @@ export function AdminConsolePage() {
 
   const updateStatus = async (id, status) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/complaints/${id}/status`, {
+      const res = await fetch(`${API_URL}/api/complaints/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
