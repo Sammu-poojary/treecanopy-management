@@ -1,0 +1,100 @@
+================================================================================
+                           CANOPYGUARD WORKFLOW GUIDE
+================================================================================
+
+This document details the end-to-end user workflows, roles, and technical processes
+within the CanopyGuard (TreeCanopy) application.
+
+--------------------------------------------------------------------------------
+1. ROLES AND ACCESS CONTROL
+--------------------------------------------------------------------------------
+The system supports four primary user roles, each with designated entry points
+and dashboard access:
+
+- Citizen (Public User):
+  * Entry point: /citizen-dashboard
+  * Purpose: Report tree issues (hazardous trees, pruning requests), track issue
+    resolution progress, view local tree statistics, and access the Tree Encyclopedia.
+
+- Tree Cutter (Arborist / Field Specialist):
+  * Entry point: /task
+  * Purpose: View assigned cutting tasks, mark daily attendance, manage/purchase
+    equipment, and execute field operations using the step-by-step task wizard.
+
+- Official (Municipal Supervisor):
+  * Entry point: /dashboard
+  * Purpose: Review citizen-reported complaints, schedule tasks, dispatch work
+    orders to tree cutters, monitor field attendance, and manage tree inventories.
+
+- Admin (System Administrator):
+  * Entry point: /admin
+  * Purpose: System configuration, full database access, user management, and advanced
+    inventory audits.
+
+--------------------------------------------------------------------------------
+2. COMPLAINT & REPORTING WORKFLOW (Citizen)
+--------------------------------------------------------------------------------
+1. Registration & Login:
+   * Citizen registers on /register and logs in via /login.
+2. Reporting an Issue:
+   * Citizen navigates to /report-issue (Report Tree Issue).
+   * Fills out details: tree species (if known), location description, severity,
+     urgency level, and uploads photos.
+   * On submit, a complaint record is generated in the database (via POST /api/complaints).
+3. Tracking the Report:
+   * Citizen is redirected to /track or can view their reports under /citizen-dashboard.
+   * Shows status: "Reported" -> "Assigned" -> "In Progress" -> "Work Completed" -> "Closed".
+
+--------------------------------------------------------------------------------
+3. DISPATCH & SCHEDULING WORKFLOW (Official)
+--------------------------------------------------------------------------------
+1. Reviewing Complaints:
+   * Official logs in, landing on /dashboard, showing global KPIs (Active Reports,
+     Pending Dispatches, Cutters on Duty).
+   * Navigates to the Inbox to review incoming citizen complaints.
+2. Scheduling & Assignment:
+   * Official opens the Scheduler (/scheduler) or assigns directly from a complaint.
+   * Selects an arborist/cutter, schedules a due date, sets priority, and creates
+     a formal Work Order / Task (via POST /api/trees/tasks or similar).
+   * The status updates from "Reported" to "Assigned" / "Scheduled".
+
+--------------------------------------------------------------------------------
+4. FIELD EXECUTION WORKFLOW (Tree Cutter)
+--------------------------------------------------------------------------------
+Once a task is dispatched, the assigned Tree Cutter logs in and navigates to the
+Work Orders board (/task). The task follows a strict 3-step field workflow:
+
+- Step 1: Site Arrival & Initial Proof
+  * Action: The cutter arrives on-site and clicks "Confirm Site Arrival".
+  * Proof: Cutter uploads a photo of the tree/site *before* starting work.
+  * Backend: Logs arrival timestamp and captures GPS coordinates (status: Reached Location).
+
+- Step 2: Tree Cutting/Pruning Work
+  * Action: Cutter clicks "Start / Mark Work In Progress" (status: In Progress).
+  * Proof: Cutter must upload a progress photo (ongoing trimming/cutting) and
+    an after-work photo (completed condition).
+  * Backend: Saves photos, updates task progress percentage. Clicking "Mark Work
+    Completed" transitions the status to Work Completed.
+
+- Step 3: Waste Disposal & Final Sign-Off
+  * Action: Cutter inputs estimated green waste volume (m³) and selects one of
+    the government-approved dumping sites (e.g., Udupi Municipal Dump, Manipal Zone
+    Bio-disposal, etc.).
+  * Proof: Uploads final disposal confirmation photo.
+  * Backend: Submits final verification (via POST /api/trees/tasks/:id/dispose),
+    notifies the official, and sets the status to Waste Disposed / Ready for Closure.
+
+--------------------------------------------------------------------------------
+5. UTILITY WORKFLOWS
+--------------------------------------------------------------------------------
+- Attendance Marking:
+  * Tree Cutters must mark attendance via /attendance by performing biometric or
+    GPS-verified check-in/check-out.
+  * Stored in the attendance collection (via POST /api/attendance/check-in).
+- Equipment Management:
+  * Tree Cutters can view available equipment inventory or purchase gear via /property-inventory
+    and /purchase-equipment.
+- Tree Encyclopedia:
+  * All users can browse the Tree Encyclopedia (/tree-encyclopedia) to read about
+    protected tree species, pruning regulations, and conservation guidelines.
+================================================================================

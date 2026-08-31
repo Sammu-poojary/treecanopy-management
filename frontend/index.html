@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="CanopyGuard - Tree canopy management and ecological preservation platform with data-driven mastery" />
+    <meta name="theme-color" content="#0a1811" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" sizes="180x180" />
+    <link rel="mask-icon" href="/favicon.svg" color="#0a1811" />
+    <title>CanopyGuard</title>
+    <style>
+      /* Splash screen critical styles */
+      .splash-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        background-color: #0a1811; /* Solid background matches splash theme instantly */
+        color: #f8faf9;
+        transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+                    visibility 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .splash-screen--fade {
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      .splash-bg {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(rgba(18, 38, 28, 0.55), rgba(10, 24, 18, 0.88)),
+                    url('/forest_canopy_login.png') center/cover no-repeat;
+        z-index: -1;
+        animation: kenBurns 12s ease-out infinite alternate;
+      }
+
+      @keyframes kenBurns {
+        0% { transform: scale(1); }
+        100% { transform: scale(1.08); }
+      }
+
+      .splash-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 2rem;
+        max-width: 480px;
+      }
+
+      .splash-logo-svg {
+        width: 120px;
+        height: 120px;
+        filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+      }
+
+      .splash-logo-svg path {
+        stroke-dasharray: 600;
+        stroke-dashoffset: 600;
+        animation: drawPath 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+
+      .splash-logo-svg .shield-path { animation-delay: 0.1s; }
+      .splash-logo-svg .leaf-path { animation-delay: 0.4s; }
+      .splash-logo-svg .stem-path { animation-delay: 0.7s; }
+      .splash-logo-svg .vein-path { animation-delay: 0.9s; }
+
+      @keyframes drawPath {
+        to { stroke-dashoffset: 0; }
+      }
+
+      .splash-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 2.75rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #ffffff;
+        margin: 1.5rem 0 0.5rem 0;
+        opacity: 0;
+        animation: fadeInUp 0.8s ease-out 1.2s forwards;
+        text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      }
+
+      .splash-subtitle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.25em;
+        color: #d5bd9b;
+        margin-top: 0.5rem;
+        opacity: 0;
+        animation: fadeInUp 0.8s ease-out 1.5s forwards;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(15px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="splash-screen" class="splash-screen">
+      <div class="splash-bg"></div>
+      <div class="splash-content">
+        <svg class="splash-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <!-- Shield -->
+          <path class="shield-path" d="M 28 25 Q 50 18 72 25 Q 74 53 50 81 Q 26 53 28 25 Z" fill="none" stroke="#d5bd9b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+          <!-- Leaf outline -->
+          <path class="leaf-path" d="M 50 72 C 36 70, 36 52, 50 36 C 64 52, 64 70, 50 72 Z" fill="none" stroke="#d5bd9b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+          <!-- Leaf stem -->
+          <path class="stem-path" d="M 50 72 L 50 36" fill="none" stroke="#d5bd9b" stroke-width="2.5" stroke-linecap="round" />
+          <!-- Veins -->
+          <path class="vein-path" d="M 50 60 Q 43 55 39 49" fill="none" stroke="#d5bd9b" stroke-width="2" stroke-linecap="round" />
+          <path class="vein-path" d="M 50 60 Q 57 55 61 49" fill="none" stroke="#d5bd9b" stroke-width="2" stroke-linecap="round" />
+          <path class="vein-path" d="M 50 48 Q 44 44 41 39" fill="none" stroke="#d5bd9b" stroke-width="2" stroke-linecap="round" />
+          <path class="vein-path" d="M 50 48 Q 56 44 59 39" fill="none" stroke="#d5bd9b" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <h1 class="splash-title">CanopyGuard</h1>
+        <div class="splash-subtitle">
+          <span>ECOLOGICAL PRESERVATION</span>
+          <span>DATA-DRIVEN MASTERY</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
