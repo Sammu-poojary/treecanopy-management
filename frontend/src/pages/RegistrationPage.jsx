@@ -7,7 +7,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const RegistrationPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Citizen');
+  const appModule = import.meta.env.VITE_APP_MODULE;
+  const initialTab = appModule === 'cutter' ? 'Tree Cutter' : 'Citizen';
+  const isCutterOnly = appModule === 'cutter';
+  const isCitizenOnly = appModule === 'citizen';
+
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -118,10 +123,22 @@ const RegistrationPage = () => {
     }
   };
 
+  const regTitle = isCutterOnly
+    ? 'Tree Cutter Registration'
+    : isCitizenOnly
+    ? 'Citizen Registration'
+    : 'Create an Account';
+
+  const regSubtitle = isCutterOnly
+    ? 'Apply to join our arborists & tree maintenance team.'
+    : isCitizenOnly
+    ? 'Join the community to protect and preserve our urban tree canopy.'
+    : 'Register to access the CanopyGuard ecosystem.';
+
   return (
     <AuthLayout>
-      <h2>Create an Account</h2>
-      <p>Register to access the CanopyGuard ecosystem.</p>
+      <h2>{regTitle}</h2>
+      <p>{regSubtitle}</p>
 
       {submitError && (
         <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', border: '1px solid #f87171' }}>
@@ -129,21 +146,23 @@ const RegistrationPage = () => {
         </div>
       )}
 
-      <div className="portal-tabs">
-        <label>Select Role</label>
-        <div className="tabs-grid">
-          {['Citizen', 'Tree Cutter'].map((tab) => (
-            <button
-              key={tab}
-              className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-              type="button"
-            >
-              {tab}
-            </button>
-          ))}
+      {!isCutterOnly && !isCitizenOnly && (
+        <div className="portal-tabs">
+          <label>Select Role</label>
+          <div className="tabs-grid">
+            {['Citizen', 'Tree Cutter'].map((tab) => (
+              <button
+                key={tab}
+                className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab)}
+                type="button"
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">

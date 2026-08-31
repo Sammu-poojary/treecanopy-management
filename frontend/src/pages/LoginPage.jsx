@@ -14,12 +14,17 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const successMessage = location.state?.message;
 
-  const [activeTab, setActiveTab] = useState('Citizen');
+  const appModule = import.meta.env.VITE_APP_MODULE; // 'cutter', 'citizen', or undefined
+  const initialTab = appModule === 'cutter' ? 'Tree Cutter' : 'Citizen';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isCutterOnly = appModule === 'cutter';
+  const isCitizenOnly = appModule === 'citizen';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,7 +34,7 @@ const LoginPage = () => {
     try {
       const normalizedEmail = email.toLowerCase().trim();
 
-      if (normalizedEmail === OFFICIAL_EMAIL && password === OFFICIAL_PASSWORD) {
+      if (!isCutterOnly && normalizedEmail === OFFICIAL_EMAIL && password === OFFICIAL_PASSWORD) {
         const officialUser = {
           id: 'officials-static',
           name: 'Officials',
@@ -41,7 +46,7 @@ const LoginPage = () => {
         localStorage.setItem('currentUser', JSON.stringify(officialUser));
         navigate('/official-management');
         return;
-      } else if (normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      } else if (!isCutterOnly && normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
         const adminUser = {
           id: 'admin-static',
           name: 'Admin',
@@ -71,6 +76,14 @@ const LoginPage = () => {
         throw new Error(data.msg || 'Login failed');
       }
 
+      // Enforce role restriction per dedicated website
+      if (isCutterOnly && data.user.role !== 'Tree Cutter') {
+        throw new Error('Access denied: This portal is exclusively for Tree Cutters & Arborists.');
+      }
+      if (isCitizenOnly && data.user.role !== 'Citizen') {
+        throw new Error('Access denied: This portal is exclusively for Citizens.');
+      }
+
       localStorage.setItem('currentUser', JSON.stringify(data.user));
 
       const roleRedirects = {
@@ -87,10 +100,22 @@ const LoginPage = () => {
     }
   };
 
+  const portalTitle = isCutterOnly
+    ? 'Tree Cutter Field Portal'
+    : isCitizenOnly
+    ? 'Citizen Portal'
+    : 'Login to Portal';
+
+  const portalSubtitle = isCutterOnly
+    ? 'Authorized access for arborists, field operations, and task execution.'
+    : isCitizenOnly
+    ? 'Report tree hazards, track community requests, and explore the urban canopy.'
+    : 'Please enter your credentials to access your dashboard.';
+
   return (
     <AuthLayout>
-      <h2>Login to Portal</h2>
-      <p>Please enter your credentials to access your dashboard.</p>
+      <h2>{portalTitle}</h2>
+      <p>{portalSubtitle}</p>
 
       {successMessage && (
         <div style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', border: '1px solid #34d399' }}>
@@ -104,21 +129,23 @@ const LoginPage = () => {
         </div>
       )}
 
-      <div className="portal-tabs">
-        <label>Select Portal</label>
-        <div className="tabs-grid">
-          {['Citizen', 'Tree Cutter'].map((tab) => (
-            <button
-              key={tab}
-              className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-              type="button"
-            >
-              {tab}
-            </button>
-          ))}
+      {!isCutterOnly && !isCitizenOnly && (
+        <div className="portal-tabs">
+          <label>Select Portal</label>
+          <div className="tabs-grid">
+            {['Citizen', 'Tree Cutter'].map((tab) => (
+              <button
+                key={tab}
+                className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab)}
+                type="button"
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
