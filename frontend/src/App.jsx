@@ -83,7 +83,7 @@ function App() {
         <Route path="/tree-encyclopedia" element={<TreeEncyclopediaPage />} />
         <Route path="/track" element={<TrackReportPage />} />
         <Route path="/track/:id" element={<TrackReportPage />} />
-        <Route path="/" element={<Navigate to="/register" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

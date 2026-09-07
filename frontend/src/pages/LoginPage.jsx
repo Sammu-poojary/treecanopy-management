@@ -204,7 +204,13 @@ const LoginPage = () => {
         </div>
 
         <div className="auth-footer">
-          Not an official member? <Link to="/register">Register here</Link>
+          {isCutterOnly ? (
+            <>New field technician or arborist? <Link to="/register">Register as Tree Cutter</Link></>
+          ) : isCitizenOnly ? (
+            <>New to CanopyGuard? <Link to="/register">Register as Citizen</Link></>
+          ) : (
+            <>Don't have an account? <Link to="/register">Register here</Link></>
+          )}
         </div>
       </form>
     </AuthLayout>
