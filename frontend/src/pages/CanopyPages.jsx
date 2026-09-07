@@ -275,15 +275,6 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
       {isOpen && <div className="cg-side-overlay" onClick={onToggle}></div>}
       <aside
         className={`cg-side ${isOpen ? 'open' : ''}`}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100vh',
-          maxHeight: '100vh',
-          overflowY: 'auto',
-          overscrollBehavior: 'contain',
-          boxSizing: 'border-box'
-        }}
       >
         <div className="cg-side-brand">
           <h2>Tree<br />Management</h2>
