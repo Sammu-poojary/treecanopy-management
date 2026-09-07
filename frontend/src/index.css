@@ -9578,3 +9578,211 @@ body {
     padding: 10px 8px !important;
   }
 }
+
+/* =========================================================
+   CITIZEN & TREE CUTTER MOBILE PWA - ADVANCED RESPONSIVENESS
+   ========================================================= */
+
+@media (max-width: 768px) {
+  /* Sub Navigation Tabs for Citizen & Cutter */
+  .citizen-sub-nav,
+  .cutter-sub-nav {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+    padding-bottom: 10px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .citizen-sub-nav button,
+  .cutter-sub-nav button {
+    flex: 1 1 calc(50% - 8px) !important;
+    min-width: 130px !important;
+    padding: 10px 12px !important;
+    font-size: 0.85rem !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  /* Split View for Reports & Work Orders */
+  .reports-split-view {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    width: 100% !important;
+  }
+
+  .reports-list-panel,
+  .reports-detail-panel {
+    width: 100% !important;
+    max-height: none !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .stat-card {
+    padding: 1rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .stat-card .stat-icon {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .stat-card .stat-details h3 {
+    font-size: 1.35rem !important;
+  }
+
+  .stat-card .stat-details p {
+    font-size: 0.75rem !important;
+  }
+
+  /* Step Wizard Bar */
+  .task-step-wizard-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+
+  .task-step-wizard-bar button {
+    width: 100% !important;
+  }
+
+  .task-step-wizard-bar svg {
+    display: none !important;
+  }
+
+  /* Detail Card & Rows */
+  .detail-card {
+    padding: 1.25rem 1rem !important;
+  }
+
+  .detail-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  .detail-row .val {
+    text-align: left !important;
+  }
+
+  /* Form and Fieldsets */
+  .form-card {
+    padding: 1.25rem !important;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Replantation form fieldsets */
+  fieldset[disabled] {
+    opacity: 0.7;
+  }
+
+  /* Map and Map Wrappers */
+  .mini-map,
+  .map-wrapper,
+  .complaint-map {
+    height: 220px !important;
+    width: 100% !important;
+  }
+
+  /* Tree detail container */
+  .tree-detail-container {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .tree-detail-image {
+    position: static !important;
+  }
+
+  .tree-detail-image img,
+  .tree-placeholder {
+    height: 220px !important;
+  }
+
+  .tree-list-item {
+    grid-template-columns: 80px 1fr !important;
+    gap: 0.75rem !important;
+    padding: 0.85rem !important;
+  }
+
+  .tree-item-stats {
+    grid-column: span 2 !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 8px;
+    margin-top: 4px;
+  }
+
+  .tree-actions {
+    flex-direction: column !important;
+  }
+
+  /* Topbar Elements */
+  .cg-topbar {
+    flex-wrap: wrap !important;
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+
+  .cg-topbar .cg-search {
+    order: 3 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 4px 0 0 !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+  }
+
+  .topbar-cutter-name {
+    display: none !important;
+  }
+
+  .cg-topbar h1 {
+    font-size: 1.15rem !important;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .citizen-sub-nav button,
+  .cutter-sub-nav button {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .metrics-grid-mini {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .fact-chip-row {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .fact-chip {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+}
