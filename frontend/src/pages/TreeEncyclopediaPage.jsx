@@ -57,6 +57,49 @@ const orangeIcon = new L.Icon({
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+const speciesImages = {
+  mango: 'https://images.unsplash.com/photo-1598512752271-33f913a5af13?auto=format&fit=crop&w=600&q=80',
+  oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  neem: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
+  banyan: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=600&q=80',
+  peepal: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  rosewood: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+  eucalyptus: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
+  tamarind: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=600&q=80',
+  jackfruit: 'https://images.unsplash.com/photo-1590005354167-6da97870c913?auto=format&fit=crop&w=600&q=80',
+  ashoka: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
+  gulmohar: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+  coconut: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+  default: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'
+};
+
+const getTreeDisplayImage = (tree) => {
+  if (!tree) return speciesImages.default;
+  if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
+    let img = tree.image.trim();
+    if (img.startsWith('/uploads/')) {
+      img = `${API_URL}${img}`;
+    }
+    return img;
+  }
+  const nameStr = `${tree.name || ''} ${tree.scientificName || ''} ${tree.family || ''}`.toLowerCase();
+  if (nameStr.includes('mango') || nameStr.includes('mangifera')) return speciesImages.mango;
+  if (nameStr.includes('oak')) return speciesImages.oak;
+  if (nameStr.includes('neem') || nameStr.includes('azadirachta')) return speciesImages.neem;
+  if (nameStr.includes('banyan') || nameStr.includes('benghalensis')) return speciesImages.banyan;
+  if (nameStr.includes('peepal') || nameStr.includes('religiosa')) return speciesImages.peepal;
+  if (nameStr.includes('rosewood') || nameStr.includes('dalbergia')) return speciesImages.rosewood;
+  if (nameStr.includes('eucalyptus')) return speciesImages.eucalyptus;
+  if (nameStr.includes('tamarind')) return speciesImages.tamarind;
+  if (nameStr.includes('jackfruit') || nameStr.includes('artocarpus')) return speciesImages.jackfruit;
+  if (nameStr.includes('ashoka') || nameStr.includes('polyalthia')) return speciesImages.ashoka;
+  if (nameStr.includes('gulmohar') || nameStr.includes('delonix')) return speciesImages.gulmohar;
+  if (nameStr.includes('honge') || nameStr.includes('pongamia')) return speciesImages.honge;
+  if (nameStr.includes('coconut') || nameStr.includes('cocos')) return speciesImages.coconut;
+  return speciesImages.default;
+};
+
 export default function TreeEncyclopediaPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [trees, setTrees] = useState([]);
@@ -218,10 +261,18 @@ export default function TreeEncyclopediaPage() {
                           <Marker position={[selectedTree.lat || 13.3409, selectedTree.lng || 74.7421]} icon={greenIcon} />
                         </MapContainer>
                       </div>
-                    ) : selectedTree.image ? (
-                      <img src={selectedTree.image} alt={selectedTree.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <Trees size={64} style={{ color: 'rgba(255,255,255,0.6)' }} />
+                      <img
+                        src={getTreeDisplayImage(selectedTree)}
+                        alt={selectedTree.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          const fallback = speciesImages.default;
+                          if (e.currentTarget.src !== fallback) {
+                            e.currentTarget.src = fallback;
+                          }
+                        }}
+                      />
                     )}
                   </div>
                   <button
@@ -649,13 +700,17 @@ export default function TreeEncyclopediaPage() {
                       >
                         {/* Image Header */}
                         <div style={{ height: '200px', background: '#f1f5f9', position: 'relative' }}>
-                          {tree.image ? (
-                            <img src={tree.image} alt={tree.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                              <Trees size={48} style={{ opacity: 0.5 }} />
-                            </div>
-                          )}
+                          <img
+                            src={getTreeDisplayImage(tree)}
+                            alt={tree.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              const fallback = speciesImages.default;
+                              if (e.currentTarget.src !== fallback) {
+                                e.currentTarget.src = fallback;
+                              }
+                            }}
+                          />
                           <span style={{
                             position: 'absolute', top: '12px', right: '12px',
                             background: getHealthColor(hs), color: '#ffffff', borderRadius: '20px',

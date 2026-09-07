@@ -66,6 +66,49 @@ const healthLabels = {
   alert: '🔴 Alert',
 };
 
+const speciesImages = {
+  mango: 'https://images.unsplash.com/photo-1598512752271-33f913a5af13?auto=format&fit=crop&w=600&q=80',
+  oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  neem: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
+  banyan: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=600&q=80',
+  peepal: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  rosewood: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+  eucalyptus: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
+  tamarind: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=600&q=80',
+  jackfruit: 'https://images.unsplash.com/photo-1590005354167-6da97870c913?auto=format&fit=crop&w=600&q=80',
+  ashoka: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
+  gulmohar: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+  coconut: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+  default: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'
+};
+
+const getTreeDisplayImage = (tree) => {
+  if (!tree) return speciesImages.default;
+  if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
+    let img = tree.image.trim();
+    if (img.startsWith('/uploads/')) {
+      img = `${API_URL}${img}`;
+    }
+    return img;
+  }
+  const nameStr = `${tree.name || ''} ${tree.scientificName || ''} ${tree.family || ''}`.toLowerCase();
+  if (nameStr.includes('mango') || nameStr.includes('mangifera')) return speciesImages.mango;
+  if (nameStr.includes('oak')) return speciesImages.oak;
+  if (nameStr.includes('neem') || nameStr.includes('azadirachta')) return speciesImages.neem;
+  if (nameStr.includes('banyan') || nameStr.includes('benghalensis')) return speciesImages.banyan;
+  if (nameStr.includes('peepal') || nameStr.includes('religiosa')) return speciesImages.peepal;
+  if (nameStr.includes('rosewood') || nameStr.includes('dalbergia')) return speciesImages.rosewood;
+  if (nameStr.includes('eucalyptus')) return speciesImages.eucalyptus;
+  if (nameStr.includes('tamarind')) return speciesImages.tamarind;
+  if (nameStr.includes('jackfruit') || nameStr.includes('artocarpus')) return speciesImages.jackfruit;
+  if (nameStr.includes('ashoka') || nameStr.includes('polyalthia')) return speciesImages.ashoka;
+  if (nameStr.includes('gulmohar') || nameStr.includes('delonix')) return speciesImages.gulmohar;
+  if (nameStr.includes('honge') || nameStr.includes('pongamia')) return speciesImages.honge;
+  if (nameStr.includes('coconut') || nameStr.includes('cocos')) return speciesImages.coconut;
+  return speciesImages.default;
+};
+
 function createCircleIcon(color) {
   return L.divIcon({
     className: '',
@@ -497,13 +540,17 @@ function FeaturedTrees() {
               >
                 {/* Image */}
                 <div style={{ height: 160, background: '#f0fdf4', position: 'relative', overflow: 'hidden' }}>
-                  {tree.image
-                    ? <img src={tree.image} alt={tree.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', color: '#059669', gap: '6px' }}>
-                      <TreePine size={42} color="#059669" />
-                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#047857', letterSpacing: '0.02em' }}>No Image Uploaded</span>
-                    </div>
-                  }
+                  <img
+                    src={getTreeDisplayImage(tree)}
+                    alt={tree.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      const fallback = speciesImages.default;
+                      if (e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
+                    }}
+                  />
                   <span style={{
                     position: 'absolute', top: 10, right: 10,
                     background: hColor, color: '#fff', borderRadius: 20,
