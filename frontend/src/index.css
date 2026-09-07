@@ -6382,18 +6382,6 @@ body {
     flex: 1 1 140px;
   }
 
-  .cg-side {
-    position: relative;
-    width: 240px;
-  }
-
-  .cg-side nav a,
-  .cg-new-record {
-    font-size: 16px;
-    min-height: 50px;
-    padding: 0 14px;
-  }
-
   .cg-public-nav,
   .cg-stats,
   .cg-intel,
@@ -6417,19 +6405,6 @@ body {
 }
 
 @media (max-width: 760px) {
-  .cg-app {
-    display: block;
-  }
-
-  .cg-side {
-    width: 100%;
-    min-height: auto;
-  }
-
-  .cg-side nav {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .cg-topbar,
   .cg-public-nav,
   .cg-page-title,
@@ -9410,32 +9385,219 @@ body {
 }
 
 /* =========================================================
-   TREE CUTTER PWA - COMPREHENSIVE MOBILE RESPONSIVE DESIGN
+   UNIVERSAL MOBILE RESPONSIVENESS - CITIZEN & TREE CUTTER PWA
    ========================================================= */
 
 @media (max-width: 900px) {
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  #root {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
   .cg-app {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    width: 100%;
-    overflow-x: hidden;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 
   .cg-workspace {
     width: 100% !important;
+    max-width: 100vw !important;
     min-width: 0 !important;
-    flex: 1;
-    overflow-x: hidden;
+    flex: 1 !important;
+    overflow-x: hidden !important;
   }
 
   .cg-page {
     padding: 14px 12px !important;
+    width: 100% !important;
     max-width: 100vw !important;
-    box-sizing: border-box;
-    overflow-x: hidden;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
 
+  /* Topbar Mobile Layout */
+  .cg-topbar,
+  .cg-dashboard-screen .cg-topbar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    min-height: auto !important;
+    height: auto !important;
+    padding: 10px 12px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
+
+  .cg-topbar .cg-menu-btn,
+  .cg-dashboard-screen .cg-menu-btn {
+    width: 38px !important;
+    height: 38px !important;
+    margin-right: 4px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .cg-topbar h1,
+  .cg-dashboard-screen .cg-topbar h1 {
+    font-size: 1.15rem !important;
+    margin: 0 auto 0 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    flex: 1 1 auto !important;
+    text-shadow: none !important;
+  }
+
+  .cg-topbar-profile-trigger {
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+  }
+
+  .topbar-cutter-name {
+    display: none !important;
+  }
+
+  .cg-topbar .cg-search,
+  .cg-dashboard-screen .cg-search {
+    order: 10 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 4px 0 0 0 !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+    padding: 0 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cg-topbar .cg-search input,
+  .cg-dashboard-screen .cg-search input {
+    font-size: 0.95rem !important;
+  }
+
+  /* Sub Navigation Tabs for Citizen & Cutter */
+  .citizen-sub-nav,
+  .cutter-sub-nav {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+    padding-bottom: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .citizen-sub-nav::-webkit-scrollbar,
+  .cutter-sub-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .citizen-sub-nav button,
+  .cutter-sub-nav button {
+    flex: 0 0 auto !important;
+    padding: 8px 14px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
+
+  .citizen-sub-nav .cg-btn.ghost,
+  .cutter-sub-nav .cg-btn.ghost {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .citizen-sub-nav .cg-btn.primary,
+  .cutter-sub-nav .cg-btn.primary {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border: 1px solid #10b981 !important;
+  }
+
+  /* Split View for Reports & Work Orders */
+  .reports-split-view {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    width: 100% !important;
+  }
+
+  .reports-list-panel,
+  .reports-detail-panel {
+    width: 100% !important;
+    max-height: none !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .stat-card {
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .stat-card .stat-icon {
+    width: 40px !important;
+    height: 40px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .stat-card .stat-details h3 {
+    font-size: 1.35rem !important;
+  }
+
+  .stat-card .stat-details p {
+    font-size: 0.75rem !important;
+  }
+
+  /* Step Wizard Bar */
+  .task-step-wizard-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .task-step-wizard-bar button {
+    width: 100% !important;
+  }
+
+  .task-step-wizard-bar svg {
+    display: none !important;
+  }
+
+  /* Work task boards */
   .cg-task-grid,
   .cutter-work-grid,
   .task-workspace {
@@ -9443,7 +9605,6 @@ body {
     flex-direction: column !important;
     width: 100% !important;
     gap: 16px !important;
-    grid-template-columns: 1fr !important;
   }
 
   .cg-task-left,
@@ -9478,208 +9639,24 @@ body {
   }
 
   .task-stat-chip {
-    padding: 10px 8px !important;
+    padding: 8px !important;
     text-align: center !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important;
   }
 
   .task-stat-chip span {
-    font-size: 0.75rem !important;
+    font-size: 0.7rem !important;
   }
 
   .task-stat-chip strong {
-    font-size: 1.15rem !important;
+    font-size: 1.1rem !important;
   }
 
-  .cg-step-row,
-  .step-workflow-container {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px !important;
-  }
-
-  .cg-step,
-  .step-card {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Button and action area touch-friendliness */
-  .cutter-actions-box,
-  .action-buttons-group {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 10px !important;
-    width: 100% !important;
-  }
-
-  .btn-start-work,
-  .btn-complete-work,
-  .cg-action-btn {
-    width: 100% !important;
-    min-height: 46px !important;
-    font-size: 15px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  /* Table responsiveness on mobile */
-  .table-responsive,
-  .data-table-container {
-    width: 100% !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .custom-table,
-  .cg-table {
-    min-width: 520px;
-  }
-
-  /* Topbar on mobile */
-  .cg-topbar {
-    padding: 10px 14px !important;
-    height: auto !important;
-    min-height: 56px !important;
-    gap: 10px !important;
-  }
-
-  .cg-topbar h1,
-  .cg-page-title h1,
-  .cg-admin-head h1 {
-    font-size: 1.35rem !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .task-hero-stats {
-    grid-template-columns: 1fr !important;
-    gap: 6px !important;
-  }
-
-  .profile-modal-card {
-    width: 94vw !important;
-    max-width: 94vw !important;
-    padding: 16px 12px !important;
-    margin: 10px !important;
-  }
-
-  .profile-modal-stats {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-  }
-
-  .p-stat:last-child {
-    grid-column: span 2;
-  }
-
-  .cg-page {
-    padding: 10px 8px !important;
-  }
-}
-
-/* =========================================================
-   CITIZEN & TREE CUTTER MOBILE PWA - ADVANCED RESPONSIVENESS
-   ========================================================= */
-
-@media (max-width: 768px) {
-  /* Sub Navigation Tabs for Citizen & Cutter */
-  .citizen-sub-nav,
-  .cutter-sub-nav {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    margin-bottom: 16px !important;
-    padding-bottom: 10px !important;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .citizen-sub-nav button,
-  .cutter-sub-nav button {
-    flex: 1 1 calc(50% - 8px) !important;
-    min-width: 130px !important;
-    padding: 10px 12px !important;
-    font-size: 0.85rem !important;
-    text-align: center !important;
-    justify-content: center !important;
-  }
-
-  /* Split View for Reports & Work Orders */
-  .reports-split-view {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 16px !important;
-    width: 100% !important;
-  }
-
-  .reports-list-panel,
-  .reports-detail-panel {
-    width: 100% !important;
-    max-height: none !important;
-    padding: 1rem !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Stats Grid */
-  .stats-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
-  }
-
-  .stat-card {
-    padding: 1rem !important;
-    gap: 0.75rem !important;
-  }
-
-  .stat-card .stat-icon {
-    width: 42px !important;
-    height: 42px !important;
-  }
-
-  .stat-card .stat-details h3 {
-    font-size: 1.35rem !important;
-  }
-
-  .stat-card .stat-details p {
-    font-size: 0.75rem !important;
-  }
-
-  /* Step Wizard Bar */
-  .task-step-wizard-bar {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
-    padding: 12px !important;
-  }
-
-  .task-step-wizard-bar button {
-    width: 100% !important;
-  }
-
-  .task-step-wizard-bar svg {
-    display: none !important;
-  }
-
-  /* Detail Card & Rows */
-  .detail-card {
-    padding: 1.25rem 1rem !important;
-  }
-
-  .detail-row {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 4px !important;
-  }
-
-  .detail-row .val {
-    text-align: left !important;
-  }
-
-  /* Form and Fieldsets */
+  /* Forms & Modals */
   .form-card {
-    padding: 1.25rem !important;
+    padding: 1.25rem 1rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .form-grid {
@@ -9687,20 +9664,28 @@ body {
     gap: 12px !important;
   }
 
-  /* Replantation form fieldsets */
-  fieldset[disabled] {
-    opacity: 0.7;
+  .table-responsive,
+  .data-table-container {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    box-sizing: border-box !important;
   }
 
-  /* Map and Map Wrappers */
+  .custom-table,
+  .cg-table {
+    min-width: 480px;
+  }
+
+  /* Map Containers */
   .mini-map,
   .map-wrapper,
   .complaint-map {
     height: 220px !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  /* Tree detail container */
   .tree-detail-container {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
@@ -9729,46 +9714,16 @@ body {
     padding-top: 8px;
     margin-top: 4px;
   }
-
-  .tree-actions {
-    flex-direction: column !important;
-  }
-
-  /* Topbar Elements */
-  .cg-topbar {
-    flex-wrap: wrap !important;
-    padding: 8px 12px !important;
-    gap: 8px !important;
-  }
-
-  .cg-topbar .cg-search {
-    order: 3 !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    margin: 4px 0 0 !important;
-    height: 42px !important;
-    border-radius: 10px !important;
-  }
-
-  .topbar-cutter-name {
-    display: none !important;
-  }
-
-  .cg-topbar h1 {
-    font-size: 1.15rem !important;
-    margin: 0 !important;
-  }
 }
 
 @media (max-width: 480px) {
-  .citizen-sub-nav button,
-  .cutter-sub-nav button {
-    flex: 1 1 100% !important;
-    width: 100% !important;
-  }
-
   .stats-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .task-hero-stats {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
   }
 
   .metrics-grid-mini {
@@ -9776,13 +9731,24 @@ body {
     gap: 8px !important;
   }
 
-  .fact-chip-row {
-    flex-direction: column !important;
-    gap: 6px !important;
+  .profile-modal-card {
+    width: 94vw !important;
+    max-width: 94vw !important;
+    padding: 16px 12px !important;
+    margin: 10px !important;
+    box-sizing: border-box !important;
   }
 
-  .fact-chip {
-    width: 100% !important;
-    justify-content: space-between !important;
+  .profile-modal-stats {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .p-stat:last-child {
+    grid-column: span 2;
+  }
+
+  .cg-page {
+    padding: 10px 8px !important;
   }
 }
