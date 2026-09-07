@@ -308,7 +308,7 @@ function FeedbackSection() {
           <label style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}>
             Rate your experience
           </label>
-          <div className="faces" style={{ gap: 20 }}>
+          <div className="faces">
             {feedbackFaces.map(({ emoji, label, rating }) => (
               <button
                 key={rating}
@@ -318,13 +318,10 @@ function FeedbackSection() {
                 style={{
                   border: selectedRating === rating ? '2px solid #16a34a' : '2px solid transparent',
                   borderRadius: '50%',
-                  width: 54,
-                  height: 54,
                   background: selectedRating === rating ? '#dcfce7' : 'transparent',
-                  fontSize: 26,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  transform: selectedRating === rating ? 'scale(1.25)' : 'scale(1)',
+                  transform: selectedRating === rating ? 'scale(1.2)' : 'scale(1)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

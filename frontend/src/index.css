@@ -1,6 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* ComplaintMap styling */
 .complaint-map {
   height: 300px;
@@ -3103,13 +3109,18 @@ body {
   padding: 48px 20px;
   display: flex;
   justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .cg-feedback form {
   width: min(670px, 100%);
+  max-width: 100%;
   padding: 32px;
   display: grid;
   gap: 18px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .cg-feedback h2,
@@ -3128,12 +3139,15 @@ body {
   letter-spacing: 1.2px;
   font-size: 12px;
   font-weight: 700;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .faces {
   display: flex;
   justify-content: center;
-  gap: 30px;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .faces button {
@@ -3146,7 +3160,9 @@ body {
 .two {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 22px;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .cg-feedback input,
@@ -3156,6 +3172,8 @@ body {
 .disposal input,
 .disposal select {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #eef1f0;
@@ -3168,6 +3186,7 @@ body {
 .cg-feedback textarea,
 .cg-report textarea {
   min-height: 118px;
+  resize: vertical;
 }
 
 .cg-footer {
@@ -6747,6 +6766,27 @@ body {
 
   .two {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .cg-feedback {
+    padding: 24px 12px;
+  }
+
+  .cg-feedback form {
+    padding: 20px 16px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .faces {
+    gap: 12px;
+  }
+
+  .faces button {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 22px !important;
   }
 }
 
