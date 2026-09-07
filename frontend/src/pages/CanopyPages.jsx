@@ -7421,14 +7421,21 @@ export function ViewTreePage() {
     if (isCitizen) {
       return (
         <div className="cg-public">
-          <header className="cg-public-nav" style={{ gridTemplateColumns: '1fr auto auto' }}>
+          <header className="cg-public-nav">
             <Link to="/home" className="cg-brand">CanopyGuard</Link>
-            <nav style={{ marginRight: '24px' }}>
+            <nav className="desktop-nav-links">
               <Link to="/home">Home</Link>
               <Link to="/dashboard">Map</Link>
               <Link to="/report-issue">Complaints</Link>
               <Link className="active" to="/view-tree">Tree Database</Link>
+              <Link to="/tree-encyclopedia">Tree Encyclopedia</Link>
             </nav>
+            <Link className="cg-login desktop-login-btn" to="/login">
+              Login
+            </Link>
+            <Link className="mobile-hamburger-btn" to="/home" style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #d1d5db', color: '#374151' }}>
+              <ChevronLeft size={20} />
+            </Link>
           </header>
           {renderDetailContent()}
         </div>
@@ -7450,14 +7457,21 @@ export function ViewTreePage() {
   if (isCitizen) {
     return (
       <div className="cg-public">
-        <header className="cg-public-nav" style={{ gridTemplateColumns: '1fr auto auto' }}>
+        <header className="cg-public-nav">
           <Link to="/home" className="cg-brand">CanopyGuard</Link>
-          <nav style={{ marginRight: '24px' }}>
+          <nav className="desktop-nav-links">
             <Link to="/home">Home</Link>
             <Link to="/dashboard">Map</Link>
             <Link to="/report-issue">Complaints</Link>
             <Link className="active" to="/view-tree">Tree Database</Link>
+            <Link to="/tree-encyclopedia">Tree Encyclopedia</Link>
           </nav>
+          <Link className="cg-login desktop-login-btn" to="/login">
+            Login
+          </Link>
+          <Link className="mobile-hamburger-btn" to="/home" style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #d1d5db', color: '#374151' }}>
+            <ChevronLeft size={20} />
+          </Link>
         </header>
         {renderListContent()}
       </div>

@@ -588,6 +588,21 @@ const HomePage = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Prevent background scrolling while mobile hamburger menu is open
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [menuOpen]);
+
   const [treeStats, setTreeStats] = useState({
     totalTreesCount: 12480,
     quarterGrowth: '+340 this quarter',
@@ -640,202 +655,302 @@ const HomePage = () => {
 
   return (
     <div className="cg-public">
-      <header className="cg-public-nav" style={{ gridTemplateColumns: '1fr auto auto' }}>
+      <header className="cg-public-nav">
         <Link to="/home" className="cg-brand">CanopyGuard</Link>
-        <nav>
+
+        {/* Desktop inline nav links */}
+        <nav className="desktop-nav-links">
           <Link className="active" to="/home">Home</Link>
           <Link to="/dashboard">Map</Link>
           <Link to="/report-issue">Complaints</Link>
           <Link to="/tree-encyclopedia">Tree Encyclopedia</Link>
+          <Link to="/view-tree">Tree Database</Link>
+          <Link to="/track">Track Report</Link>
+        </nav>
 
-          {/* ── Dropdown Menu ───────────────────── */}
-          <div ref={menuRef} style={{ position: 'relative' }}>
+        <div className="cg-nav-right-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Quick theme toggle on desktop */}
+          <button
+            onClick={() => setDarkMode(prev => !prev)}
+            className="desktop-theme-toggle"
+            title="Toggle theme"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: darkMode ? '#1e293b' : '#f1f5f9',
+              border: darkMode ? '1px solid #334155' : '1px solid #cbd5e1',
+              borderRadius: '8px', width: '38px', height: '38px',
+              cursor: 'pointer', color: darkMode ? '#fbbf24' : '#475569',
+              transition: 'all 0.2s'
+            }}
+          >
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          {!isLoggedIn ? (
+            <Link className="cg-login desktop-login-btn" to="/login">
+              <LogIn size={15} /> Login
+            </Link>
+          ) : (
             <button
-              id="home-menu-btn"
-              onClick={() => setMenuOpen(prev => !prev)}
+              onClick={handleLogout}
+              className="desktop-logout-btn"
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: menuOpen ? '#f0fdf4' : 'transparent',
-                border: menuOpen ? '1.5px solid #10b981' : '1.5px solid #d1d5db',
-                borderRadius: '8px', width: '38px', height: '38px',
-                cursor: 'pointer',
-                color: menuOpen ? '#065f46' : '#374151',
-                transition: 'all 0.18s'
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '8px 16px', borderRadius: '8px', background: '#fef2f2',
+                color: '#ef4444', border: '1px solid #fee2e2', fontWeight: 600,
+                fontSize: '0.85rem', cursor: 'pointer'
               }}
-              title="Menu"
             >
-              <Menu size={20} />
+              Logout
+            </button>
+          )}
+
+          {/* ── Hamburger Trigger Button ───────────────────── */}
+          <button
+            id="home-menu-btn"
+            className="mobile-hamburger-btn"
+            onClick={() => setMenuOpen(prev => !prev)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: menuOpen ? '#f0fdf4' : 'transparent',
+              border: menuOpen ? '1.5px solid #10b981' : '1.5px solid #d1d5db',
+              borderRadius: '8px', width: '38px', height: '38px',
+              cursor: 'pointer',
+              color: menuOpen ? '#065f46' : (darkMode ? '#f8fafc' : '#374151'),
+              transition: 'all 0.18s'
+            }}
+            title="Toggle Menu"
+            aria-label="Toggle navigation menu"
+          >
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+
+        {/* Backdrop overlay for mobile drawer */}
+        {menuOpen && (
+          <div
+            className="cg-public-nav-overlay"
+            onClick={() => setMenuOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.55)',
+              backdropFilter: 'blur(2px)',
+              zIndex: 9998,
+              overscrollBehavior: 'contain',
+              animation: 'fadeIn 0.2s ease'
+            }}
+          />
+        )}
+
+        {/* Mobile Slide-out Drawer Panel */}
+        <div
+          ref={menuRef}
+          className={`cg-public-nav-drawer ${menuOpen ? 'open' : ''}`}
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '290px',
+            maxWidth: '85vw',
+            height: '100%',
+            height: '100vh',
+            background: darkMode ? '#0f172a' : '#ffffff',
+            color: darkMode ? '#f8fafc' : '#1e293b',
+            boxShadow: menuOpen ? '-4px 0 30px rgba(0,0,0,0.3)' : 'none',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            transform: menuOpen ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            boxSizing: 'border-box',
+            padding: '20px 16px',
+          }}
+        >
+          {/* Drawer Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`, marginBottom: '16px' }}>
+            <span style={{ fontWeight: 800, fontSize: '1.25rem', color: '#10b981' }}>CanopyGuard</span>
+            <button
+              onClick={() => setMenuOpen(false)}
+              style={{
+                background: darkMode ? '#1e293b' : '#f1f5f9',
+                border: 'none',
+                borderRadius: '8px',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: darkMode ? '#cbd5e1' : '#475569',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Nav Links */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto' }}>
+            <p style={{ margin: '4px 8px 6px', fontSize: '0.72rem', fontWeight: 800, color: darkMode ? '#94a3b8' : '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Navigation</p>
+
+            <Link
+              to="/home"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px',
+                color: darkMode ? '#f8fafc' : '#1e293b', fontWeight: 600, fontSize: '0.95rem',
+                background: darkMode ? '#1e293b' : '#f8fafc'
+              }}
+            >
+              🌱 Home
+            </Link>
+
+            <Link
+              to="/dashboard"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px',
+                color: darkMode ? '#cbd5e1' : '#334155', fontWeight: 600, fontSize: '0.95rem'
+              }}
+            >
+              🗺️ Canopy Map
+            </Link>
+
+            <Link
+              to="/report-issue"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px',
+                color: '#ef4444', fontWeight: 700, fontSize: '0.95rem'
+              }}
+            >
+              ⚠️ Report Tree Issue
+            </Link>
+
+            <Link
+              to="/track"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px',
+                color: '#10b981', fontWeight: 700, fontSize: '0.95rem'
+              }}
+            >
+              📋 Track Report
+            </Link>
+
+            <Link
+              to="/view-tree"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px',
+                color: darkMode ? '#cbd5e1' : '#334155', fontWeight: 600, fontSize: '0.95rem'
+              }}
+            >
+              🌲 Tree Database
+            </Link>
+
+            <Link
+              to="/tree-encyclopedia"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px',
+                color: darkMode ? '#cbd5e1' : '#334155', fontWeight: 600, fontSize: '0.95rem'
+              }}
+            >
+              📖 Tree Encyclopedia
+            </Link>
+
+            {/* Appearance Section */}
+            <div style={{ height: '1px', background: darkMode ? '#1e293b' : '#f1f5f9', margin: '12px 0 6px' }} />
+            <p style={{ margin: '4px 8px 6px', fontSize: '0.72rem', fontWeight: 800, color: darkMode ? '#94a3b8' : '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Appearance</p>
+
+            <button
+              onClick={() => setDarkMode(prev => !prev)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 14px', borderRadius: '10px',
+                cursor: 'pointer', background: darkMode ? '#1e293b' : '#f8fafc', border: 'none',
+                color: darkMode ? '#f8fafc' : '#334155', fontWeight: 600, fontSize: '0.9rem'
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {darkMode ? <Sun size={18} color="#fbbf24" /> : <Moon size={18} color="#6366f1" />}
+                {darkMode ? 'Light Mode' : 'Dark Mode'}
+              </span>
+              <span style={{
+                fontSize: '0.7rem', fontWeight: 700,
+                padding: '2px 8px', borderRadius: '12px',
+                background: darkMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(99, 102, 241, 0.1)',
+                color: darkMode ? '#fbbf24' : '#4f46e5'
+              }}>
+                {darkMode ? 'DARK' : 'LIGHT'}
+              </span>
             </button>
 
-            {/* Dropdown panel */}
-            {menuOpen && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 10px)', right: '0',
-                background: '#fff', borderRadius: '14px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07)',
-                border: '1px solid #e5e7eb', zIndex: 1005,
-                minWidth: '240px', padding: '8px',
-                animation: 'fadeIn 0.15s ease'
-              }}>
-                {/* Section header */}
-                <p style={{ margin: '4px 12px 6px', fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Quick Access</p>
+            {/* Account / Auth Links */}
+            {isLoggedIn && (
+              <>
+                <div style={{ height: '1px', background: darkMode ? '#1e293b' : '#f1f5f9', margin: '12px 0 6px' }} />
+                <p style={{ margin: '4px 8px 6px', fontSize: '0.72rem', fontWeight: 800, color: darkMode ? '#94a3b8' : '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>My Account</p>
 
-                {/* View Trees → citizen dashboard */}
-                <button
-                  onClick={() => { setMenuOpen(false); navigate('/citizen-dashboard?tab=browse-trees'); }}
-                  style={{
-                    width: '100%', display: 'block', padding: '9px 12px', borderRadius: '10px',
-                    cursor: 'pointer', background: 'transparent', border: 'none', textAlign: 'left',
-                    fontWeight: 600, fontSize: '0.875rem', color: '#374151', transition: 'all 0.15s'
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf4'; e.currentTarget.style.color = '#065f46'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#374151'; }}
-                >
-                  View Trees
-                </button>
-
-                {/* Tree Database */}
-                <Link
-                  to="/view-tree"
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    display: 'block', padding: '9px 12px', borderRadius: '10px',
-                    color: '#374151', fontWeight: 600, fontSize: '0.875rem', transition: 'all 0.15s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  Tree Database
-                </Link>
-
-                {/* Tree Encyclopedia */}
-                <Link
-                  to="/tree-encyclopedia"
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    display: 'block', padding: '9px 12px', borderRadius: '10px',
-                    color: '#374151', fontWeight: 600, fontSize: '0.875rem', transition: 'all 0.15s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  Tree Encyclopedia
-                </Link>
-
-                {/* Canopy Map */}
-                <Link
-                  to="/dashboard"
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    display: 'block', padding: '9px 12px', borderRadius: '10px',
-                    color: '#374151', fontWeight: 600, fontSize: '0.875rem', transition: 'all 0.15s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  Canopy Map
-                </Link>
-
-                {/* Track Report */}
-                <Link
-                  to="/track"
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    display: 'block', padding: '9px 12px', borderRadius: '10px',
-                    color: '#059669', fontWeight: 700, fontSize: '0.875rem', transition: 'all 0.15s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = darkMode ? '#334155' : '#ecfdf5'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  Track Report
-                </Link>
-
-                {/* ── Theme Switcher Option ── */}
-                <div style={{ height: '1px', background: darkMode ? '#334155' : '#f3f4f6', margin: '6px 0' }} />
-                <p style={{ margin: '4px 12px 6px', fontSize: '0.7rem', fontWeight: 700, color: darkMode ? '#94a3b8' : '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Appearance</p>
-                <button
-                  id="theme-toggle-btn"
-                  onClick={() => setDarkMode(prev => !prev)}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '9px 12px', borderRadius: '10px',
-                    cursor: 'pointer', background: 'transparent', border: 'none',
-                    color: darkMode ? '#f8fafc' : '#374151', fontWeight: 600, fontSize: '0.875rem',
-                    transition: 'all 0.15s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = darkMode ? '#334155' : '#f0fdf4'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {darkMode ? <Sun size={16} color="#fbbf24" /> : <Moon size={16} color="#6366f1" />}
-                    {darkMode ? 'Light Theme' : 'Dark Theme'}
-                  </span>
-                  <span style={{
-                    fontSize: '0.7rem', fontWeight: 700,
-                    padding: '2px 8px', borderRadius: '12px',
-                    background: darkMode ? 'rgba(251, 191, 36, 0.18)' : 'rgba(99, 102, 241, 0.1)',
-                    color: darkMode ? '#fbbf24' : '#4f46e5'
-                  }}>
-                    {darkMode ? 'DARK' : 'LIGHT'}
-                  </span>
-                </button>
-
-                {/* Role-based links */}
-                {isLoggedIn && (
-                  <>
-                    <div style={{ height: '1px', background: '#f3f4f6', margin: '6px 0' }} />
-                    <p style={{ margin: '4px 12px 6px', fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase' }}>My Account</p>
-
-                    {currentUser?.role === 'Official' && (
-                      <Link to="/official-management" onClick={() => setMenuOpen(false)}
-                        style={{
-                          display: 'block', padding: '9px 12px', borderRadius: '10px',
-                          color: '#374151', fontWeight: 600, fontSize: '0.875rem', transition: 'all 0.15s'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        Management
-                      </Link>
-                    )}
-
-                    {currentUser?.role === 'Admin' && (
-                      <Link to="/admin" onClick={() => setMenuOpen(false)}
-                        style={{
-                          display: 'block', padding: '9px 12px', borderRadius: '10px',
-                          color: '#374151', fontWeight: 600, fontSize: '0.875rem', transition: 'all 0.15s'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        Admin Console
-                      </Link>
-                    )}
-
-                    <div style={{ height: '1px', background: '#f3f4f6', margin: '6px 0' }} />
-                    <button
-                      onClick={() => { setMenuOpen(false); handleLogout(); }}
-                      style={{
-                        width: '100%', display: 'block', padding: '9px 12px', borderRadius: '10px',
-                        color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer',
-                        fontWeight: 600, fontSize: '0.875rem', textAlign: 'left', transition: 'all 0.15s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      Logout
-                    </button>
-                  </>
+                {currentUser?.role === 'Official' && (
+                  <Link to="/official-management" onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: 'block', padding: '10px 14px', borderRadius: '10px',
+                      color: darkMode ? '#cbd5e1' : '#334155', fontWeight: 600, fontSize: '0.9rem'
+                    }}
+                  >
+                    🛡️ Official Management
+                  </Link>
                 )}
-              </div>
+
+                {currentUser?.role === 'Admin' && (
+                  <Link to="/admin" onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: 'block', padding: '10px 14px', borderRadius: '10px',
+                      color: darkMode ? '#cbd5e1' : '#334155', fontWeight: 600, fontSize: '0.9rem'
+                    }}
+                  >
+                    ⚙️ Admin Console
+                  </Link>
+                )}
+              </>
             )}
           </div>
-        </nav>
-        {!isLoggedIn && (
-          <Link className="cg-login" to="/login">
-            <LogIn size={15} /> Login
-          </Link>
-        )}
+
+          {/* Drawer Footer: Login / Logout */}
+          <div style={{ paddingTop: '16px', borderTop: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`, marginTop: 'auto' }}>
+            {!isLoggedIn ? (
+              <Link
+                to="/login"
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  width: '100%', padding: '12px', borderRadius: '10px',
+                  background: '#043224', color: '#ffffff', fontWeight: 700,
+                  fontSize: '0.95rem', textDecoration: 'none', boxSizing: 'border-box'
+                }}
+              >
+                <LogIn size={18} /> Login to Portal
+              </Link>
+            ) : (
+              <button
+                onClick={() => { setMenuOpen(false); handleLogout(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  width: '100%', padding: '12px', borderRadius: '10px',
+                  background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2',
+                  fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', boxSizing: 'border-box'
+                }}
+              >
+                Log Out
+              </button>
+            )}
+          </div>
+        </div>
       </header>
 
 
