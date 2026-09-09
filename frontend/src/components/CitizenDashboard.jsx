@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart } from 'lucide-react';
+import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2 } from 'lucide-react';
+import TreeGuardianCertificateModal from './TreeGuardianCertificateModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -123,15 +124,117 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
       .catch(err => console.error('Failed to fetch citizen tickets:', err));
   };
 
+  // Green Rewards & Tree Adoption State
+  const [adoptions, setAdoptions] = useState([]);
+  const [rewardsStats, setRewardsStats] = useState({
+    totalPoints: 0,
+    totalTreesAdopted: 0,
+    totalCareLogs: 0,
+    levelName: 'Seedling Guardian',
+    levelTier: 1,
+    nextTierPoints: 250,
+  });
+  const [badges, setBadges] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [adoptionsLoading, setAdoptionsLoading] = useState(false);
+  const [adoptingTreeId, setAdoptingTreeId] = useState(null);
+  const [customNickname, setCustomNickname] = useState('');
+  const [activeCertificate, setActiveCertificate] = useState(null);
+  const [careActionLoading, setCareActionLoading] = useState(false);
+  const [careAlert, setCareAlert] = useState('');
+
+  const fetchAdoptions = () => {
+    if (!user?.id) return;
+    setAdoptionsLoading(true);
+    fetch(`${API_URL}/api/adoptions/my-adoptions?userId=${user.id}`)
+      .then(res => res.json())
+      .then(data => {
+        setAdoptions(data.adoptions || []);
+        if (data.stats) setRewardsStats(data.stats);
+        if (data.badges) setBadges(data.badges);
+        setAdoptionsLoading(false);
+      })
+      .catch(() => setAdoptionsLoading(false));
+  };
+
+  const fetchLeaderboard = () => {
+    fetch(`${API_URL}/api/adoptions/leaderboard`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setLeaderboard(data);
+      })
+      .catch(() => {});
+  };
+
+  const handleAdoptTree = async (tree) => {
+    if (!user?.id) {
+      alert('Please log in as a citizen to adopt trees and earn Eco-Points!');
+      return;
+    }
+    const nicknamePrompt = window.prompt(`Give a nickname to this ${tree.name}:`, tree.name) || tree.name;
+    try {
+      const res = await fetch(`${API_URL}/api/adoptions/adopt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          userName: user.name || 'Citizen',
+          userEmail: user.email || '',
+          treeId: tree._id || tree.id,
+          nickname: nicknamePrompt
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.msg || 'Could not adopt tree');
+      alert(`🎉 ${data.msg}\nYou earned +${data.pointsAwarded} Eco-Points! Check the "Green Rewards & My Trees" tab.`);
+      fetchAdoptions();
+      fetchLeaderboard();
+      if (onTabChange) onTabChange('rewards');
+    } catch (err) {
+      alert(err.message || 'Error adopting tree');
+    }
+  };
+
+  const handleLogCare = async (adoptionId, action = 'Watered') => {
+    setCareActionLoading(true);
+    setCareAlert('');
+    try {
+      const res = await fetch(`${API_URL}/api/adoptions/${adoptionId}/care-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, note: `Citizen logged ${action}` })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.msg || 'Failed to log care');
+      setCareAlert(data.msg);
+      fetchAdoptions();
+      fetchLeaderboard();
+      setTimeout(() => setCareAlert(''), 5000);
+    } catch (err) {
+      alert(err.message || 'Error logging care');
+    } finally {
+      setCareActionLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchTickets();
-    const interval = setInterval(fetchTickets, 15000);
+    fetchAdoptions();
+    fetchLeaderboard();
+    const interval = setInterval(() => {
+      fetchTickets();
+      fetchAdoptions();
+    }, 20000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
   useEffect(() => {
-    if (activeTab === 'browse-trees' && inventoryTrees.length === 0) {
+    if ((activeTab === 'browse-trees' || activeTab === 'rewards') && inventoryTrees.length === 0) {
       fetchInventoryTrees();
+    }
+    if (activeTab === 'rewards') {
+      fetchAdoptions();
+      fetchLeaderboard();
     }
     // Also preload trees on overview if user has a favourite saved
     if (activeTab === 'overview' && favTreeId && inventoryTrees.length === 0) {
@@ -410,6 +513,413 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
         </>
       )}
 
+      {/* ── Green Rewards & Tree Adoption Tab ────────────────────────── */}
+      {activeTab === 'rewards' && (
+        <div className="green-rewards-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Notification Alert Banner if any */}
+          {careAlert && (
+            <div style={{
+              background: '#ecfdf5',
+              border: '1.5px solid #10b981',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              color: '#065f46',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <Sparkles size={20} color="#059669" />
+              <span>{careAlert}</span>
+            </div>
+          )}
+
+          {/* Top Eco Level & Stats Hero */}
+          <div style={{
+            background: 'linear-gradient(135deg, #043224 0%, #065f46 50%, #047857 100%)',
+            borderRadius: '20px',
+            padding: '28px',
+            color: '#ffffff',
+            boxShadow: '0 10px 25px -5px rgba(4, 120, 87, 0.3)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '24px',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.15)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, color: '#fde68a', marginBottom: '8px' }}>
+                <Award size={14} /> Tier {rewardsStats.levelTier} Guardian
+              </div>
+              <h2 style={{ margin: '0 0 6px', fontSize: '1.75rem', fontWeight: 800 }}>
+                {rewardsStats.levelName}
+              </h2>
+              <p style={{ margin: '0 0 16px', color: '#d1fae5', fontSize: '0.9rem' }}>
+                Welcome, {user.name || 'Citizen'}! Earn Eco-Points by adopting trees, watering, and logging health checks.
+              </p>
+
+              {/* Progress to Next Tier */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px', color: '#a7f3d0' }}>
+                  <span>Points Progress</span>
+                  <span>{rewardsStats.totalPoints} / {rewardsStats.nextTierPoints} pts</span>
+                </div>
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min(100, Math.round((rewardsStats.totalPoints / rewardsStats.nextTierPoints) * 100))}%`,
+                    background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+                    borderRadius: '10px',
+                    transition: 'width 0.4s ease'
+                  }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Metrics Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px 10px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Sparkles size={22} color="#fde68a" style={{ margin: '0 auto 6px' }} />
+                <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{rewardsStats.totalPoints}</div>
+                <div style={{ fontSize: '0.75rem', color: '#d1fae5' }}>Eco-Points</div>
+              </div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px 10px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <TreePine size={22} color="#a7f3d0" style={{ margin: '0 auto 6px' }} />
+                <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{rewardsStats.totalTreesAdopted}</div>
+                <div style={{ fontSize: '0.75rem', color: '#d1fae5' }}>Adopted Trees</div>
+              </div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px 10px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Flame size={22} color="#f87171" style={{ margin: '0 auto 6px' }} />
+                <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{rewardsStats.totalCareLogs}</div>
+                <div style={{ fontSize: '0.75rem', color: '#d1fae5' }}>Care Check-ins</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section: My Adopted Trees */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
+                  🌳 My Living Tree Pledges ({adoptions.length})
+                </h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+                  Provide daily watering and maintenance to keep your care streak and unlock certificates.
+                </p>
+              </div>
+              <button
+                onClick={() => onTabChange && onTabChange('browse-trees')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#046b4e',
+                  color: '#ffffff',
+                  padding: '9px 18px',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(4, 107, 78, 0.2)'
+                }}
+              >
+                <PlusCircle size={16} /> Adopt Another Tree
+              </button>
+            </div>
+
+            {adoptions.length === 0 ? (
+              <div style={{
+                background: '#ffffff',
+                border: '2px dashed #cbd5e1',
+                borderRadius: '16px',
+                padding: '40px 20px',
+                textAlign: 'center'
+              }}>
+                <TreePine size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+                <h4 style={{ margin: '0 0 6px', color: '#1e293b' }}>No Trees Adopted Yet</h4>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '420px', margin: '0 auto 16px' }}>
+                  Browse our city inventory to adopt a tree in your neighborhood. You will earn +100 Eco-Points and receive a formal Tree Guardian Certificate!
+                </p>
+                <button
+                  onClick={() => onTabChange && onTabChange('browse-trees')}
+                  style={{
+                    background: '#043224',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Explore Trees to Adopt
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '18px'
+              }}>
+                {adoptions.map(item => {
+                  const displayImg = getTreeDisplayImage({ image: item.treeImage, name: item.treeName, scientificName: item.treeScientificName });
+                  return (
+                    <div
+                      key={item._id}
+                      style={{
+                        background: '#ffffff',
+                        borderRadius: '16px',
+                        border: '1px solid #e2e8f0',
+                        overflow: 'hidden',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
+                    >
+                      {/* Image Header */}
+                      <div style={{ height: '150px', position: 'relative', overflow: 'hidden', background: '#f0fdf4' }}>
+                        <img
+                          src={displayImg}
+                          alt={item.treeName}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.currentTarget.src = speciesImages.default; }}
+                        />
+                        <span style={{
+                          position: 'absolute', top: '10px', left: '10px',
+                          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                          color: '#fde68a', borderRadius: '20px', padding: '3px 10px',
+                          fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px'
+                        }}>
+                          <Flame size={12} color="#f87171" /> {item.careStreak || 1} Day Streak
+                        </span>
+                        <span style={{
+                          position: 'absolute', top: '10px', right: '10px',
+                          background: '#047857', color: '#ffffff', borderRadius: '20px', padding: '3px 10px',
+                          fontSize: '0.72rem', fontWeight: 700
+                        }}>
+                          ⭐ {item.totalEcoPoints || 100} pts
+                        </span>
+                      </div>
+
+                      {/* Card Content */}
+                      <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <h4 style={{ margin: '0 0 2px', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                          {item.nickname ? `"${item.nickname}"` : item.treeName}
+                        </h4>
+                        <p style={{ margin: '0 0 8px', fontStyle: 'italic', color: '#64748b', fontSize: '0.8rem' }}>
+                          {item.treeScientificName || item.treeName}
+                        </p>
+                        <p style={{ margin: '0 0 14px', fontSize: '0.8rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <MapPin size={14} color="#059669" /> {item.treeLocation || 'Udupi Zone'}
+                        </p>
+
+                        {/* Care Action Bar */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '8px',
+                          marginBottom: '10px'
+                        }}>
+                          <button
+                            onClick={() => handleLogCare(item._id, 'Watered')}
+                            disabled={careActionLoading}
+                            style={{
+                              background: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              color: '#1d4ed8',
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '5px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Droplet size={14} color="#2563eb" /> Water (+50)
+                          </button>
+
+                          <button
+                            onClick={() => handleLogCare(item._id, 'Mulched')}
+                            disabled={careActionLoading}
+                            style={{
+                              background: '#fef3c7',
+                              border: '1px solid #fde68a',
+                              color: '#92400e',
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '5px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Sparkles size={14} color="#d97706" /> Mulch (+75)
+                          </button>
+                        </div>
+
+                        {/* Certificate Button */}
+                        <button
+                          onClick={() => setActiveCertificate(item)}
+                          style={{
+                            width: '100%',
+                            marginTop: 'auto',
+                            padding: '9px',
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            color: '#334155',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Award size={15} color="#d97706" /> View Guardian Certificate
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Badges & Achievements Showcase */}
+          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Trophy size={20} color="#f59e0b" /> Canopy Badges & Honors
+            </h3>
+            <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: '0.875rem' }}>
+              Unlock special community recognition by completing green urban milestones.
+            </p>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px'
+            }}>
+              {badges.map(b => (
+                <div
+                  key={b.id}
+                  style={{
+                    background: b.unlocked ? '#f0fdf4' : '#f8fafc',
+                    border: b.unlocked ? '1.5px solid #86efac' : '1px solid #e2e8f0',
+                    borderRadius: '14px',
+                    padding: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    opacity: b.unlocked ? 1 : 0.6
+                  }}
+                >
+                  <div style={{
+                    fontSize: '1.8rem',
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '10px',
+                    background: b.unlocked ? '#dcfce7' : '#e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {b.icon}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: b.unlocked ? '#065f46' : '#64748b' }}>
+                      {b.name}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      {b.desc}
+                    </div>
+                    {b.unlocked && (
+                      <span style={{ fontSize: '0.68rem', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '2px' }}>
+                        ✓ Unlocked
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Community Citizen Leaderboard */}
+          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ⭐ City Eco Guardians Leaderboard
+            </h3>
+            <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.875rem' }}>
+              Top citizens actively protecting and watering our urban canopy in Udupi.
+            </p>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e2e8f0', fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '10px 14px' }}>Rank</th>
+                    <th style={{ padding: '10px 14px' }}>Citizen Guardian</th>
+                    <th style={{ padding: '10px 14px' }}>Trees Adopted</th>
+                    <th style={{ padding: '10px 14px' }}>Total Eco-Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '16px', textAlign: 'center', color: '#94a3b8' }}>
+                        Leaderboard data updating... Adopt your first tree to claim #1 rank!
+                      </td>
+                    </tr>
+                  ) : (
+                    leaderboard.map((row, idx) => (
+                      <tr
+                        key={row._id || idx}
+                        style={{
+                          borderBottom: '1px solid #f1f5f9',
+                          background: row._id === user?.id ? '#f0fdf4' : 'transparent',
+                          fontWeight: row._id === user?.id ? 700 : 500
+                        }}
+                      >
+                        <td style={{ padding: '12px 14px' }}>
+                          {idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`}
+                        </td>
+                        <td style={{ padding: '12px 14px', color: '#0f172a' }}>
+                          {row.userName || 'Citizen'} {row._id === user?.id ? ' (You)' : ''}
+                        </td>
+                        <td style={{ padding: '12px 14px', color: '#059669' }}>
+                          🌳 {row.treesCount} Trees
+                        </td>
+                        <td style={{ padding: '12px 14px', fontWeight: 800, color: '#b45309' }}>
+                          ⭐ {row.totalPoints} pts
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Certificate Modal */}
+      {activeCertificate && (
+        <TreeGuardianCertificateModal
+          adoption={activeCertificate}
+          onClose={() => setActiveCertificate(null)}
+        />
+      )}
+
       {activeTab === 'report' && (
         <div className="form-card-container">
           <div className="form-card">
@@ -671,8 +1181,8 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
 
           return (
             <div>
-              {/* Back + Fav row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              {/* Back + Fav + Adopt row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                 <button
                   onClick={() => setSelectedTree(null)}
                   style={{
@@ -684,24 +1194,39 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                 >
                   <ChevronLeft size={16} /> Back to Trees
                 </button>
-                <button
-                  onClick={() => {
-                    const newId = isFav ? null : (selectedTree._id || selectedTree.id);
-                    setFavTreeId(newId);
-                    if (newId) localStorage.setItem('citizenFavTree', newId);
-                    else localStorage.removeItem('citizenFavTree');
-                  }}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem',
-                    border: isFav ? '2px solid #f59e0b' : '1.5px solid #d1d5db',
-                    background: isFav ? '#fffbeb' : '#fff',
-                    color: isFav ? '#b45309' : '#6b7280'
-                  }}
-                >
-                  <Star size={15} fill={isFav ? '#f59e0b' : 'none'} color={isFav ? '#f59e0b' : '#6b7280'} />
-                  {isFav ? 'My Favourite Tree' : 'Mark as Favourite'}
-                </button>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button
+                    onClick={() => handleAdoptTree(selectedTree)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.875rem',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #043224, #065f46)',
+                      color: '#ffffff',
+                      boxShadow: '0 2px 8px rgba(4, 50, 36, 0.25)'
+                    }}
+                  >
+                    <Sparkles size={16} color="#fde68a" /> Adopt Tree (+100 Pts)
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newId = isFav ? null : (selectedTree._id || selectedTree.id);
+                      setFavTreeId(newId);
+                      if (newId) localStorage.setItem('citizenFavTree', newId);
+                      else localStorage.removeItem('citizenFavTree');
+                    }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem',
+                      border: isFav ? '2px solid #f59e0b' : '1.5px solid #d1d5db',
+                      background: isFav ? '#fffbeb' : '#fff',
+                      color: isFav ? '#b45309' : '#6b7280'
+                    }}
+                  >
+                    <Star size={15} fill={isFav ? '#f59e0b' : 'none'} color={isFav ? '#f59e0b' : '#6b7280'} />
+                    {isFav ? 'My Favourite Tree' : 'Mark as Favourite'}
+                  </button>
+                </div>
               </div>
 
               {/* Hero banner */}

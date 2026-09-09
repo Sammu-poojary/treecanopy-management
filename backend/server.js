@@ -12,6 +12,7 @@ const notificationRoutes = require('./routes/notifications');
 const uploadRoutes = require('./routes/upload');
 const treeRoutes = require('./routes/trees');
 const propertyRoutes = require('./routes/properties');
+const adoptionRoutes = require('./routes/adoptions');
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/trees', treeRoutes);
 app.use('/api/properties', propertyRoutes);
+app.use('/api/adoptions', adoptionRoutes);
 
 // Health check route
 app.get('/', (req, res) => {

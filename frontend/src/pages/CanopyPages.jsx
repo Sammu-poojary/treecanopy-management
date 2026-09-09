@@ -9122,6 +9122,7 @@ export function CitizenDashboardPage() {
           >
             {[
               { id: 'overview', label: 'Overview' },
+              { id: 'rewards', label: '🌱 Green Rewards & My Trees' },
               { id: 'report', label: 'Report New Issue' },
               { id: 'my-reports', label: 'My Reported Tickets' }
             ].map(tab => (
