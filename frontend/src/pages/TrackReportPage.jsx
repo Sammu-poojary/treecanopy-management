@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -20,6 +22,29 @@ import {
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+function ComplaintMap({ locationName = 'Incident Site' }) {
+  // Udupi, Karnataka incident site coordinates
+  const position = [13.3409, 74.7421];
+
+  return (
+    <div style={{ height: '220px', width: '100%', position: 'relative' }}>
+      <MapContainer center={position} zoom={13} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <Marker position={position}>
+          <Popup>
+            <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#065f46' }}>
+              📍 {locationName}
+            </div>
+          </Popup>
+        </Marker>
+      </MapContainer>
+    </div>
+  );
+}
 
 const statusSteps = ['Pending', 'In Review', 'Scheduled', 'Resolved'];
 
@@ -179,7 +204,7 @@ export default function TrackReportPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Link
-            to="/home"
+            to={currentUser?.role && (currentUser.role.toLowerCase().includes('citizen') || currentUser.role.toLowerCase().includes('public')) ? '/citizen-dashboard' : '/home'}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -194,7 +219,7 @@ export default function TrackReportPage() {
               transition: 'all 0.2s'
             }}
           >
-            <ArrowLeft size={16} /> Home
+            <ArrowLeft size={16} /> {currentUser?.role && (currentUser.role.toLowerCase().includes('citizen') || currentUser.role.toLowerCase().includes('public')) ? 'Dashboard' : 'Home'}
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#043224', fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
             <TreePine size={24} style={{ color: '#10b981' }} />
@@ -618,7 +643,7 @@ export default function TrackReportPage() {
               </h3>
 
               <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-                <ComplaintMap />
+                <ComplaintMap locationName={complaint.location || 'Incident Site'} />
               </div>
 
               <div style={{
@@ -651,7 +676,7 @@ export default function TrackReportPage() {
                 <div>
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Location Address</div>
                   <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginTop: '2px' }}>
-                    {complaint.location || 'Hubli-Dharwad Canopy Sector'}
+                    {complaint.location || 'Ajjarkadu Park Road, Udupi Sector 1'}
                   </div>
                 </div>
               </div>

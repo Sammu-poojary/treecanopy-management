@@ -819,34 +819,31 @@ const seed = async () => {
       throw new Error('MONGODB_URI is missing');
     }
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('[SEED] Connected to MongoDB Altas successfully.');
+    console.log('[SEED] Connected to MongoDB Atlas successfully.');
+
+    // Remove legacy non-Udupi trees
+    const deleteRes = await Tree.deleteMany({
+      origin: { $not: /Udupi|Manipal|Ajjarkad|Malpe|KMC|MGM|Kaup|Brahmavar|Sooda|Barkur|Pajaka/i },
+      notes: { $not: /Udupi|Manipal|Ajjarkad|Malpe|KMC|MGM|Kaup|Brahmavar|Sooda|Barkur|Pajaka/i }
+    });
+    if (deleteRes.deletedCount > 0) {
+      console.log(`[SEED] Removed ${deleteRes.deletedCount} legacy non-Udupi tree records.`);
+    }
 
     const trees = await Tree.find();
-    const hasUdupi = trees.some(t => 
-      (t.origin && t.origin.includes('Udupi')) || 
-      (t.notes && t.notes.includes('Udupi'))
-    );
-
-    if (!hasUdupi) {
-      console.log('[SEED] Seeding Udupi encyclopedia trees...');
-      await Tree.insertMany(defaultUdupiTrees);
-      console.log('[SEED] Seeded 14 Udupi landmark trees successfully!');
+    const missingTrees = [];
+    for (const defaultTree of defaultUdupiTrees) {
+      const exists = trees.some(t => t.name === defaultTree.name);
+      if (!exists) {
+        missingTrees.push(defaultTree);
+      }
+    }
+    if (missingTrees.length > 0) {
+      console.log(`[SEED] Inserting ${missingTrees.length} Udupi landmark trees...`);
+      await Tree.insertMany(missingTrees);
+      console.log('[SEED] Udupi landmark trees inserted successfully!');
     } else {
-      console.log('[SEED] Udupi trees already exist in database. Checking for missing specimens...');
-      const missingTrees = [];
-      for (const defaultTree of defaultUdupiTrees) {
-        const exists = trees.some(t => t.name === defaultTree.name);
-        if (!exists) {
-          missingTrees.push(defaultTree);
-        }
-      }
-      if (missingTrees.length > 0) {
-        console.log(`[SEED] Found ${missingTrees.length} missing specimens. Inserting...`);
-        await Tree.insertMany(missingTrees);
-        console.log('[SEED] Missing specimens inserted successfully!');
-      } else {
-        console.log('[SEED] All default Udupi specimens already exist in the database.');
-      }
+      console.log('[SEED] All default Udupi specimens exist in the database.');
     }
     process.exit(0);
   } catch (err) {

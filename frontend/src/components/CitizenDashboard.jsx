@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2 } from 'lucide-react';
+import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2, User, Mail, Phone, Shield, Camera, Edit3, Save, ExternalLink } from 'lucide-react';
 import TreeGuardianCertificateModal from './TreeGuardianCertificateModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -143,10 +143,115 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [careActionLoading, setCareActionLoading] = useState(false);
   const [careAlert, setCareAlert] = useState('');
 
+  // Profile Management State
+  const [profileData, setProfileData] = useState(() => {
+    const cu = (() => {
+      try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
+      catch { return {}; }
+    })();
+    return {
+      name: user?.name || user?.username || cu.name || cu.username || 'Eco Guardian',
+      email: user?.email || cu.email || 'citizen@treecanopy.gov.in',
+      phone: user?.phone || cu.phone || '+91 98765 43210',
+      address: user?.address || cu.address || 'Udupi Urban Ward 4, Karnataka',
+      profileImage: user?.profileImage || user?.avatar || cu.profileImage || cu.avatar || '',
+      citizenId: user?.id || user?._id || cu.id || cu._id || 'CZ-7821',
+      joinedDate: user?.createdAt || cu.createdAt || '2024-01-15'
+    };
+  });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const effectiveUserId = user?.id || user?._id || profileData.citizenId || 'citizen_guest';
+  const effectiveUserName = profileData.name || user?.name || user?.username || 'Eco Guardian';
+  const effectiveUserEmail = profileData.email || user?.email || 'citizen@treecanopy.gov.in';
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    setProfileMsg({ type: '', text: '' });
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('image', file);
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: 'POST',
+        body: uploadFormData
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.msg || 'Image upload failed');
+      const imgUrl = data.imageUrl ? `${API_URL}${data.imageUrl}` : (data.url || '');
+      
+      const updated = { ...profileData, profileImage: imgUrl };
+      setProfileData(updated);
+
+      // Save to localStorage
+      try {
+        const stored = JSON.parse(localStorage.getItem('currentUser')) || {};
+        const merged = { ...stored, profileImage: imgUrl, avatar: imgUrl };
+        localStorage.setItem('currentUser', JSON.stringify(merged));
+        window.dispatchEvent(new Event('storage'));
+      } catch (err) {}
+
+      // If backend user update endpoint exists, sync it
+      if (user?.id || user?._id) {
+        fetch(`${API_URL}/api/users/${user.id || user._id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileImage: imgUrl })
+        }).catch(() => {});
+      }
+
+      setProfileMsg({ type: 'success', text: 'Profile picture updated successfully!' });
+    } catch (err) {
+      setProfileMsg({ type: 'error', text: err.message || 'Error uploading photo' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileMsg({ type: '', text: '' });
+    try {
+      // Update localStorage
+      try {
+        const stored = JSON.parse(localStorage.getItem('currentUser')) || {};
+        const merged = { ...stored, ...profileData, name: profileData.name, email: profileData.email, phone: profileData.phone, address: profileData.address };
+        localStorage.setItem('currentUser', JSON.stringify(merged));
+        window.dispatchEvent(new Event('storage'));
+      } catch (err) {}
+
+      // Update backend if possible
+      if (user?.id || user?._id) {
+        await fetch(`${API_URL}/api/users/${user.id || user._id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: profileData.name,
+            phone: profileData.phone,
+            address: profileData.address
+          })
+        }).catch(() => {});
+      }
+
+      setIsEditingProfile(false);
+      setProfileMsg({ type: 'success', text: 'Profile information saved successfully!' });
+      setTimeout(() => setProfileMsg({ type: '', text: '' }), 4000);
+    } catch (err) {
+      setProfileMsg({ type: 'error', text: err.message || 'Error updating profile' });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   const fetchAdoptions = () => {
-    if (!user?.id) return;
+    if (!effectiveUserId) return;
     setAdoptionsLoading(true);
-    fetch(`${API_URL}/api/adoptions/my-adoptions?userId=${user.id}`)
+    fetch(`${API_URL}/api/adoptions/my-adoptions?userId=${encodeURIComponent(effectiveUserId)}`)
       .then(res => res.json())
       .then(data => {
         setAdoptions(data.adoptions || []);
@@ -167,20 +272,21 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   };
 
   const handleAdoptTree = async (tree) => {
-    if (!user?.id) {
-      alert('Please log in as a citizen to adopt trees and earn Eco-Points!');
-      return;
-    }
     const nicknamePrompt = window.prompt(`Give a nickname to this ${tree.name}:`, tree.name) || tree.name;
     try {
       const res = await fetch(`${API_URL}/api/adoptions/adopt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
-          userName: user.name || 'Citizen',
-          userEmail: user.email || '',
+          userId: effectiveUserId,
+          userName: effectiveUserName,
+          userEmail: effectiveUserEmail,
           treeId: tree._id || tree.id,
+          treeName: tree.name,
+          treeScientificName: tree.scientificName,
+          treeFamily: tree.family,
+          treeLocation: tree.origin || 'Udupi Canopy',
+          treeImage: tree.image || '',
           nickname: nicknamePrompt
         })
       });
@@ -226,7 +332,8 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
       fetchAdoptions();
     }, 20000);
     return () => clearInterval(interval);
-  }, [user?.id]);
+  }, [user?.id, user?._id]);
+
 
   useEffect(() => {
     if ((activeTab === 'browse-trees' || activeTab === 'rewards') && inventoryTrees.length === 0) {
@@ -414,7 +521,7 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                 </div>
                 <div className="mini-metric">
                   <span className="label">Eco Benefit</span>
-                  <span className="value">+$24,500/yr</span>
+                  <span className="value">+₹24,500/yr</span>
                 </div>
                 <div className="mini-metric">
                   <span className="label">Air Quality Index</span>
@@ -927,15 +1034,76 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
             <p className="form-subtitle">Help us protect and manage our urban forestry. Submit issue details below.</p>
 
             {success && (
-              <div className="success-alert">
-                <CheckCircle size={20} />
-                <span>Ticket submitted successfully! Track it in the "My Reports" tab.</span>
+              <div className="success-alert" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle size={20} />
+                  <span>Ticket submitted successfully! Track it in the "My Reports" tab.</span>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('my-reports')}
+                  className="btn-primary" 
+                  style={{ alignSelf: 'flex-start', padding: '6px 12px', fontSize: '0.9rem' }}
+                >
+                  View My Reports
+                </button>
               </div>
             )}
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Tree Location / Address *</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ margin: 0 }}>Tree Location / Address *</label>
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => {
+                      if (!navigator.geolocation) {
+                        alert('Geolocation is not supported by your browser.');
+                        return;
+                      }
+                      setFormData(prev => ({ ...prev, location: 'Fetching live GPS location...' }));
+                      navigator.geolocation.getCurrentPosition(
+                        async (pos) => {
+                          const { latitude, longitude } = pos.coords;
+                          try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                            const data = await res.json();
+                            if (data && data.display_name) {
+                              setFormData(prev => ({ ...prev, location: data.display_name }));
+                            } else {
+                              setFormData(prev => ({ ...prev, location: `GPS Coordinates: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}` }));
+                            }
+                          } catch (err) {
+                            setFormData(prev => ({ ...prev, location: `GPS Coordinates: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}` }));
+                          }
+                        },
+                        (err) => {
+                          alert('Unable to retrieve your location. Please check your browser location permissions.');
+                          setFormData(prev => ({ ...prev, location: '' }));
+                        },
+                        { enableHighAccuracy: true, timeout: 10000 }
+                      );
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '4px 10px',
+                      fontSize: '0.8rem',
+                      background: '#e0f2fe',
+                      color: '#0369a1',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#bae6fd'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#e0f2fe'; }}
+                  >
+                    <MapPin size={13} /> Use Live Location
+                  </button>
+                </div>
                 <div className="input-wrapper">
                   <MapPin className="input-icon" size={20} />
                   <input
@@ -944,7 +1112,7 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                     value={formData.location}
                     onChange={handleChange}
                     className="form-control"
-                    placeholder="e.g. 104 Pine Street, near Central Library"
+                    placeholder="e.g. 104 Pine Street, near Central Library or click Use Live Location"
                     required
                     disabled={submitting}
                   />
@@ -1514,6 +1682,503 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
           </div>
         );
       })()}
+
+      {/* ── Citizen Profile Tab ───────────────────────────────────── */}
+      {activeTab === 'profile' && (
+        <div className="citizen-profile-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Notification / Alert messages */}
+          {profileMsg.text && (
+            <div style={{
+              background: profileMsg.type === 'success' ? '#ecfdf5' : '#fef2f2',
+              border: `1.5px solid ${profileMsg.type === 'success' ? '#10b981' : '#ef4444'}`,
+              borderRadius: '12px',
+              padding: '12px 18px',
+              color: profileMsg.type === 'success' ? '#065f46' : '#991b1b',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              {profileMsg.type === 'success' ? <CheckCircle size={20} color="#059669" /> : <AlertTriangle size={20} color="#dc2626" />}
+              <span>{profileMsg.text}</span>
+            </div>
+          )}
+
+          {/* Profile Hero Card */}
+          <div style={{
+            background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)',
+            borderRadius: '20px',
+            padding: '28px',
+            color: '#ffffff',
+            boxShadow: '0 10px 25px -5px rgba(4, 120, 87, 0.3)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+              {/* Profile Photo with Upload Trigger */}
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  width: '100px',
+                  height: '100px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '3px solid #ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                }}>
+                  {profileData.profileImage ? (
+                    <img
+                      src={profileData.profileImage}
+                      alt={profileData.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fde68a' }}>
+                      {(profileData.name || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+
+                <label
+                  htmlFor="citizen-avatar-upload"
+                  style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    right: '0',
+                    background: '#f59e0b',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                    border: '2px solid #fff'
+                  }}
+                  title="Upload profile photo"
+                >
+                  <Camera size={16} />
+                  <input
+                    id="citizen-avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    style={{ display: 'none' }}
+                    disabled={avatarUploading}
+                  />
+                </label>
+              </div>
+
+              {/* User Identity Info */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800 }}>
+                    {profileData.name}
+                  </h2>
+                  <span style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    padding: '3px 10px',
+                    borderRadius: '20px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: '#fef08a',
+                    border: '1px solid rgba(255,255,255,0.3)'
+                  }}>
+                    🛡️ Citizen & Eco Guardian
+                  </span>
+                </div>
+                <p style={{ margin: '0 0 8px', color: '#d1fae5', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Mail size={15} /> {profileData.email}
+                </p>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.8rem', color: '#a7f3d0' }}>
+                  <span><b>Citizen ID:</b> {profileData.citizenId}</span>
+                  <span>•</span>
+                  <span><b>Tier:</b> {rewardsStats.levelName}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Action Buttons in Hero */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setIsEditingProfile(!isEditingProfile)}
+                style={{
+                  background: isEditingProfile ? 'rgba(255,255,255,0.2)' : '#ffffff',
+                  color: isEditingProfile ? '#ffffff' : '#065f46',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '10px 18px',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+              >
+                <Edit3 size={16} /> {isEditingProfile ? 'Cancel Edit' : 'Edit Profile'}
+              </button>
+            </div>
+          </div>
+
+          {/* Citizen Key Stats Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '16px'
+          }}>
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '18px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '0.85rem', fontWeight: 600 }}>
+                <Sparkles size={18} /> Total Eco-Points
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+                {rewardsStats.totalPoints}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Earned via adoption & care
+              </div>
+            </div>
+
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '18px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0284c7', fontSize: '0.85rem', fontWeight: 600 }}>
+                <TreePine size={18} /> Trees Adopted
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+                {rewardsStats.totalTreesAdopted || adoptions.length}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Active protected canopy
+              </div>
+            </div>
+
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '18px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706', fontSize: '0.85rem', fontWeight: 600 }}>
+                <Flame size={18} /> Care Logs
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+                {rewardsStats.totalCareLogs}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Watering & health checks
+              </div>
+            </div>
+
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '18px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', fontSize: '0.85rem', fontWeight: 600 }}>
+                <FileText size={18} /> Reported Tickets
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+                {tickets.length}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Civic canopy complaints
+              </div>
+            </div>
+          </div>
+
+          {/* Profile Details or Edit Form */}
+          {isEditingProfile ? (
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+            }}>
+              <h3 style={{ margin: '0 0 18px', fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Edit3 size={20} color="#059669" /> Edit Profile Information
+              </h3>
+              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.name}
+                      onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.95rem'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={profileData.email}
+                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.95rem'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.phone}
+                      onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                      placeholder="+91 98765 43210"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.95rem'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Residential Ward / Area
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.address}
+                      onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                      placeholder="Ward name, City"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.95rem'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    style={{
+                      background: '#f1f5f9',
+                      color: '#475569',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '10px 20px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={profileSaving}
+                    style={{
+                      background: '#059669',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '10px 24px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Save size={16} /> {profileSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '20px'
+            }}>
+              {/* Personal Details Card */}
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <User size={18} color="#059669" /> Account Details
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Full Name</span>
+                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>{profileData.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Email</span>
+                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>{profileData.email}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Phone</span>
+                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>{profileData.phone}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Residential Ward</span>
+                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>{profileData.address}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Account Role</span>
+                    <span style={{ fontWeight: 700, color: '#059669', fontSize: '0.88rem' }}>Citizen / Public Guardian</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Badges & Achievements Preview */}
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Award size={18} color="#f59e0b" /> Guardian Badges
+                  </h3>
+                  <button
+                    onClick={() => onTabChange && onTabChange('rewards')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#059669',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    View All →
+                  </button>
+                </div>
+
+                {badges.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    {badges.map((b, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          borderRadius: '10px',
+                          padding: '8px 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <span style={{ fontSize: '1.2rem' }}>{b.icon || '🏅'}</span>
+                        <div>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#065f46' }}>{b.title || b.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#16a34a' }}>{b.unlockedAt ? new Date(b.unlockedAt).toLocaleDateString() : 'Unlocked'}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px 0', color: '#64748b' }}>
+                    <Award size={36} color="#cbd5e1" style={{ margin: '0 auto 8px' }} />
+                    <p style={{ margin: '0 0 6px', fontSize: '0.88rem', fontWeight: 600 }}>No badges unlocked yet</p>
+                    <p style={{ margin: 0, fontSize: '0.78rem' }}>Adopt trees & log care to earn eco-guardian achievements!</p>
+                  </div>
+                )}
+
+                {/* Quick links to certificates */}
+                {adoptions.length > 0 && (
+                  <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
+                    <button
+                      onClick={() => onTabChange && onTabChange('rewards')}
+                      style={{
+                        width: '100%',
+                        background: '#f8fafc',
+                        border: '1px dashed #cbd5e1',
+                        borderRadius: '10px',
+                        padding: '10px',
+                        color: '#334155',
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Trophy size={16} color="#d97706" /> View My Tree Certificates ({adoptions.length})
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

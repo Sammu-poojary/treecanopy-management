@@ -27,8 +27,8 @@ const TreeSchema = new mongoose.Schema({
   diseases: [{ type: String }],
   pests: [{ type: String }],
   image: { type: String }, // stores base64 data URL or uploaded file URL
-  lat: { type: Number, default: 15.3600 },
-  lng: { type: Number, default: 75.1300 },
+  lat: { type: Number, default: 13.3409 },
+  lng: { type: Number, default: 74.7421 },
   addedAt: { type: String } // date string formatted for UI, e.g. "29 Jun 2026"
 }, { timestamps: true });
 

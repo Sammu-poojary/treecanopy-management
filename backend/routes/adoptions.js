@@ -27,28 +27,47 @@ router.post('/adopt', async (req, res) => {
     }
 
     // Check if user already adopted this tree
-    const existing = await Adoption.findOne({ userId, treeId, status: 'Active' });
+    const existing = await Adoption.findOne({ 
+      userId: userId.toString(), 
+      treeId: treeId.toString(), 
+      status: 'Active' 
+    });
     if (existing) {
       return res.status(400).json({ msg: 'You have already adopted this tree!' });
     }
 
-    // Fetch tree details
-    const tree = await Tree.findById(treeId);
+    // Fetch tree details safely
+    let tree = null;
+    const mongoose = require('mongoose');
+    try {
+      if (mongoose.isValidObjectId(treeId)) {
+        tree = await Tree.findById(treeId);
+      }
+    } catch (e) {}
+
     if (!tree) {
-      return res.status(404).json({ msg: 'Tree not found' });
+      try {
+        tree = await Tree.findOne({ name: req.body.treeName || '' });
+      } catch (e) {}
     }
 
+    const treeName = tree ? tree.name : (req.body.treeName || 'Canopy Tree');
+    const treeScientificName = tree ? (tree.scientificName || '') : (req.body.treeScientificName || '');
+    const treeFamily = tree ? (tree.family || '') : (req.body.treeFamily || '');
+    const treeLocation = tree ? (tree.origin || 'Udupi Canopy') : (req.body.treeLocation || 'Udupi Canopy');
+    const treeImage = tree ? (tree.image || '') : (req.body.treeImage || '');
+
     const newAdoption = new Adoption({
-      userId,
+      userId: userId.toString(),
       userName: userName || 'Eco Guardian',
       userEmail: userEmail || '',
-      treeId: tree._id,
-      treeName: tree.name,
-      treeScientificName: tree.scientificName || '',
-      treeFamily: tree.family || '',
-      treeLocation: tree.origin || 'Udupi Canopy',
-      treeImage: tree.image || '',
-      nickname: nickname || tree.name,
+      treeId: treeId.toString(),
+      treeName,
+      treeScientificName,
+      treeFamily,
+      treeLocation,
+      treeImage,
+      nickname: nickname || treeName,
       totalEcoPoints: POINTS.ADOPTION_WELCOME,
       careLogs: [
         {
@@ -69,9 +88,10 @@ router.post('/adopt', async (req, res) => {
     });
   } catch (err) {
     console.error('Error adopting tree:', err);
-    res.status(500).json({ msg: 'Server error adopting tree', error: err.message });
+    res.status(500).json({ msg: err.message || 'Server error adopting tree', error: err.message });
   }
 });
+
 
 // @route   GET /api/adoptions/my-adoptions
 // @desc    Get all adopted trees for a user with streaks and total eco points

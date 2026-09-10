@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import NotificationBell from '../components/NotificationBell';
 import CitizenDashboard from '../components/CitizenDashboard';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import diseasedLeafImg from '../assets/diseased_leaf.png';
@@ -103,6 +103,7 @@ const nav = [
   ['Map View', '/dashboard', Map],
   ['Track Report', '/track', Crosshair],
   ['Complaints', '/report-issue', AlertTriangle],
+  ['Add Tree', '/add-tree', Plus],
   ['View Tree', '/view-tree', TreePine],
   ['Tree Inventory', '/tree-inventory', TreePine],
   ['Tree Encyclopedia', '/tree-encyclopedia', BookOpen],
@@ -286,25 +287,18 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
     sessionStorage.getItem('adminAuthed') === 'true' ||
     currentUserRole === '';
 
-  const items = admin
-    ? nav.filter(([label]) => ['Dashboard', 'Map View', 'Work Schedules', 'Complaints', 'Tree Inventory', 'Add Property', 'Settings', 'Reports', 'Tree Encyclopedia'].includes(label))
-    : nav.filter(([label]) => {
-      if (currentUserRole === 'Citizen') {
-        return ['My Dashboard', 'Map View', 'Track Report', 'Complaints', 'View Tree', 'Tree Encyclopedia'].includes(label);
-      }
-      if (label === 'Dashboard' && currentUserRole === 'Citizen') return false;
-      if (label === 'My Dashboard') return false;
-      if (label === 'Track Report' && isOfficialOrAdmin) return false;
-      if (label === 'Work Schedules' && !isOfficialOrAdmin) return false;
-      if (label === 'Tree Inventory') return false;
-      if (label === 'Add Property') return false;
-      if (label === 'Property Inventory' && currentUserRole !== 'Tree Cutter') return false;
-      if (label === 'Inspections' && currentUserRole !== 'Tree Cutter') return false;
-      if (label === 'Attendance' && !isOfficialOrAdmin && currentUserRole !== 'Tree Cutter') return false;
-      if (label === 'Reports' && !isOfficialOrAdmin) return false;
-      if (label === 'Settings' && !isOfficialOrAdmin) return false;
-      return true;
-    });
+  const items = nav.filter(([label]) => {
+    if (currentUserRole === 'Citizen') {
+      return ['My Dashboard', 'Complaints', 'Track Report', 'Add Tree', 'View Tree', 'Tree Encyclopedia'].includes(label);
+    } else if (currentUserRole === 'Tree Cutter') {
+      return ['Dashboard', 'Inspections', 'Property Inventory', 'Attendance', 'Add Tree', 'View Tree'].includes(label);
+    } else {
+      // Admin or Official or Fallback
+      return ['Dashboard', 'Map View', 'Work Schedules', 'Complaints', 'Tree Inventory', 'Add Tree', 'View Tree', 'Add Property', 'Reports', 'Settings', 'Tree Encyclopedia', 'Attendance'].includes(label);
+    }
+  });
+
+  const isAdminView = isOfficialOrAdmin || admin;
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
@@ -321,9 +315,17 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
       >
         <div className="cg-side-brand">
           <h2>Tree<br />Management</h2>
-          <span>{admin ? 'Official Portal' : 'Official Portal'}</span>
+          <span>
+            {currentUserRole === 'Citizen'
+              ? 'Citizen Portal'
+              : currentUserRole === 'Tree Cutter'
+              ? 'Tree Cutter Portal'
+              : admin
+              ? 'Admin Portal'
+              : 'Official Portal'}
+          </span>
         </div>
-        {admin && <span className="cg-side-kicker">Main Menu</span>}
+        {isAdminView && <span className="cg-side-kicker">Main Menu</span>}
         <nav style={{ flex: '1 1 auto', overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0, paddingRight: '4px' }}>
           {items.map(([label, href, Icon]) => (
             <Link key={label} to={href} className={active === label ? 'active' : ''}>
@@ -357,7 +359,7 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
           </button>
         </div>
 
-        {admin && (
+        {isAdminView && (
           <div className="cg-admin-user">
             <div className="avatar dark">AR</div>
             <div><b>Admin Root</b><span>System Controller</span></div>
@@ -368,7 +370,7 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
   );
 }
 
-export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, or reports...', attendance = false, onToggleSidebar, onProfileClick }) {
+export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, or reports...', showSearch = true, attendance = false, onToggleSidebar, onProfileClick }) {
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
     catch { return {}; }
@@ -409,10 +411,12 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
       ) : (
         <h1>{title}</h1>
       )}
-      <label className="cg-search">
-        <Search size={24} />
-        <input placeholder={search} />
-      </label>
+      {showSearch && (
+        <label className="cg-search">
+          <Search size={24} />
+          <input placeholder={search} />
+        </label>
+      )}
 
       {/* Dark Theme Toggle Button */}
       <button
@@ -439,30 +443,41 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
       <NotificationBell />
 
       {/* Topbar Profile Badge Trigger */}
-      {onProfileClick ? (
-        <button
-          onClick={onProfileClick}
-          className="cg-topbar-profile-trigger"
-          style={{ textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', textAlign: 'left', padding: 0 }}
-          title="View & edit Tree Cutter Profile"
-        >
-          {userPhoto ? (
-            <img src={userPhoto} alt={userName} className="topbar-avatar-img" />
-          ) : (
-            <div className="topbar-avatar-circle">{initial}</div>
-          )}
-          <b className="topbar-cutter-name">{userName}</b>
-        </button>
-      ) : (
-        <Link to="/task" className="cg-topbar-profile-trigger" style={{ textDecoration: 'none' }} title="Go to Task Board & Profile">
-          {userPhoto ? (
-            <img src={userPhoto} alt={userName} className="topbar-avatar-img" />
-          ) : (
-            <div className="topbar-avatar-circle">{initial}</div>
-          )}
-          <b className="topbar-cutter-name">{userName}</b>
-        </Link>
-      )}
+      {(() => {
+        const userRole = normalizeRole(currentUser.role);
+        const isCitizen = userRole === 'Citizen';
+        const profileLink = isCitizen ? '/citizen-dashboard?tab=profile' : '/task';
+        const profileTooltip = isCitizen ? 'View Citizen Profile' : 'Go to Task Board & Profile';
+
+        if (onProfileClick) {
+          return (
+            <button
+              onClick={onProfileClick}
+              className="cg-topbar-profile-trigger"
+              style={{ textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', textAlign: 'left', padding: 0 }}
+              title={isCitizen ? 'View Citizen Profile' : 'View & edit Profile'}
+            >
+              {userPhoto ? (
+                <img src={userPhoto} alt={userName} className="topbar-avatar-img" />
+              ) : (
+                <div className="topbar-avatar-circle">{initial}</div>
+              )}
+              <b className="topbar-cutter-name">{userName}</b>
+            </button>
+          );
+        }
+
+        return (
+          <Link to={profileLink} className="cg-topbar-profile-trigger" style={{ textDecoration: 'none' }} title={profileTooltip}>
+            {userPhoto ? (
+              <img src={userPhoto} alt={userName} className="topbar-avatar-img" />
+            ) : (
+              <div className="topbar-avatar-circle">{initial}</div>
+            )}
+            <b className="topbar-cutter-name">{userName}</b>
+          </Link>
+        );
+      })()}
     </header>
   );
 }
@@ -643,11 +658,28 @@ function DashboardMap({ activeZone, activeCases, lastUpdated }) {
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [allComplaintsList, setAllComplaintsList] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedZoneId, setSelectedZoneId] = useState(monitoringZones[0].id);
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('currentUser')) || {};
+    } catch {
+      return {};
+    }
+  })();
+  const currentUserRole = normalizeRole(currentUser.role);
+
+  // If logged in as Citizen, redirect to the single Citizen Dashboard
+  useEffect(() => {
+    if (currentUserRole === 'Citizen') {
+      navigate('/citizen-dashboard', { replace: true });
+    }
+  }, [currentUserRole, navigate]);
 
   const issueLabels = {
     damaged: 'Damaged Tree', overhanging: 'Overhanging Branches', dead: 'Dead / Dying Tree',
@@ -3006,6 +3038,14 @@ export function ReportIssuePage() {
   const [submitError, setSubmitError] = useState('');
   const [submittedId, setSubmittedId] = useState(null);
 
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('currentUser')) || {};
+    } catch {
+      return {};
+    }
+  })();
+
   const issueTypes = [
     { id: 'damaged', label: 'Damaged', Icon: Image },
     { id: 'overhanging', label: 'Overhanging', Icon: TreePine },
@@ -3078,10 +3118,13 @@ export function ReportIssuePage() {
     }
   };
 
+  const isCitizenUser = normalizeRole(currentUser.role) === 'Citizen';
+  const returnPath = isCitizenUser ? '/citizen-dashboard' : '/home';
+
   if (submitted) {
     return (
       <div className="cg-report">
-        <header><Link to="/home"><TreePine /> CanopyGuard</Link><Link to="/home"><X /></Link></header>
+        <header><Link to={returnPath}><TreePine /> CanopyGuard</Link><Link to={returnPath}><X /></Link></header>
         <main>
           <div className="report-success">
             <div className="report-success-icon"><CheckCircle2 size={64} /></div>
@@ -3096,7 +3139,7 @@ export function ReportIssuePage() {
               {submittedId && (
                 <Link className="cg-btn primary" to={`/track/${submittedId}`}>Track Your Report →</Link>
               )}
-              <Link className="cg-btn outline" to="/dashboard">Back to Dashboard</Link>
+              <Link className="cg-btn outline" to={returnPath}>{isCitizenUser ? 'Back to Citizen Dashboard' : 'Back to Dashboard'}</Link>
             </div>
           </div>
         </main>
@@ -3107,8 +3150,8 @@ export function ReportIssuePage() {
   return (
     <div className="cg-report">
       <header>
-        <Link to="/home"><TreePine /> CanopyGuard</Link>
-        <Link to="/home"><X /></Link>
+        <Link to={returnPath}><TreePine /> CanopyGuard</Link>
+        <Link to={returnPath}><X /></Link>
       </header>
       <main>
         <section className="report-title">
@@ -3203,7 +3246,7 @@ export function ReportIssuePage() {
               </div>
               <input
                 className="report-input"
-                placeholder="e.g. 482 Oak Street, near Central Park"
+                placeholder="e.g. Near Ajjarkadu Park, MG Road, Udupi"
                 value={location}
                 onChange={e => setLocation(e.target.value)}
                 style={{ marginBottom: '10px' }}
@@ -3211,7 +3254,7 @@ export function ReportIssuePage() {
             </label>
             <p className="report-hint" style={{ marginBottom: '10px' }}>Or select the location on the map below:</p>
             <div className="map-wrapper" style={{ height: '250px', width: '100%', marginBottom: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db' }}>
-              <MapContainer center={[15.3173, 75.7139]} zoom={7} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+              <MapContainer center={[13.3409, 74.7421]} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -4024,7 +4067,19 @@ export function OfficialManagementPage() {
   const [selectedCutter, setSelectedCutter] = useState('');
   const [tasks, setTasks] = useState(() => {
     const saved = localStorage.getItem('officialWorkOrders');
-    return saved ? JSON.parse(saved) : initialOfficialTasks;
+    if (!saved) return initialOfficialTasks;
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.map(t => ({
+          ...t,
+          proofStatus: t.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' }
+        }));
+      }
+      return initialOfficialTasks;
+    } catch {
+      return initialOfficialTasks;
+    }
   });
   const [maintenanceForm, setMaintenanceForm] = useState({
     title: '',
@@ -4046,10 +4101,12 @@ export function OfficialManagementPage() {
       .then(res => res.json())
       .then(data => {
         if (data.cutters && data.cutters.length > 0) {
-          const names = data.cutters.map(c => c.name);
+          const names = Array.from(new Set(data.cutters.map(c => typeof c === 'string' ? c : c.name || c.email).filter(Boolean)));
           setCutters(names);
-          setSelectedCutter(names[0]);
-          setMaintenanceForm(prev => ({ ...prev, cutter: names[0] }));
+          if (names.length > 0) {
+            setSelectedCutter(names[0]);
+            setMaintenanceForm(prev => ({ ...prev, cutter: names[0] }));
+          }
         }
       })
       .catch(err => console.error('Failed to load dynamic cutters:', err));
@@ -4201,7 +4258,13 @@ export function OfficialManagementPage() {
   const verifyProof = (taskId, key) => {
     setTasks(prev => prev.map(task => (
       task.id === taskId
-        ? { ...task, proofStatus: { ...task.proofStatus, [key]: 'Verified' } }
+        ? {
+            ...task,
+            proofStatus: {
+              ...(task.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' }),
+              [key]: 'Verified'
+            }
+          }
         : task
     )));
   };
@@ -4427,7 +4490,7 @@ export function OfficialManagementPage() {
     <div className="cg-app">
       <Sidebar active="Complaints" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
-        <Topbar title="Official Management" search="Search complaints, work orders, cutters..." onToggleSidebar={() => setSidebarOpen(true)} />
+        <Topbar title="Official Management" showSearch={false} onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page official-management">
           <section className="cg-admin-head official-head">
             <div>
@@ -4463,8 +4526,9 @@ export function OfficialManagementPage() {
 
           {activeView === 'complaints' && (
             <section className="official-grid">
-              <div className="cg-panel official-list">
-                <header><h2>Public Complaints</h2><span>{loading ? 'Loading...' : `${complaints.length} records`}</span></header>
+              <div className="cg-panel official-list" style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 240px)', overflow: 'hidden' }}>
+                <header style={{ flexShrink: 0 }}><h2>Public Complaints</h2><span>{loading ? 'Loading...' : `${complaints.length} records`}</span></header>
+                <div style={{ overflowY: 'auto', flex: 1, paddingBottom: '16px' }}>
                 {complaints.length === 0 ? (
                   <p className="official-empty">No complaints found. Start the backend server to view live submissions.</p>
                 ) : complaints.map(complaint => (
@@ -4484,7 +4548,7 @@ export function OfficialManagementPage() {
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                      <b style={{ fontSize: '1rem', color: '#0f172a', fontWeight: 600 }}>
+                      <b style={{ fontSize: '1rem', color: '#ffffff', fontWeight: 600 }}>
                         {issueLabels[complaint.issueType] || complaint.issueType}
                       </b>
                       <i className={`tag ${complaintTag(complaint.status)}`} style={{ fontStyle: 'normal', whiteSpace: 'nowrap', gridRow: 'auto', gridColumn: 'auto', alignSelf: 'flex-start' }}>
@@ -4492,22 +4556,22 @@ export function OfficialManagementPage() {
                       </i>
                     </div>
                     
-                    <span style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#b7e4c7', lineHeight: '1.4' }}>
                       📍 {complaint.location || 'No location provided'}
                     </span>
                     
-                    <small style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: '2px' }}>
+                    <small style={{ color: '#74c69d', fontSize: '0.78rem', marginTop: '2px' }}>
                       📅 {new Date(complaint.createdAt).toLocaleString('en-IN')}
                     </small>
 
                     {complaint.requiresReplantation && (
-                      <span style={{ fontSize: '0.76rem', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '3px 10px', borderRadius: '12px', display: 'inline-block', width: 'fit-content', fontWeight: 700 }}>
+                      <span style={{ fontSize: '0.76rem', background: '#0b2518', color: '#34d399', border: '1px solid #2d6a4f', padding: '3px 10px', borderRadius: '12px', display: 'inline-block', width: 'fit-content', fontWeight: 700 }}>
                         🌱 Replantation: {complaint.replantationStatus}
                       </span>
                     )}
 
                     {complaint.assignedTo && (
-                      <small style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#1b4332', fontWeight: 600, marginTop: '2px' }}>
+                      <small style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#52b788', fontWeight: 600, marginTop: '2px' }}>
                         <Users size={12} /> Assigned to: {complaint.assignedTo}
                       </small>
                     )}
@@ -4519,26 +4583,26 @@ export function OfficialManagementPage() {
                         style={{
                           marginTop: '12px',
                           padding: '14px',
-                          background: '#f0fdf4',
+                          background: '#061a14',
                           borderRadius: '10px',
-                          border: '1px solid #bbf7d0',
+                          border: '1px solid #1b4332',
                           width: '100%',
                           boxSizing: 'border-box',
                         }}
                       >
-                        <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#4b5563' }}>
-                          <b style={{ color: '#1f2937' }}>Submitted by:</b> {complaint.submittedBy || 'Anonymous'}
+                        <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7' }}>
+                          <b style={{ color: '#ffffff' }}>Submitted by:</b> {complaint.submittedBy || 'Anonymous'}
                         </p>
-                        <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#4b5563' }}>
-                          <b style={{ color: '#1f2937' }}>Description:</b> {complaint.description || 'No description'}
+                        <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7' }}>
+                          <b style={{ color: '#ffffff' }}>Description:</b> {complaint.description || 'No description'}
                         </p>
                         {complaint.photoUrl && (
-                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: '#166534', fontWeight: 600 }}>
+                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: '#52b788', fontWeight: 600 }}>
                             📷 Photo submitted for inspection
                           </p>
                         )}
 
-                        <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.85rem', fontWeight: 600, color: '#1b4332' }}>
+                        <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.85rem', fontWeight: 600, color: '#74c69d' }}>
                           Assign Tree Cutter
                           <select
                             value={selectedCutter}
@@ -4549,14 +4613,14 @@ export function OfficialManagementPage() {
                               marginTop: '6px',
                               padding: '8px 12px',
                               borderRadius: '8px',
-                              border: '1px solid #a7f3d0',
-                              background: '#fff',
+                              border: '1px solid #2d6a4f',
+                              background: '#0b2518',
                               fontSize: '0.9rem',
-                              color: '#1f2937',
+                              color: '#ffffff',
                               cursor: 'pointer',
                             }}
                           >
-                            {cutters.map(cutter => <option key={cutter}>{cutter}</option>)}
+                            {cutters.map((cutter, idx) => <option key={`assign-cutter-${cutter}-${idx}`} value={cutter}>{cutter}</option>)}
                           </select>
                         </label>
 
@@ -4580,9 +4644,10 @@ export function OfficialManagementPage() {
                     )}
                   </div>
                 ))}
+                </div>
               </div>
 
-              <div className="cg-panel official-detail">
+              <div className="cg-panel official-detail" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 240px)' }}>
                 {selectedComplaint ? (
                   <>
                     <header><h2>Verification Desk</h2><span className={`tag ${complaintTag(selectedComplaint.status)}`}>{selectedComplaint.status}</span></header>
@@ -4592,7 +4657,7 @@ export function OfficialManagementPage() {
                       <p><b>Location</b><span>{selectedComplaint.location || 'Not specified'}</span></p>
                       <p><b>Description</b><span>{selectedComplaint.description || 'No description provided.'}</span></p>
                       {selectedComplaint.assignedTo && (
-                        <p><b>Assigned To</b><span style={{ color: '#1b4332', fontWeight: 600 }}>{selectedComplaint.assignedTo}</span></p>
+                        <p><b>Assigned To</b><span style={{ color: '#52b788', fontWeight: 600 }}>{selectedComplaint.assignedTo}</span></p>
                       )}
                       <div className="official-photo-review">
                         <div><Camera /><b>Public Image</b><span>{selectedComplaint.photoUrl ? 'Available for inspection' : 'No image submitted'}</span></div>
@@ -4601,7 +4666,7 @@ export function OfficialManagementPage() {
                       <label className="official-field">
                         Assign tree cutter
                         <select value={selectedCutter} onChange={e => setSelectedCutter(e.target.value)}>
-                          {cutters.map(cutter => <option key={cutter}>{cutter}</option>)}
+                          {cutters.map((cutter, idx) => <option key={`desk-cutter-${cutter}-${idx}`} value={cutter}>{cutter}</option>)}
                         </select>
                       </label>
                       <div className="official-actions">
@@ -4654,7 +4719,7 @@ export function OfficialManagementPage() {
               <form onSubmit={createMaintenanceTask} className="official-task-form">
                 <label>Task title<input value={maintenanceForm.title} onChange={e => setMaintenanceForm({ ...maintenanceForm, title: e.target.value })} placeholder="e.g. Preventive pruning at Ward 12" /></label>
                 <label>Location<input value={maintenanceForm.location} onChange={e => setMaintenanceForm({ ...maintenanceForm, location: e.target.value })} placeholder="Site address or zone" /></label>
-                <label>Cutter<select value={maintenanceForm.cutter} onChange={e => setMaintenanceForm({ ...maintenanceForm, cutter: e.target.value })}>{cutters.map(cutter => <option key={cutter}>{cutter}</option>)}</select></label>
+                <label>Cutter<select value={maintenanceForm.cutter} onChange={e => setMaintenanceForm({ ...maintenanceForm, cutter: e.target.value })}>{cutters.map((cutter, idx) => <option key={`maint-cutter-${cutter}-${idx}`} value={cutter}>{cutter}</option>)}</select></label>
                 <label>Priority<select value={maintenanceForm.priority} onChange={e => setMaintenanceForm({ ...maintenanceForm, priority: e.target.value })}><option>Low</option><option>Medium</option><option>High</option></select></label>
                 <label>Due date<input type="date" value={maintenanceForm.dueDate} onChange={e => setMaintenanceForm({ ...maintenanceForm, dueDate: e.target.value })} /></label>
                 <button className="cg-btn primary"><Plus size={18} /> Create Task</button>
@@ -4664,27 +4729,30 @@ export function OfficialManagementPage() {
 
           {activeView === 'proofs' && (
             <section className="official-proof-grid">
-              {tasks.map(task => (
-                <article className="cg-panel official-proof-card" key={task.id}>
-                  <header><div><h2>{task.id}</h2><p>{task.title}</p></div><span className={`tag ${taskTag(task.status)}`}>{task.status}</span></header>
-                  <div className="official-proof-items">
-                    {[
-                      ['before', 'Before image', task.beforeImage],
-                      ['after', 'After work image', task.afterImage],
-                      ['waste', 'Waste disposal proof', task.wasteProof],
-                    ].map(([key, label, value]) => (
-                      <div key={key}>
-                        <Camera size={20} />
-                        <b>{label}</b>
-                        <span>{value}</span>
-                        <small>{task.proofStatus[key]}</small>
-                        <button className="cg-btn outline compact" onClick={() => verifyProof(task.id, key)} disabled={task.proofStatus[key] === 'Verified' || task.proofStatus[key] === 'Not Required'}>Verify</button>
-                      </div>
-                    ))}
-                  </div>
-                  <button className="cg-btn primary" onClick={() => closeTask(task)}><CheckCircle2 size={18} /> Close Completed Complaint</button>
-                </article>
-              ))}
+              {tasks.map(task => {
+                const proofState = task.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' };
+                return (
+                  <article className="cg-panel official-proof-card" key={task.id}>
+                    <header><div><h2>{task.id}</h2><p>{task.title}</p></div><span className={`tag ${taskTag(task.status)}`}>{task.status}</span></header>
+                    <div className="official-proof-items">
+                      {[
+                        ['before', 'Before image', task.beforeImage],
+                        ['after', 'After work image', task.afterImage],
+                        ['waste', 'Waste disposal proof', task.wasteProof],
+                      ].map(([key, label, value]) => (
+                        <div key={key}>
+                          <Camera size={20} />
+                          <b>{label}</b>
+                          <span>{value}</span>
+                          <small>{proofState[key] || 'Pending'}</small>
+                          <button className="cg-btn outline compact" onClick={() => verifyProof(task.id, key)} disabled={proofState[key] === 'Verified' || proofState[key] === 'Not Required'}>Verify</button>
+                        </div>
+                      ))}
+                    </div>
+                    <button className="cg-btn primary" onClick={() => closeTask(task)}><CheckCircle2 size={18} /> Close Completed Complaint</button>
+                  </article>
+                );
+              })}
             </section>
           )}
         </main>
@@ -6111,6 +6179,7 @@ export function TreeInventoryPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const location = useLocation();
   const formRef = useRef(null);
   const initialFormState = {
     name: '', scientificName: '', family: '', origin: '', category: '', lifespan: '',
@@ -6118,13 +6187,27 @@ export function TreeInventoryPage() {
     sunlight: '', growthRate: '', leafType: '', floweringSeason: '', fruitingSeason: '',
     carbonSequestration: '', notes: '', healthScore: 90, canopyCoverage: 80,
     waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
-    lat: 15.3600, lng: 75.1300
+    lat: 13.3409, lng: 74.7421
   };
   const [form, setForm] = useState(initialFormState);
   const [trees, setTrees] = useState([]);
   const [selectedTree, setSelectedTree] = useState(null);
   const [status, setStatus] = useState('');
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(() => {
+    return window.location.pathname === '/add-tree' || window.location.search.includes('add=true');
+  });
+
+  useEffect(() => {
+    if (location.pathname === '/add-tree' || location.search.includes('add=true')) {
+      setShowForm(true);
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const pageEl = document.querySelector('.cg-workspace') || document.querySelector('.cg-page');
+        if (pageEl && pageEl.scrollTo) pageEl.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+    }
+  }, [location.pathname, location.search]);
 
   const fetchTrees = async () => {
     try {
@@ -6385,7 +6468,7 @@ export function TreeInventoryPage() {
                   name: '', scientificName: '', family: '', origin: '', height: '', ageRange: '',
                   canopySpread: '', description: '', healthScore: 90, canopyCoverage: 80,
                   waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
-                  lat: 15.3600, lng: 75.1300
+                  lat: 13.3409, lng: 74.7421
                 });
                 setEditingId(null);
                 setShowForm(true);
@@ -6742,7 +6825,7 @@ export function TreeInventoryPage() {
                 name: '', scientificName: '', family: '', origin: '', height: '', ageRange: '',
                 canopySpread: '', description: '', healthScore: 90, canopyCoverage: 80,
                 waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
-                lat: 15.3600, lng: 75.1300
+                lat: 13.3409, lng: 74.7421
               });
               setEditingId(null);
               setShowForm(true);
@@ -7007,12 +7090,14 @@ export function TreeInventoryPage() {
 }
 
 export function ViewTreePage() {
+  const navigate = useNavigate();
   const [trees, setTrees] = useState([]);
   const [selectedTree, setSelectedTree] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterHealth, setFilterHealth] = useState('all');
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adoptingId, setAdoptingId] = useState(null);
 
   const currentUser = (() => {
     try {
@@ -7023,6 +7108,55 @@ export function ViewTreePage() {
   })();
   const currentUserRole = normalizeRole(currentUser.role);
   const isCitizen = !currentUserRole || currentUserRole === 'Citizen';
+
+  const effectiveUserId = currentUser.id || currentUser._id || currentUser.userId || 'guest-citizen';
+  const effectiveUserName = currentUser.name || currentUser.username || currentUser.fullName || 'Citizen User';
+  const effectiveUserEmail = currentUser.email || 'citizen@treecanopy.org';
+
+  const handleAdoptTree = async (tree, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    
+    // Check if user is logged in
+    if (!currentUser.role && !currentUser.username && !currentUser.name) {
+      if (window.confirm('You need to be logged in as a Citizen to adopt a tree. Would you like to log in now?')) {
+        navigate('/login');
+      }
+      return;
+    }
+
+    const nicknamePrompt = window.prompt(`Give a nickname to this ${tree.name}:`, tree.name);
+    if (nicknamePrompt === null) return; // user cancelled
+
+    setAdoptingId(tree._id || tree.id);
+    try {
+      const res = await fetch(`${API_URL}/api/adoptions/adopt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: effectiveUserId,
+          userName: effectiveUserName,
+          userEmail: effectiveUserEmail,
+          treeId: tree._id || tree.id,
+          treeName: tree.name,
+          treeScientificName: tree.scientificName,
+          treeFamily: tree.family,
+          treeLocation: tree.origin || 'Udupi Canopy',
+          treeImage: tree.image || '',
+          nickname: nicknamePrompt.trim() || tree.name
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.msg || 'Could not adopt tree');
+      
+      if (window.confirm(`🎉 ${data.msg}\nYou earned +${data.pointsAwarded || 100} Eco-Points!\n\nWould you like to view your Certificate and Adopted Trees now?`)) {
+        navigate('/citizen-dashboard?tab=rewards');
+      }
+    } catch (err) {
+      alert(err.message || 'Error adopting tree');
+    } finally {
+      setAdoptingId(null);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -7066,6 +7200,7 @@ export function ViewTreePage() {
     const benefits = Array.isArray(selectedTree.benefits) ? selectedTree.benefits : [];
     const pests = Array.isArray(selectedTree.pests) ? selectedTree.pests : [];
     const diseases = Array.isArray(selectedTree.diseases) ? selectedTree.diseases : [];
+    const isCurrentlyAdopting = adoptingId === (selectedTree._id || selectedTree.id);
 
     return (
       <main className="cg-page" style={{ padding: '24px clamp(16px, 2vw, 32px)', maxWidth: '1100px', margin: '0 auto' }}>
@@ -7090,7 +7225,8 @@ export function ViewTreePage() {
           background: 'linear-gradient(135deg, #043224 0%, #065f46 60%, #047857 100%)',
           borderRadius: '20px', padding: '32px', color: '#ffffff',
           display: 'flex', gap: '28px', alignItems: 'flex-start', flexWrap: 'wrap',
-          marginBottom: '24px', boxShadow: '0 10px 40px rgba(4,50,36,0.25)'
+          marginBottom: '24px', boxShadow: '0 10px 40px rgba(4,50,36,0.25)',
+          position: 'relative'
         }}>
           {/* Tree image */}
           <div style={{
@@ -7114,15 +7250,32 @@ export function ViewTreePage() {
 
           {/* Tree headline info */}
           <div style={{ flex: 1, minWidth: '220px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
-              <h1 style={{ margin: 0, fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800 }}>{selectedTree.name}</h1>
-              <span style={{
-                background: getHealthColor(hs), color: '#fff', borderRadius: '20px',
-                padding: '4px 14px', fontWeight: 700, fontSize: '0.85rem', whiteSpace: 'nowrap',
-                alignSelf: 'center', boxShadow: `0 0 0 3px ${getHealthColor(hs)}33`
-              }}>
-                {getHealthLabel(hs)} · {hs}%
-              </span>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <h1 style={{ margin: 0, fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800 }}>{selectedTree.name}</h1>
+                <span style={{
+                  background: getHealthColor(hs), color: '#fff', borderRadius: '20px',
+                  padding: '4px 14px', fontWeight: 700, fontSize: '0.85rem', whiteSpace: 'nowrap',
+                  boxShadow: `0 0 0 3px ${getHealthColor(hs)}33`
+                }}>
+                  {getHealthLabel(hs)} · {hs}%
+                </span>
+              </div>
+              <button
+                onClick={(e) => handleAdoptTree(selectedTree, e)}
+                disabled={isCurrentlyAdopting}
+                style={{
+                  background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '12px',
+                  padding: '10px 20px', fontWeight: 700, fontSize: '0.95rem', cursor: isCurrentlyAdopting ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(16,185,129,0.4)',
+                  transition: 'all 0.2s', opacity: isCurrentlyAdopting ? 0.7 : 1
+                }}
+                onMouseEnter={e => { if (!isCurrentlyAdopting) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { if (!isCurrentlyAdopting) e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                <Heart size={18} fill="#ffffff" />
+                {isCurrentlyAdopting ? 'Adopting...' : 'Adopt This Tree (+100 Pts)'}
+              </button>
             </div>
             <p style={{ margin: '0 0 16px', fontStyle: 'italic', color: 'rgba(255,255,255,0.75)', fontSize: '1rem' }}>
               {selectedTree.scientificName}
@@ -7459,7 +7612,23 @@ export function ViewTreePage() {
                         )}
                       </div>
                     )}
-                    <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingTop: '10px', borderTop: '1px dashed #e5e7eb' }}>
+                      <button
+                        onClick={(e) => handleAdoptTree(tree, e)}
+                        disabled={adoptingId === (tree._id || tree.id)}
+                        style={{
+                          background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0',
+                          borderRadius: '8px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: 700,
+                          cursor: adoptingId === (tree._id || tree.id) ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#d1fae5'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#ecfdf5'; }}
+                      >
+                        <Heart size={13} fill="#065f46" />
+                        {adoptingId === (tree._id || tree.id) ? 'Adopting...' : 'Adopt (+100)'}
+                      </button>
                       <span style={{ fontSize: '0.8rem', color: '#065f46', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         View Details <ChevronRight size={14} />
                       </span>
@@ -7475,7 +7644,7 @@ export function ViewTreePage() {
   };
 
   if (selectedTree) {
-    if (isCitizen) {
+    if (!currentUser.role && !currentUser.username && !currentUser.name) {
       return (
         <div className="cg-public">
           <header className="cg-public-nav">
@@ -7511,7 +7680,7 @@ export function ViewTreePage() {
   }
 
   // ── List View ───────────────────────────────────────────────────────────────
-  if (isCitizen) {
+  if (!currentUser.role && !currentUser.username && !currentUser.name) {
     return (
       <div className="cg-public">
         <header className="cg-public-nav">
@@ -7535,7 +7704,7 @@ export function ViewTreePage() {
     );
   } else {
     return (
-      <div className="cg-app" style={{ background: '#f8fafc', minHeight: '100vh', color: '#1f2937' }}>
+      <div className="cg-app cg-dashboard-screen" style={{ background: '#f8fafc', minHeight: '100vh', color: '#1f2937' }}>
         <Sidebar active="View Tree" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
         <div className="cg-workspace">
           <Topbar title="Tree Database" onToggleSidebar={() => setSidebarOpen(true)} />
@@ -9092,8 +9261,20 @@ export function PurchaseEquipmentPage() {
 
 export function CitizenDashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
 
   const currentUser = (() => {
     try {
@@ -9107,7 +9288,7 @@ export function CitizenDashboardPage() {
     <div className="cg-app cg-dashboard-screen">
       <Sidebar active="My Dashboard" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
-        <Topbar title="Citizen Dashboard" onToggleSidebar={() => setSidebarOpen(true)} />
+        <Topbar title="Citizen Dashboard" showSearch={false} onToggleSidebar={() => setSidebarOpen(true)} onProfileClick={() => handleTabChange('profile')} />
         <main className="cg-page" style={{ padding: '24px clamp(16px, 2vw, 32px)' }}>
           {/* Sub Navigation */}
           <div
@@ -9117,31 +9298,42 @@ export function CitizenDashboardPage() {
               gap: '12px',
               borderBottom: '1px solid #cbd5e1',
               marginBottom: '24px',
-              paddingBottom: '8px'
+              paddingBottom: '12px',
+              flexWrap: 'wrap'
             }}
           >
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'rewards', label: '🌱 Green Rewards & My Trees' },
               { id: 'report', label: 'Report New Issue' },
-              { id: 'my-reports', label: 'My Reported Tickets' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`cg-btn ${activeTab === tab.id ? 'primary' : 'ghost'}`}
-                style={{
-                  fontSize: '0.9rem',
-                  padding: '8px 16px',
-                  fontWeight: 600,
-                  borderRadius: '6px'
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+              { id: 'my-reports', label: 'My Reported Tickets' },
+              { id: 'profile', label: '👤 Citizen Profile' }
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`cg-btn ${isActive ? 'primary' : 'ghost'}`}
+                  style={{
+                    fontSize: '0.9rem',
+                    padding: '8px 18px',
+                    fontWeight: 700,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: isActive ? '#059669' : '#f1f5f9',
+                    color: isActive ? '#ffffff' : '#334155',
+                    border: isActive ? '1.5px solid #059669' : '1.5px solid #cbd5e1',
+                    boxShadow: isActive ? '0 2px 8px rgba(5,150,105,0.25)' : 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
-          <CitizenDashboard user={currentUser} activeTab={activeTab} onTabChange={setActiveTab} />
+          <CitizenDashboard user={currentUser} activeTab={activeTab} onTabChange={handleTabChange} />
         </main>
       </div>
     </div>

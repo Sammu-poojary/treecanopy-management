@@ -73,9 +73,12 @@ function App() {
         <Route path="/report-issue" element={<ReportIssuePage />} />
         <Route path="/scheduler" element={<SchedulerPage />} />
         <Route path="/official-management" element={<OfficialManagementPage />} />
+        <Route path="/officials-management" element={<OfficialManagementPage />} />
+        <Route path="/officials" element={<OfficialManagementPage />} />
         <Route path="/admin" element={<AdminConsolePage />} />
         <Route path="/attendance" element={<AttendancePage />} />
-        <Route path="/tree-inventory" element={<AdminOnly><TreeInventoryPage /></AdminOnly>} />
+        <Route path="/tree-inventory" element={<TreeInventoryPage />} />
+        <Route path="/add-tree" element={<TreeInventoryPage />} />
         <Route path="/add-property" element={<AddPropertyPage />} />
         <Route path="/property-inventory" element={<PropertyInventoryPage />} />
         <Route path="/purchase-equipment" element={<PropertyInventoryPage />} />

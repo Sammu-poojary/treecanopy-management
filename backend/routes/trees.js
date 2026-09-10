@@ -7,15 +7,16 @@ const Tree = require('../models/Tree');
 // @access  Public
 router.get('/', async (req, res) => {
   try {
+    // Remove legacy non-Udupi trees
+    await Tree.deleteMany({
+      origin: { $not: /Udupi|Manipal|Ajjarkad|Malpe|KMC|MGM|Kaup|Brahmavar|Sooda|Barkur|Pajaka/i },
+      notes: { $not: /Udupi|Manipal|Ajjarkad|Malpe|KMC|MGM|Kaup|Brahmavar|Sooda|Barkur|Pajaka/i }
+    });
+
     let trees = await Tree.find().sort({ createdAt: -1 });
 
     // Check if we need to seed the Udupi trees
-    const hasUdupi = trees.some(t => 
-      (t.origin && t.origin.includes('Udupi')) || 
-      (t.notes && t.notes.includes('Udupi'))
-    );
-
-    if (!hasUdupi) {
+    if (trees.length === 0) {
       console.log('[DB] Seeding Udupi encyclopedia trees...');
       const defaultUdupiTrees = [
         {

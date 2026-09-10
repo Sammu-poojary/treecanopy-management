@@ -28,22 +28,20 @@ const careLogSchema = new mongoose.Schema({
 const adoptionSchema = new mongoose.Schema(
   {
     userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      type: mongoose.Schema.Types.Mixed,
       required: true,
     },
     userName: {
       type: String,
-      required: true,
+      default: 'Eco Guardian',
     },
     userEmail: {
       type: String,
-      required: true,
+      default: '',
       lowercase: true,
     },
     treeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Tree',
+      type: mongoose.Schema.Types.Mixed,
       required: true,
     },
     treeName: {
@@ -74,6 +72,7 @@ const adoptionSchema = new mongoose.Schema(
     certificateNumber: {
       type: String,
       unique: true,
+      sparse: true,
     },
     adoptedAt: {
       type: Date,
@@ -111,3 +110,6 @@ adoptionSchema.pre('save', function (next) {
 });
 
 module.exports = mongoose.model('Adoption', adoptionSchema);
+
+
+
