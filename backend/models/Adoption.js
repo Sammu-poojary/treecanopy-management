@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const careLogSchema = new mongoose.Schema({
   action: {
     type: String,
-    enum: ['Watered', 'Mulched', 'Health Check', 'Photo Update', 'Fertilized', 'Pruned Dead Leaves'],
     required: true,
+    default: 'Watered',
   },
   note: {
     type: String,

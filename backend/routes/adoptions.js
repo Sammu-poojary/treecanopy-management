@@ -165,29 +165,45 @@ router.get('/my-adoptions', async (req, res) => {
 // @access  Public / Citizen
 router.post('/:id/care-log', async (req, res) => {
   try {
-    const { action, note, photoUrl } = req.body;
-    const adoption = await Adoption.findById(req.params.id);
+    const { action, note, photoUrl } = req.body || {};
+    const mongoose = require('mongoose');
+
+    let adoption = null;
+    if (mongoose.isValidObjectId(req.params.id)) {
+      adoption = await Adoption.findById(req.params.id);
+    }
+
+    if (!adoption) {
+      try {
+        adoption = await Adoption.findOne({ _id: req.params.id });
+      } catch (_) {}
+    }
 
     if (!adoption) {
       return res.status(404).json({ msg: 'Adoption record not found' });
     }
 
-    const earned = POINTS[action?.toUpperCase()?.replace(/\s+/g, '_')] || 50;
+    const normalizedAction = action || 'Watered';
+    const actionKey = normalizedAction.toUpperCase().replace(/\s+/g, '_');
+    const earned = POINTS[actionKey] || 50;
 
-    // Update streak if cared on consecutive days
     const now = new Date();
-    const lastCare = new Date(adoption.lastCareDate || adoption.createdAt);
+    const lastCare = new Date(adoption.lastCareDate || adoption.createdAt || Date.now());
     const diffHours = (now - lastCare) / (1000 * 60 * 60);
 
     let newStreak = adoption.careStreak || 1;
     if (diffHours >= 18 && diffHours <= 48) {
       newStreak += 1;
     } else if (diffHours > 48) {
-      newStreak = 1; // reset streak if inactive for >2 days
+      newStreak = 1;
+    }
+
+    if (!Array.isArray(adoption.careLogs)) {
+      adoption.careLogs = [];
     }
 
     adoption.careLogs.unshift({
-      action: action || 'Watered',
+      action: normalizedAction,
       note: note || '',
       photoUrl: photoUrl || '',
       pointsEarned: earned,
@@ -201,7 +217,7 @@ router.post('/:id/care-log', async (req, res) => {
     await adoption.save();
 
     res.json({
-      msg: `🌿 Awesome! Care activity logged: ${action}. You earned +${earned} Eco-Points!`,
+      msg: `🌿 Awesome! Care activity logged: ${normalizedAction}. You earned +${earned} Eco-Points!`,
       adoption,
       pointsEarned: earned,
       streak: newStreak,

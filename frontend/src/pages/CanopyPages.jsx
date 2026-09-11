@@ -7,6 +7,7 @@ import L from 'leaflet';
 import diseasedLeafImg from '../assets/diseased_leaf.png';
 import pestsGridImg from '../assets/pests_grid.png';
 import Swal from 'sweetalert2';
+import { GoogleLogin } from '@react-oauth/google';
 
 // Fix Leaflet marker icon issue safely
 if (L && L.Icon && L.Icon.Default && L.Icon.Default.prototype) {
@@ -24,6 +25,7 @@ if (L && L.Icon && L.Icon.Default && L.Icon.Default.prototype) {
 
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   Ban,
   BarChart3,
@@ -97,24 +99,107 @@ import {
   Building2,
 } from 'lucide-react';
 
-const nav = [
-  ['Dashboard', '/dashboard', Home],
-  ['My Dashboard', '/citizen-dashboard', Home],
-  ['Map View', '/dashboard', Map],
-  ['Track Report', '/track', Crosshair],
-  ['Complaints', '/report-issue', AlertTriangle],
-  ['Add Tree', '/add-tree', Plus],
-  ['View Tree', '/view-tree', TreePine],
-  ['Tree Inventory', '/tree-inventory', TreePine],
-  ['Tree Encyclopedia', '/tree-encyclopedia', BookOpen],
-  ['Add Property', '/add-property', Plus],
-  ['Property Inventory', '/property-inventory', Database],
-  ['Work Schedules', '/scheduler', Calendar],
-  ['Inspections', '/task', FileText],
-  ['Attendance', '/attendance', Fingerprint],
-  ['Reports', '/admin', BarChart3],
-  ['Settings', '/admin', Settings],
-];
+// ─── Role-based navigation definitions ────────────────────────────────────────
+const ROLE_NAV = {
+  Citizen: [
+    {
+      section: 'My Portal',
+      items: [
+        { label: 'My Dashboard',      href: '/citizen-dashboard', Icon: Home,        desc: 'Overview & stats' },
+        { label: 'Track Report',      href: '/track',             Icon: Crosshair,   desc: 'Follow up on complaints' },
+        { label: 'Complaints',        href: '/report-issue',      Icon: AlertTriangle,desc: 'Report tree issues' },
+      ],
+    },
+    {
+      section: 'Tree Database',
+      items: [
+        { label: 'View Tree',         href: '/view-tree',         Icon: TreePine,    desc: 'Browse tree records' },
+        { label: 'Tree Encyclopedia', href: '/tree-encyclopedia',  Icon: BookOpen,    desc: 'Species info & guides' },
+      ],
+    },
+  ],
+
+  'Tree Cutter': [
+    {
+      section: 'Work',
+      items: [
+        { label: 'Dashboard',         href: '/dashboard',         Icon: Home,        desc: 'Monitoring overview' },
+        { label: 'Task Board',        href: '/task',              Icon: FileText,    desc: 'Assigned work orders' },
+        { label: 'Attendance',        href: '/attendance',        Icon: Fingerprint, desc: 'Clock in / out' },
+      ],
+    },
+    {
+      section: 'Trees',
+      items: [
+        { label: 'View Tree',         href: '/view-tree',         Icon: TreePine,    desc: 'Tree records' },
+        { label: 'Tree Inventory',    href: '/tree-inventory',    Icon: Layers,      desc: 'Full inventory' },
+        { label: 'Add Tree',          href: '/add-tree',          Icon: Plus,        desc: 'Register new tree' },
+      ],
+    },
+  ],
+
+  Official: [
+    {
+      section: 'Overview',
+      items: [
+        { label: 'Dashboard',         href: '/dashboard',         Icon: Home,        desc: 'Zone monitoring' },
+        { label: 'Work Schedules',    href: '/scheduler',         Icon: Calendar,    desc: 'Plan & assign tasks' },
+        { label: 'Complaints',        href: '/official-management',Icon: AlertTriangle,desc: 'Manage field reports' },
+        { label: 'Attendance',        href: '/attendance',        Icon: Fingerprint, desc: 'Track cutter hours' },
+      ],
+    },
+    {
+      section: 'Trees & Assets',
+      items: [
+        { label: 'Tree Inventory',    href: '/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
+        { label: 'Add Tree',          href: '/add-tree',          Icon: Plus,        desc: 'Register new tree' },
+        { label: 'View Tree',         href: '/view-tree',         Icon: TreePine,    desc: 'Browse records' },
+        { label: 'Tree Encyclopedia', href: '/tree-encyclopedia',  Icon: BookOpen,    desc: 'Species library' },
+        { label: 'Add Property',      href: '/add-property',      Icon: Building2,   desc: 'Register property' },
+        { label: 'Property Inventory',href: '/property-inventory', Icon: Database,    desc: 'Asset records' },
+      ],
+    },
+  ],
+
+  Admin: [
+    {
+      section: 'Overview',
+      items: [
+        { label: 'Dashboard',         href: '/dashboard',         Icon: Home,        desc: 'System-wide monitoring' },
+        { label: 'Admin Console',     href: '/admin',             Icon: ShieldCheck, desc: 'Users, settings, logs' },
+        { label: 'Work Schedules',    href: '/scheduler',         Icon: Calendar,    desc: 'Task scheduling' },
+        { label: 'Complaints',        href: '/official-management',Icon: AlertTriangle,desc: 'All complaints' },
+        { label: 'Attendance',        href: '/attendance',        Icon: Fingerprint, desc: 'Workforce tracking' },
+      ],
+    },
+    {
+      section: 'Trees & Assets',
+      items: [
+        { label: 'Tree Inventory',    href: '/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
+        { label: 'Add Tree',          href: '/add-tree',          Icon: Plus,        desc: 'Register new tree' },
+        { label: 'View Tree',         href: '/view-tree',         Icon: TreePine,    desc: 'Browse records' },
+        { label: 'Tree Encyclopedia', href: '/tree-encyclopedia',  Icon: BookOpen,    desc: 'Species library' },
+        { label: 'Add Property',      href: '/add-property',      Icon: Building2,   desc: 'Register property' },
+        { label: 'Property Inventory',href: '/property-inventory', Icon: Database,    desc: 'Asset records' },
+      ],
+    },
+    {
+      section: 'Intelligence',
+      items: [
+        { label: 'Analytics',         href: '/admin',             Icon: BarChart3,   desc: 'Reports & insights' },
+        { label: 'Settings',          href: '/admin',             Icon: Settings,    desc: 'System settings' },
+      ],
+    },
+  ],
+};
+
+// Role badge colors
+const ROLE_COLORS = {
+  Citizen:      { bg: 'rgba(59,130,246,0.18)',  border: 'rgba(59,130,246,0.4)',  text: '#93c5fd',  dot: '#3b82f6' },
+  'Tree Cutter':{ bg: 'rgba(245,158,11,0.15)',  border: 'rgba(245,158,11,0.4)',  text: '#fcd34d',  dot: '#f59e0b' },
+  Official:     { bg: 'rgba(168,85,247,0.15)',   border: 'rgba(168,85,247,0.4)',  text: '#c4b5fd',  dot: '#a855f7' },
+  Admin:        { bg: 'rgba(239,68,68,0.15)',    border: 'rgba(239,68,68,0.4)',   text: '#fca5a5',  dot: '#ef4444' },
+};
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -261,44 +346,55 @@ const monitoringZones = [
 
 export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, onToggle }) {
   const currentUser = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('currentUser')) || {};
-    } catch {
-      return {};
-    }
+    try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
+    catch { return {}; }
   })();
-  const currentUserRole = normalizeRole(currentUser.role);
 
-  // Lock background body scroll when mobile/overlay sidebar is open
+  const currentUserRole = normalizeRole(currentUser.role ||
+    (sessionStorage.getItem('adminAuthed') === 'true' ? 'Admin' : '') ||
+    (sessionStorage.getItem('officialAuthed') === 'true' ? 'Official' : ''));
+
+  // Derive display role for sidebar subtitle
+  const displayRole = currentUserRole || (admin ? 'Admin' : 'Official');
+  const userName = currentUser.name || currentUser.username || 'User';
+  const userInitials = userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
+
+  // Pick role color scheme
+  const roleColor = ROLE_COLORS[displayRole] || ROLE_COLORS.Official;
+
+  // Pick navigation groups
+  const effectiveRole = ROLE_NAV[displayRole] ? displayRole : 'Official';
+  const navGroups = ROLE_NAV[effectiveRole];
+
+  // Quick-action CTA by role
+  const ctaConfig = {
+    Citizen:       { label: 'Report an Issue', href: '/report-issue', Icon: AlertTriangle },
+    'Tree Cutter': { label: 'View My Tasks',   href: '/task',         Icon: FileText },
+    Official:      { label: 'New Work Order',  href: '/scheduler',    Icon: Calendar },
+    Admin:         { label: 'Admin Console',   href: '/admin',        Icon: ShieldCheck },
+  };
+  const cta = ctaConfig[displayRole] || ctaConfig.Official;
+
+  // Lock scroll on mobile when open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  const isOfficialOrAdmin =
-    ['Official', 'Admin'].includes(currentUserRole) ||
-    sessionStorage.getItem('officialAuthed') === 'true' ||
-    sessionStorage.getItem('adminAuthed') === 'true' ||
-    currentUserRole === '';
-
-  const items = nav.filter(([label]) => {
-    if (currentUserRole === 'Citizen') {
-      return ['My Dashboard', 'Complaints', 'Track Report', 'Add Tree', 'View Tree', 'Tree Encyclopedia'].includes(label);
-    } else if (currentUserRole === 'Tree Cutter') {
-      return ['Dashboard', 'Inspections', 'Property Inventory', 'Attendance', 'Add Tree', 'View Tree'].includes(label);
-    } else {
-      // Admin or Official or Fallback
-      return ['Dashboard', 'Map View', 'Work Schedules', 'Complaints', 'Tree Inventory', 'Add Tree', 'View Tree', 'Add Property', 'Reports', 'Settings', 'Tree Encyclopedia', 'Attendance'].includes(label);
-    }
-  });
-
-  const isAdminView = isOfficialOrAdmin || admin;
+  // Theme toggle state
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+    window.dispatchEvent(new Event('themeChange'));
+  };
+  useEffect(() => {
+    const sync = () => setIsDark(localStorage.getItem('theme') === 'dark');
+    window.addEventListener('themeChange', sync);
+    return () => window.removeEventListener('themeChange', sync);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
@@ -309,68 +405,127 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
 
   return (
     <>
-      {isOpen && <div className="cg-side-overlay" onClick={onToggle}></div>}
-      <aside
-        className={`cg-side ${isOpen ? 'open' : ''}`}
-      >
-        <div className="cg-side-brand">
-          <h2>Tree<br />Management</h2>
-          <span>
-            {currentUserRole === 'Citizen'
-              ? 'Citizen Portal'
-              : currentUserRole === 'Tree Cutter'
-              ? 'Tree Cutter Portal'
-              : admin
-              ? 'Admin Portal'
-              : 'Official Portal'}
-          </span>
+      {isOpen && <div className="cg-side-overlay" onClick={onToggle} />}
+      <aside className={`cg-side ${isOpen ? 'open' : ''}`}>
+
+        {/* ── Brand Header ── */}
+        <div className="cg-side-brand" style={{ padding: '20px 20px 22px', borderBottom: '1px solid rgba(82,183,136,0.14)', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#10b981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+                <TreePine size={20} color="#fff" />
+              </div>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#ffffff', letterSpacing: '-0.02em', lineHeight: 1.1 }}>CanopyGuard</div>
+                <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '2px', color: 'rgba(149,213,178,0.65)', fontWeight: 700, marginTop: 2 }}>Management System</div>
+              </div>
+            </div>
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(82,183,136,0.3)', background: 'rgba(82,183,136,0.1)', color: isDark ? '#fbbf24' : '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}
+            >
+              {isDark ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </div>
         </div>
-        {isAdminView && <span className="cg-side-kicker">Main Menu</span>}
-        <nav style={{ flex: '1 1 auto', overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0, paddingRight: '4px' }}>
-          {items.map(([label, href, Icon]) => (
-            <Link key={label} to={href} className={active === label ? 'active' : ''}>
-              <Icon size={25} /> {label}
-            </Link>
+
+        {/* ── User Card ── */}
+        <div style={{ margin: '0 14px 16px', padding: '14px 16px', borderRadius: 14, background: 'rgba(82,183,136,0.08)', border: '1px solid rgba(82,183,136,0.16)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Avatar */}
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg,#34d399,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1rem', color: '#064e3b', flexShrink: 0, border: '2px solid rgba(255,255,255,0.25)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+              {userInitials}
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userName}</div>
+              {/* Role badge */}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 4, padding: '2px 8px', borderRadius: 99, fontSize: '0.68rem', fontWeight: 700, background: roleColor.bg, border: `1px solid ${roleColor.border}`, color: roleColor.text }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: roleColor.dot, display: 'inline-block', flexShrink: 0 }} />
+                {displayRole}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Navigation Groups ── */}
+        <nav style={{ flex: '1 1 auto', overflowY: 'auto', overscrollBehavior: 'contain', minHeight: 0, padding: '0 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {navGroups.map(({ section, items }) => (
+            <div key={section} style={{ marginBottom: 6 }}>
+              {/* Section label */}
+              <div style={{ padding: '6px 10px 4px', fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.8px', color: 'rgba(149,213,178,0.45)' }}>
+                {section}
+              </div>
+              {/* Items */}
+              {items.map(({ label, href, Icon, desc }) => {
+                const isActive = active === label;
+                return (
+                  <Link
+                    key={label}
+                    to={href}
+                    title={desc}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      fontSize: '0.88rem',
+                      fontWeight: isActive ? 700 : 600,
+                      color: isActive ? '#6ee7b7' : 'rgba(200,230,212,0.72)',
+                      background: isActive ? 'linear-gradient(135deg,rgba(52,211,153,0.18),rgba(16,185,129,0.1))' : 'transparent',
+                      boxShadow: isActive ? 'inset 3px 0 0 #34d399' : 'none',
+                      textDecoration: 'none',
+                      transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
+                      marginBottom: 1,
+                    }}
+                    onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(82,183,136,0.1)'; e.currentTarget.style.color = '#b7e4c7'; e.currentTarget.style.transform = 'translateX(3px)'; } }}
+                    onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(200,230,212,0.72)'; e.currentTarget.style.transform = 'none'; } }}
+                  >
+                    {/* Icon wrapper */}
+                    <span style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: isActive ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.05)', color: isActive ? '#34d399' : 'rgba(149,213,178,0.7)', transition: 'all 0.18s' }}>
+                      <Icon size={17} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>{label}</span>
+                    {isActive && <ChevronRight size={14} style={{ opacity: 0.6, flexShrink: 0 }} />}
+                  </Link>
+                );
+              })}
+            </div>
           ))}
         </nav>
 
-        <div style={{ padding: '0 16px 16px' }}>
-          <Link className="cg-new-record" to="/report-issue" style={{ width: '100%', boxSizing: 'border-box', marginBottom: '10px' }}><Plus size={22} /> New Record</Link>
+        {/* ── Footer ── */}
+        <div style={{ padding: '14px 14px 18px', borderTop: '1px solid rgba(82,183,136,0.12)', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* CTA button */}
+          <Link
+            to={cta.href}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: 12, background: 'linear-gradient(135deg,#059669,#047857)', color: '#ffffff', fontWeight: 700, fontSize: '0.86rem', textDecoration: 'none', boxShadow: '0 4px 16px rgba(5,150,105,0.35)', transition: 'all 0.2s', letterSpacing: '0.01em' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(5,150,105,0.45)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(5,150,105,0.35)'; }}
+          >
+            <cta.Icon size={16} />
+            {cta.label}
+          </Link>
+          {/* Logout */}
           <button
             onClick={handleLogout}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              width: '100%',
-              padding: '12px',
-              color: '#ef4444',
-              background: '#fef2f2',
-              border: '1px solid #fee2e2',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.95rem',
-              boxSizing: 'border-box'
-            }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '10px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5', cursor: 'pointer', fontWeight: 600, fontSize: '0.86rem', transition: 'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.18)'; e.currentTarget.style.color = '#ffffff'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#fca5a5'; }}
           >
-            <LogOut size={20} /> Log Out
+            <LogOut size={16} /> Log Out
           </button>
         </div>
 
-        {isAdminView && (
-          <div className="cg-admin-user">
-            <div className="avatar dark">AR</div>
-            <div><b>Admin Root</b><span>System Controller</span></div>
-          </div>
-        )}
       </aside>
     </>
   );
 }
 
 export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, or reports...', showSearch = true, attendance = false, onToggleSidebar, onProfileClick }) {
+  const navigate = useNavigate();
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
     catch { return {}; }
@@ -399,9 +554,24 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
 
   return (
     <header className="cg-topbar">
-      <button className="cg-menu-btn" onClick={onToggleSidebar} style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: '16px', display: 'flex', alignItems: 'center' }}>
-        <Menu size={28} />
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          title="Go Back"
+          className="cg-back-btn"
+          type="button"
+        >
+          <ArrowLeft size={18} />
+          <span className="cg-back-text">Back</span>
+        </button>
+
+        {/* Sidebar Menu Button */}
+        <button className="cg-menu-btn" onClick={onToggleSidebar} title="Toggle Navigation Sidebar" type="button">
+          <Menu size={22} />
+        </button>
+      </div>
+
       {attendance ? (
         <nav className="cg-tab-nav">
           <Link to="/dashboard">Dashboard</Link>
@@ -409,75 +579,67 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
           <Link to="/task">Task Board</Link>
         </nav>
       ) : (
-        <h1>{title}</h1>
+        <h1 className="cg-topbar-title">{title}</h1>
       )}
+
       {showSearch && (
         <label className="cg-search">
-          <Search size={24} />
+          <Search size={20} />
           <input placeholder={search} />
         </label>
       )}
 
-      {/* Dark Theme Toggle Button */}
-      <button
-        onClick={toggleTheme}
-        title={darkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
-        style={{
-          background: darkMode ? '#1e293b' : '#f1f5f9',
-          border: darkMode ? '1px solid #334155' : '1px solid #cbd5e1',
-          borderRadius: '10px',
-          width: '38px',
-          height: '38px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          color: darkMode ? '#fbbf24' : '#6366f1',
-          transition: 'all 0.2s',
-          marginLeft: '4px'
-        }}
-      >
-        {darkMode ? <Sun size={20} color="#fbbf24" /> : <Moon size={20} color="#6366f1" />}
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+        {/* Dark / Light Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          title={darkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+          className="cg-theme-btn"
+          type="button"
+        >
+          {darkMode ? <Sun size={18} color="#fbbf24" /> : <Moon size={18} color="#6366f1" />}
+        </button>
 
-      <NotificationBell />
+        <NotificationBell />
 
-      {/* Topbar Profile Badge Trigger */}
-      {(() => {
-        const userRole = normalizeRole(currentUser.role);
-        const isCitizen = userRole === 'Citizen';
-        const profileLink = isCitizen ? '/citizen-dashboard?tab=profile' : '/task';
-        const profileTooltip = isCitizen ? 'View Citizen Profile' : 'Go to Task Board & Profile';
+        {/* Topbar User Profile Badge */}
+        {(() => {
+          const userRole = normalizeRole(currentUser.role);
+          const isCitizen = userRole === 'Citizen';
+          const profileLink = isCitizen ? '/citizen-dashboard?tab=profile' : '/task';
+          const profileTooltip = isCitizen ? 'View Citizen Profile' : 'Go to Task Board & Profile';
 
-        if (onProfileClick) {
-          return (
-            <button
-              onClick={onProfileClick}
-              className="cg-topbar-profile-trigger"
-              style={{ textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', textAlign: 'left', padding: 0 }}
-              title={isCitizen ? 'View Citizen Profile' : 'View & edit Profile'}
-            >
+          const avatarContent = (
+            <>
               {userPhoto ? (
                 <img src={userPhoto} alt={userName} className="topbar-avatar-img" />
               ) : (
                 <div className="topbar-avatar-circle">{initial}</div>
               )}
-              <b className="topbar-cutter-name">{userName}</b>
-            </button>
+              <span className="topbar-user-name">{userName}</span>
+            </>
           );
-        }
 
-        return (
-          <Link to={profileLink} className="cg-topbar-profile-trigger" style={{ textDecoration: 'none' }} title={profileTooltip}>
-            {userPhoto ? (
-              <img src={userPhoto} alt={userName} className="topbar-avatar-img" />
-            ) : (
-              <div className="topbar-avatar-circle">{initial}</div>
-            )}
-            <b className="topbar-cutter-name">{userName}</b>
-          </Link>
-        );
-      })()}
+          if (onProfileClick) {
+            return (
+              <button
+                onClick={onProfileClick}
+                className="cg-topbar-profile-trigger"
+                title={isCitizen ? 'View Citizen Profile' : 'View & edit Profile'}
+                type="button"
+              >
+                {avatarContent}
+              </button>
+            );
+          }
+
+          return (
+            <Link to={profileLink} className="cg-topbar-profile-trigger" title={profileTooltip}>
+              {avatarContent}
+            </Link>
+          );
+        })()}
+      </div>
     </header>
   );
 }
@@ -4474,6 +4636,40 @@ export function OfficialManagementPage() {
                 >
                   <LogIn size={16} /> Login to Dashboard
                 </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', margin: '1.25rem 0', gap: '0.75rem' }}>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                  <span style={{ color: '#6b7280', fontSize: '0.75rem', fontWeight: '500' }}>OR</span>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <GoogleLogin
+                    onSuccess={async (credentialResponse) => {
+                      try {
+                        const res = await fetch(`${API_URL}/api/auth/google`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ credential: credentialResponse.credential, portal: 'Official' }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          sessionStorage.setItem('officialAuthed', 'true');
+                          localStorage.setItem('currentUser', JSON.stringify(data.user));
+                          setOfficialAuthed(true);
+                          setOfficialError('');
+                        } else {
+                          setOfficialError(data.msg || 'Google Sign-In failed');
+                        }
+                      } catch (err) {
+                        setOfficialError(err.message);
+                      }
+                    }}
+                    onError={() => setOfficialError('Google Sign-In failed')}
+                    theme="filled_blue"
+                    shape="pill"
+                  />
+                </div>
               </form>
             </div>
 
@@ -5342,6 +5538,40 @@ export function AdminConsolePage() {
                 >
                   <LogIn size={16} /> Login to Dashboard
                 </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', margin: '1.25rem 0', gap: '0.75rem' }}>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                  <span style={{ color: '#6b7280', fontSize: '0.75rem', fontWeight: '500' }}>OR</span>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <GoogleLogin
+                    onSuccess={async (credentialResponse) => {
+                      try {
+                        const res = await fetch(`${API_URL}/api/auth/google`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ credential: credentialResponse.credential, portal: 'Admin' }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          sessionStorage.setItem('adminAuthed', 'true');
+                          localStorage.setItem('currentUser', JSON.stringify(data.user));
+                          setAdminAuthed(true);
+                          setAdminError('');
+                        } else {
+                          setAdminError(data.msg || 'Google Sign-In failed');
+                        }
+                      } catch (err) {
+                        setAdminError(err.message);
+                      }
+                    }}
+                    onError={() => setAdminError('Google Sign-In failed')}
+                    theme="filled_blue"
+                    shape="pill"
+                  />
+                </div>
               </form>
             </div>
 

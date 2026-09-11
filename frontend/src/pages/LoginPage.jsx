@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import AuthLayout from '../components/AuthLayout';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -25,6 +26,47 @@ const LoginPage = () => {
 
   const isCutterOnly = appModule === 'cutter';
   const isCitizenOnly = appModule === 'citizen';
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoginError('');
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${API_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credential: credentialResponse.credential,
+          portal: activeTab,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.msg || 'Google Sign-In failed');
+      }
+
+      if (isCutterOnly && data.user.role !== 'Tree Cutter') {
+        throw new Error('Access denied: This portal is exclusively for Tree Cutters & Arborists.');
+      }
+      if (isCitizenOnly && data.user.role !== 'Citizen') {
+        throw new Error('Access denied: This portal is exclusively for Citizens.');
+      }
+
+      localStorage.setItem('currentUser', JSON.stringify(data.user));
+
+      const roleRedirects = {
+        Official: '/official-management',
+        'Tree Cutter': '/task',
+        Admin: '/admin',
+        Citizen: '/home',
+      };
+      navigate(roleRedirects[data.user.role] || '/home');
+    } catch (err) {
+      setLoginError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -201,6 +243,16 @@ const LoginPage = () => {
 
         <div className="divider">
           <span>OR</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setLoginError('Google Sign-In was cancelled or failed.')}
+            theme="filled_blue"
+            shape="pill"
+            text="continue_with"
+          />
         </div>
 
         <div className="auth-footer">

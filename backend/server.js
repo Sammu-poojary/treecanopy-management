@@ -43,8 +43,20 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Serve uploaded images as static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded images (auto-routing legacy /uploads/ requests to Cloudinary if mapped)
+app.use('/uploads', (req, res, next) => {
+  const mapPath = path.join(__dirname, 'uploads_map.json');
+  if (fs.existsSync(mapPath)) {
+    try {
+      const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
+      const filename = req.path.replace(/^\//, '');
+      if (map[filename]) {
+        return res.redirect(302, map[filename]);
+      }
+    } catch (_) {}
+  }
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);

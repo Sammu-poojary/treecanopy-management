@@ -2,11 +2,85 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const { OAuth2Client } = require('google-auth-library');
 const router = express.Router();
 const User = require('../models/User');
 
 const OFFICIAL_EMAIL = 'officials@gmail.com';
 const OFFICIAL_PASSWORD = 'officials@123';
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || '516349052894-mrhftjps3e3cbjp3jropeu7sf6sh05ls.apps.googleusercontent.com');
+
+// @route   POST /api/auth/google
+// @desc    Google Sign-In Authentication
+// @access  Public
+router.post('/google', async (req, res) => {
+  try {
+    const { credential, portal } = req.body;
+    if (!credential) {
+      return res.status(400).json({ msg: 'Google credential token is required' });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: [
+        process.env.GOOGLE_CLIENT_ID,
+        '516349052894-mrhftjps3e3cbjp3jropeu7sf6sh05ls.apps.googleusercontent.com'
+      ].filter(Boolean),
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(400).json({ msg: 'Invalid Google token payload' });
+    }
+
+    const { email, name, picture, sub } = payload;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    let user = await User.findOne({ email: normalizedEmail });
+
+    let role = portal === 'Tree Cutter' ? 'Tree Cutter' : 'Citizen';
+
+    if (normalizedEmail === OFFICIAL_EMAIL) {
+      role = 'Official';
+    } else if (normalizedEmail === 'admin@example.com') {
+      role = 'Admin';
+    }
+
+    if (!user) {
+      // Register Google user automatically
+      user = await User.create({
+        name: name || 'Google User',
+        email: normalizedEmail,
+        phone: 'Google Auth',
+        password: await bcrypt.hash(sub + 'google_secret_hash', 10),
+        role: role,
+        status: role === 'Tree Cutter' ? 'Pending' : 'Verified',
+        avatar: picture || '',
+      });
+    }
+
+    // Role check enforcement per portal
+    if (portal === 'Tree Cutter' && user.role !== 'Tree Cutter') {
+      return res.status(403).json({ msg: 'Access denied: Account is not registered as a Tree Cutter.' });
+    }
+
+    res.json({
+      msg: 'Google authentication successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        status: user.status,
+        avatar: picture || user.avatar || '',
+      },
+    });
+  } catch (error) {
+    console.error('Google Auth verification error:', error);
+    res.status(401).json({ msg: 'Google login failed', error: error.message });
+  }
+});
 
 // @route   POST /api/auth/register
 // @desc    Register a new user

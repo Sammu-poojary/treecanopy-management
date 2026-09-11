@@ -109,4 +109,40 @@ router.post('/', async (req, res) => {
   }
 });
 
+// @route   DELETE /api/notifications/:id
+// @desc    Delete a notification by ID
+// @access  Protected
+router.delete('/:id', async (req, res) => {
+  try {
+    const notification = await Notification.findByIdAndDelete(req.params.id);
+    if (!notification) {
+      return res.status(404).json({ msg: 'Notification not found' });
+    }
+    res.json({ msg: 'Notification deleted successfully' });
+  } catch (error) {
+    console.error('Delete notification error:', error.message);
+    res.status(500).json({ msg: 'Failed to delete notification', error: error.message });
+  }
+});
+
+// @route   POST /api/notifications/clear-read
+// @desc    Clear all read notifications for a user
+// @access  Protected
+router.post('/clear-read', async (req, res) => {
+  try {
+    const { userId, role } = req.body;
+    await Notification.deleteMany({
+      $or: [
+        { targetUserId: userId },
+        { targetRole: role },
+      ],
+      isRead: true,
+    });
+    res.json({ msg: 'Read notifications cleared' });
+  } catch (error) {
+    console.error('Clear read notifications error:', error.message);
+    res.status(500).json({ msg: 'Failed to clear read notifications', error: error.message });
+  }
+});
+
 module.exports = router;
