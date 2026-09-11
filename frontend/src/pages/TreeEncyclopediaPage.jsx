@@ -23,9 +23,12 @@ import {
   Building2,
   Trees,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  Camera
 } from 'lucide-react';
 import { Sidebar, Topbar } from './CanopyPages';
+import CanopyLensModal from '../components/CanopyLensModal';
 
 // Setup Leaflet icon markers correctly
 const greenIcon = new L.Icon({
@@ -105,9 +108,10 @@ export default function TreeEncyclopediaPage() {
   const [trees, setTrees] = useState([]);
   const [selectedTree, setSelectedTree] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all'); // 'all' | 'park' | 'hospital' | 'school'
+  const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('standard'); // 'standard' | 'satellite'
+  const [viewMode, setViewMode] = useState('standard');
+  const [scanModalOpen, setScanModalOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -508,9 +512,28 @@ export default function TreeEncyclopediaPage() {
                   <h1 style={{ margin: '0 0 8px', fontSize: '2.2rem', fontWeight: 800 }}>
                     🌿 Udupi Tree Encyclopedia
                   </h1>
-                  <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '1.05rem', maxWidth: '600px', lineHeight: 1.5 }}>
+                  <p style={{ margin: '0 0 16px', color: 'rgba(255,255,255,0.85)', fontSize: '1.05rem', maxWidth: '600px', lineHeight: 1.5 }}>
                     Study the botanical catalog, local locations, health scores, and ecological contributions of trees surrounding our schools, parks, and hospitals in the Udupi Municipality.
                   </p>
+                  <button
+                    onClick={() => setScanModalOpen(true)}
+                    style={{
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '10px 20px',
+                      fontWeight: 800,
+                      fontSize: '0.92rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)'
+                    }}
+                  >
+                    <Sparkles size={18} /> Identify Any Tree with CanopyLens AI
+                  </button>
                 </div>
                 
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -758,6 +781,12 @@ export default function TreeEncyclopediaPage() {
 
         </main>
       </div>
+
+      {/* CanopyLens AI Tree Scanner Modal */}
+      <CanopyLensModal
+        isOpen={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+      />
     </div>
   );
 }

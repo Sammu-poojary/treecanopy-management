@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
+import CanopyLensModal from '../components/CanopyLensModal';
 import {
   AlertTriangle,
   BarChart3,
@@ -22,6 +23,8 @@ import {
   Share2,
   LinkIcon,
   Mail,
+  Sparkles,
+  Camera
 } from 'lucide-react';
 
 // Fix Leaflet default marker icon
@@ -691,6 +694,7 @@ const HomePage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
   const menuRef = useRef(null);
 
   // Dark mode state & persistence
@@ -792,6 +796,7 @@ const HomePage = () => {
         {/* Desktop inline nav links */}
         <nav className="desktop-nav-links">
           <Link className="active" to="/home">Home</Link>
+          <Link to="/citizen-dashboard">Dashboard</Link>
           <Link to="/dashboard">Map</Link>
           <Link to="/report-issue">Complaints</Link>
           <Link to="/tree-encyclopedia">Tree Encyclopedia</Link>
@@ -970,6 +975,17 @@ const HomePage = () => {
             </Link>
 
             <Link
+              to="/citizen-dashboard"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px',
+                color: '#10b981', fontWeight: 700, fontSize: '0.95rem'
+              }}
+            >
+              📊 Citizen Dashboard
+            </Link>
+
+            <Link
               to="/report-issue"
               onClick={() => setMenuOpen(false)}
               style={{
@@ -1112,34 +1128,73 @@ const HomePage = () => {
             <span className="cg-pill">Official City Forestry Portal</span>
             <h1>Green Cities,<br /><strong>Managed Better.</strong></h1>
             <p>Preserving our urban canopy through precision data, proactive maintenance, and community-driven reporting.</p>
-            <div className="cg-hero-actions">
+            <div
+              className="cg-hero-actions"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flexWrap: 'wrap',
+                marginTop: '32px'
+              }}
+            >
+              <button
+                onClick={() => setScanModalOpen(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 22px',
+                  fontSize: '0.92rem',
+                  fontWeight: 700,
+                  borderRadius: '99px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.25s ease'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(16, 185, 129, 0.5)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.35)';
+                }}
+              >
+                <Sparkles size={17} /> CanopyLens AI (Scan Tree)
+              </button>
               <Link
                 to="/report-issue"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '14px 28px',
-                  fontSize: '1rem',
-                  fontWeight: 800,
+                  padding: '12px 22px',
+                  fontSize: '0.92rem',
+                  fontWeight: 700,
                   borderRadius: '99px',
                   background: 'linear-gradient(135deg, #2d6a4f 0%, #40916c 100%)',
                   color: '#ffffff',
                   border: '1px solid rgba(116, 198, 157, 0.4)',
-                  boxShadow: '0 8px 24px rgba(45, 106, 79, 0.4)',
+                  boxShadow: '0 6px 20px rgba(45, 106, 79, 0.35)',
+                  whiteSpace: 'nowrap',
                   transition: 'all 0.25s ease',
                   textDecoration: 'none'
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(45, 106, 79, 0.55)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(45, 106, 79, 0.5)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(45, 106, 79, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(45, 106, 79, 0.35)';
                 }}
               >
-                <AlertTriangle size={18} /> Report a Tree Issue
+                <AlertTriangle size={17} /> Report a Tree Issue
               </Link>
               <Link
                 to="/view-tree"
@@ -1147,28 +1202,31 @@ const HomePage = () => {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '14px 28px',
-                  fontSize: '1rem',
+                  padding: '12px 22px',
+                  fontSize: '0.92rem',
                   fontWeight: 700,
                   borderRadius: '99px',
                   background: 'rgba(255, 255, 255, 0.12)',
                   color: '#ffffff',
-                  border: '1.5px solid rgba(255, 255, 255, 0.5)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.4)',
                   backdropFilter: 'blur(12px)',
                   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+                  whiteSpace: 'nowrap',
                   transition: 'all 0.25s ease',
                   textDecoration: 'none'
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = '#ffffff';
                   e.currentTarget.style.color = '#061a14';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
                   e.currentTarget.style.color = '#ffffff';
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                <TreePine size={18} /> Explore Tree Database
+                <TreePine size={17} /> Explore Tree Database
               </Link>
             </div>
           </div>
@@ -1356,6 +1414,12 @@ const HomePage = () => {
           </div>
         </div>
       </footer>
+
+      {/* CanopyLens AI Tree Scanner Modal */}
+      <CanopyLensModal
+        isOpen={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+      />
     </div>
   );
 };

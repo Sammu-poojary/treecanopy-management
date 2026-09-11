@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2, User, Mail, Phone, Shield, Camera, Edit3, Save, ExternalLink } from 'lucide-react';
 import TreeGuardianCertificateModal from './TreeGuardianCertificateModal';
+import CanopyLensModal from './CanopyLensModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -142,6 +143,7 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [activeCertificate, setActiveCertificate] = useState(null);
   const [careActionLoading, setCareActionLoading] = useState(false);
   const [careAlert, setCareAlert] = useState('');
+  const [scanModalOpen, setScanModalOpen] = useState(false);
 
   // Profile Management State
   const [profileData, setProfileData] = useState(() => {
@@ -570,8 +572,27 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
             )}
           </div>
 
+          {/* CanopyLens AI Scanner Banner */}
+          <div style={{ marginTop: '24px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', borderRadius: '16px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', boxShadow: '0 8px 24px rgba(16, 185, 129, 0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={26} color="#fff" />
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 3px', fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>CanopyLens AI 🌳 (Tree Scanner)</h3>
+                <p style={{ margin: 0, fontSize: '0.84rem', color: '#ecfdf5' }}>Point camera at any tree to identify species, match GIS inventory &amp; check adoption status!</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setScanModalOpen(true)}
+              style={{ background: '#ffffff', color: '#047857', border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', whiteSpace: 'nowrap' }}
+            >
+              <Camera size={16} /> Scan a Tree Now
+            </button>
+          </div>
+
           {/* Browse Tree Inventory quick-access */}
-          <div style={{ marginTop: '24px', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', borderRadius: '16px', padding: '20px 24px', border: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ marginTop: '16px', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', borderRadius: '16px', padding: '20px 24px', border: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <TreePine size={24} color="#fff" />
@@ -2179,6 +2200,12 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
           )}
         </div>
       )}
+
+      {/* CanopyLens AI Tree Scanner Modal */}
+      <CanopyLensModal
+        isOpen={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+      />
     </div>
   );
 };

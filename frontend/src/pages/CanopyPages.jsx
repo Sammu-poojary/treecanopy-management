@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import NotificationBell from '../components/NotificationBell';
 import CitizenDashboard from '../components/CitizenDashboard';
+import AdminDashboard from '../components/AdminDashboard';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -48,6 +49,7 @@ import {
   EyeOff,
   FileText,
   Fingerprint,
+  Gift,
   Home,
   Image,
   Layers,
@@ -103,18 +105,22 @@ import {
 const ROLE_NAV = {
   Citizen: [
     {
-      section: 'My Portal',
+      section: 'Citizen Dashboard',
       items: [
-        { label: 'My Dashboard',      href: '/citizen-dashboard', Icon: Home,        desc: 'Overview & stats' },
-        { label: 'Track Report',      href: '/track',             Icon: Crosshair,   desc: 'Follow up on complaints' },
-        { label: 'Complaints',        href: '/report-issue',      Icon: AlertTriangle,desc: 'Report tree issues' },
+        { label: 'Overview',                href: '/citizen-dashboard?tab=overview', Icon: Home,         desc: 'Overview & stats' },
+        { label: 'Green Rewards & My Trees',href: '/citizen-dashboard?tab=rewards',  Icon: Gift,         desc: 'Eco points, streaks & my trees' },
+        { label: 'Report New Issue',        href: '/citizen-dashboard?tab=report',   Icon: AlertTriangle,desc: 'Report a tree issue' },
+        { label: 'My Reported Tickets',     href: '/citizen-dashboard?tab=tickets',  Icon: FileText,     desc: 'Track status of your tickets' },
+        { label: 'Citizen Profile',         href: '/citizen-dashboard?tab=profile',  Icon: UserRound,    desc: 'View & edit profile settings' },
       ],
     },
     {
-      section: 'Tree Database',
+      section: 'Community & Trees',
       items: [
-        { label: 'View Tree',         href: '/view-tree',         Icon: TreePine,    desc: 'Browse tree records' },
-        { label: 'Tree Encyclopedia', href: '/tree-encyclopedia',  Icon: BookOpen,    desc: 'Species info & guides' },
+        { label: 'Home Page',               href: '/home',                           Icon: Globe,        desc: 'Main landing page' },
+        { label: 'Track Report',            href: '/track',                          Icon: Crosshair,    desc: 'Follow up on complaints' },
+        { label: 'Tree Database',           href: '/view-tree',                      Icon: TreePine,     desc: 'Browse tree records' },
+        { label: 'Tree Encyclopedia',       href: '/tree-encyclopedia',              Icon: BookOpen,     desc: 'Species info & guides' },
       ],
     },
   ],
@@ -459,7 +465,8 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
               </div>
               {/* Items */}
               {items.map(({ label, href, Icon, desc }) => {
-                const isActive = active === label;
+                const currentFullUrl = window.location.pathname + window.location.search;
+                const isActive = active === label || currentFullUrl === href || (href === '/citizen-dashboard?tab=overview' && currentFullUrl === '/citizen-dashboard');
                 return (
                   <Link
                     key={label}
@@ -524,7 +531,7 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
   );
 }
 
-export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, or reports...', showSearch = true, attendance = false, onToggleSidebar, onProfileClick }) {
+export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, or reports...', showSearch = true, attendance = false, citizenTabs = false, activeTab, onTabChange, onToggleSidebar, onProfileClick }) {
   const navigate = useNavigate();
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
@@ -554,25 +561,60 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
 
   return (
     <header className="cg-topbar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {/* Back Button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '8px' }}>
+        {/* Back Button - Icon Only */}
         <button
           onClick={() => navigate(-1)}
           title="Go Back"
           className="cg-back-btn"
           type="button"
+          style={{ width: '36px', height: '36px', padding: 0, justifyContent: 'center' }}
         >
           <ArrowLeft size={18} />
-          <span className="cg-back-text">Back</span>
         </button>
 
         {/* Sidebar Menu Button */}
         <button className="cg-menu-btn" onClick={onToggleSidebar} title="Toggle Navigation Sidebar" type="button">
           <Menu size={22} />
         </button>
+
+        {/* CanopyGuard Branding Logo */}
+        <Link to="/home" className="cg-brand" title="CanopyGuard Home" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', marginLeft: '6px' }}>
+          <TreePine size={22} color="#10b981" />
+          <span style={{ fontWeight: 900, fontSize: '1.15rem', color: 'inherit', letterSpacing: '-0.02em' }}>CanopyGuard</span>
+        </Link>
       </div>
 
-      {attendance ? (
+      {citizenTabs ? (
+        <nav className="topbar-citizen-tabs" style={{ display: 'flex', alignItems: 'center', gap: '4px', overflowX: 'auto', flex: 1, margin: '0 12px' }}>
+          <Link
+            to="/home"
+            title="Return to Main Home Portal"
+            className="topbar-nav-pill"
+          >
+            Home
+          </Link>
+          {[
+            { id: 'overview', label: 'Overview' },
+            { id: 'rewards', label: 'Green Rewards & Trees' },
+            { id: 'report', label: 'Report Issue' },
+            { id: 'my-reports', label: 'My Tickets' },
+            { id: 'profile', label: 'Profile' }
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange && onTabChange(tab.id)}
+                type="button"
+                className={`topbar-nav-pill ${isActive ? 'active' : ''}`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      ) : attendance ? (
         <nav className="cg-tab-nav">
           <Link to="/dashboard">Dashboard</Link>
           <Link className="active" to="/attendance">Attendance</Link>
@@ -3312,14 +3354,14 @@ export function ReportIssuePage() {
   return (
     <div className="cg-report">
       <header>
-        <Link to={returnPath}><TreePine /> CanopyGuard</Link>
-        <Link to={returnPath}><X /></Link>
+        <Link to={returnPath}><TreePine size={22} /> <span>CanopyGuard</span></Link>
+        <Link to={returnPath} className="close-btn" title="Close"><X size={20} /></Link>
       </header>
       <main>
         <section className="report-title">
           <h1>Report an Issue</h1>
           <b>Step {step} of 3</b>
-          <i style={{ background: `linear-gradient(90deg, var(--forest) ${progressPct}, #e4e9e6 ${progressPct})` }}></i>
+          <i style={{ background: `linear-gradient(90deg, var(--forest-leaf, #2d6a4f) ${progressPct}, var(--border, #e2e8f0) ${progressPct})` }}></i>
         </section>
 
         {step === 1 && (
@@ -3334,8 +3376,8 @@ export function ReportIssuePage() {
                   className={selectedIssue === id ? 'selected' : ''}
                   onClick={() => setSelectedIssue(id)}
                 >
-                  <Icon size={28} />
-                  {label}
+                  <Icon size={26} />
+                  <span>{label}</span>
                 </button>
               ))}
             </div>
@@ -3393,11 +3435,11 @@ export function ReportIssuePage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    padding: '4px 8px',
+                    padding: '4px 10px',
                     fontSize: '0.78rem',
-                    background: '#e0f2fe',
-                    color: '#0369a1',
-                    border: '1px solid #bae6fd',
+                    background: 'rgba(3, 105, 161, 0.1)',
+                    color: '#0284c7',
+                    border: '1px solid rgba(2, 132, 199, 0.3)',
                     borderRadius: '6px',
                     cursor: 'pointer',
                     fontWeight: 600
@@ -3415,7 +3457,7 @@ export function ReportIssuePage() {
               />
             </label>
             <p className="report-hint" style={{ marginBottom: '10px' }}>Or select the location on the map below:</p>
-            <div className="map-wrapper" style={{ height: '250px', width: '100%', marginBottom: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db' }}>
+            <div className="map-wrapper" style={{ height: '250px', width: '100%', marginBottom: '20px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border, #d1d5db)' }}>
               <MapContainer center={[13.3409, 74.7421]} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -3428,7 +3470,7 @@ export function ReportIssuePage() {
             <div className="report-upload" onClick={() => document.getElementById('report-photo-input').click()}>
               {photo
                 ? <img src={photo} alt="Preview" className="report-photo-preview" />
-                : <><UploadCloud size={40} /><b>Click to upload a photo</b><span>JPEG or PNG, Max 10MB</span></>}
+                : <><UploadCloud size={36} /><b>Click to upload a photo</b><span>JPEG or PNG, Max 10MB</span></>}
             </div>
             <input
               id="report-photo-input"
@@ -3461,7 +3503,7 @@ export function ReportIssuePage() {
         )}
 
         {submitError && (
-          <p className="report-error">{submitError}</p>
+          <p className="report-error" style={{ color: '#ef4444', fontWeight: 600, marginTop: '12px' }}>{submitError}</p>
         )}
         <div className="report-actions">
           {step > 1 && (
@@ -3471,7 +3513,6 @@ export function ReportIssuePage() {
             className="cg-btn primary wide"
             onClick={handleContinue}
             disabled={(step === 1 && !selectedIssue) || submitting}
-            style={{ opacity: (step === 1 && !selectedIssue) || submitting ? 0.5 : 1 }}
           >
             {submitting ? 'Submitting…' : step === 3 ? 'Submit Report' : 'Continue'}
           </button>
@@ -5607,6 +5648,11 @@ export function AdminConsolePage() {
               </button>
             </div>
           </section>
+
+          {/* Admin Dashboard with Pending Citizen Tree Proposals & Verification Panel */}
+          <div style={{ marginBottom: '2rem' }}>
+            <AdminDashboard activeTab="overview" />
+          </div>
 
           {/* Live Complaints Inbox */}
           <section className="cg-panel complaints-inbox">
@@ -9518,51 +9564,16 @@ export function CitizenDashboardPage() {
     <div className="cg-app cg-dashboard-screen">
       <Sidebar active="My Dashboard" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
-        <Topbar title="Citizen Dashboard" showSearch={false} onToggleSidebar={() => setSidebarOpen(true)} onProfileClick={() => handleTabChange('profile')} />
+        <Topbar 
+          title="Citizen Dashboard" 
+          showSearch={false} 
+          citizenTabs={true}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onToggleSidebar={() => setSidebarOpen(true)} 
+          onProfileClick={() => handleTabChange('profile')} 
+        />
         <main className="cg-page" style={{ padding: '24px clamp(16px, 2vw, 32px)' }}>
-          {/* Sub Navigation */}
-          <div
-            className="citizen-sub-nav"
-            style={{
-              display: 'flex',
-              gap: '12px',
-              borderBottom: '1px solid #cbd5e1',
-              marginBottom: '24px',
-              paddingBottom: '12px',
-              flexWrap: 'wrap'
-            }}
-          >
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'rewards', label: '🌱 Green Rewards & My Trees' },
-              { id: 'report', label: 'Report New Issue' },
-              { id: 'my-reports', label: 'My Reported Tickets' },
-              { id: 'profile', label: '👤 Citizen Profile' }
-            ].map(tab => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`cg-btn ${isActive ? 'primary' : 'ghost'}`}
-                  style={{
-                    fontSize: '0.9rem',
-                    padding: '8px 18px',
-                    fontWeight: 700,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: isActive ? '#059669' : '#f1f5f9',
-                    color: isActive ? '#ffffff' : '#334155',
-                    border: isActive ? '1.5px solid #059669' : '1.5px solid #cbd5e1',
-                    boxShadow: isActive ? '0 2px 8px rgba(5,150,105,0.25)' : 'none',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
           <CitizenDashboard user={currentUser} activeTab={activeTab} onTabChange={handleTabChange} />
         </main>
       </div>

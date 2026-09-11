@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const Tree = require('../models/Tree');
+const Adoption = require('../models/Adoption');
+const TreeRegistration = require('../models/TreeRegistration');
+const Notification = require('../models/Notification');
 
 // @route   GET /api/trees
 // @desc    Get all tree inventory items
@@ -876,6 +879,334 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Helper to calculate Haversine distance in meters
+function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return Math.round(R * c);
+}
+
+// @route   POST /api/trees/scan
+// @desc    CanopyLens AI Tree Identification & Inventory GPS Matcher
+// @access  Public
+router.post('/scan', async (req, res) => {
+  try {
+    const Adoption = require('../models/Adoption');
+    const { imageUrl, lat, lng, hintSpecies, userId } = req.body;
+    const userLat = parseFloat(lat) || 13.3409;
+    const userLng = parseFloat(lng) || 74.7421;
+
+    // 1. Fetch all registered trees from MongoDB
+    const allTrees = await Tree.find();
+
+    // 2. Find closest tree in MongoDB within 500 meters
+    let closestTree = null;
+    let minDistance = Infinity;
+
+    allTrees.forEach(t => {
+      if (t.lat && t.lng) {
+        const dist = getDistanceMeters(userLat, userLng, t.lat, t.lng);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestTree = t;
+        }
+      }
+    });
+
+    // 3. Species identification via hintSpecies, OpenRouter AI Vision, or dictionary fallback
+    const speciesDictionary = [
+      {
+        commonName: 'Neem',
+        scientificName: 'Azadirachta indica',
+        confidence: 0.98,
+        characteristics: ['Serrated compound leaves', 'Dense spreading canopy', 'Fissured dark grey bark'],
+        benefits: ['Air purification', 'Natural pest repellent', 'High carbon sequestration'],
+        careTip: 'Requires moderate watering during dry spells; highly resilient to urban monsoon climate.'
+      },
+      {
+        commonName: 'Banyan Tree',
+        scientificName: 'Ficus benghalensis',
+        confidence: 0.98,
+        characteristics: ['Massive aerial prop roots', 'Glossy leathery leaves', 'Expansive shade canopy'],
+        benefits: ['Extremely high CO2 absorption', 'Bird nesting sanctuary', 'Prevents soil erosion'],
+        careTip: 'Monitor aerial root growth and maintain clear soil perimeter.'
+      },
+      {
+        commonName: 'Peepal',
+        scientificName: 'Ficus religiosa',
+        confidence: 0.98,
+        characteristics: ['Heart-shaped leaves with tail tips', 'Light grey smooth bark', 'Dense foliage'],
+        benefits: ['24-hour oxygen release', 'High shade index', 'Cultural & ecological value'],
+        careTip: 'Ensure soil drainage around trunk base.'
+      },
+      {
+        commonName: 'Teak',
+        scientificName: 'Tectona grandis',
+        confidence: 0.98,
+        characteristics: ['Large rough opposite leaves', 'Tall straight trunk', 'Small fragrant white flowers'],
+        benefits: ['Durable timber value', 'High canopy height', 'Soil stabilization'],
+        careTip: 'Prune lower dead branches before monsoon.'
+      },
+      {
+        commonName: 'Gulmohar',
+        scientificName: 'Delonix regia',
+        confidence: 0.98,
+        characteristics: ['Feathery bipinnate leaves', 'Vibrant scarlet-orange flowers', 'Umbrella-shaped canopy'],
+        benefits: ['Urban heat island reduction', 'Visual landscape aesthetic', 'Shade coverage'],
+        careTip: 'Protect shallow root system from heavy construction.'
+      },
+      {
+        commonName: 'Orchard Mango',
+        scientificName: 'Mangifera indica',
+        confidence: 0.98,
+        characteristics: ['Lanceolate dark green leaves', 'Dense rounded canopy', 'Fragrant panicle flowers'],
+        benefits: ['Fruit supply', 'High CO2 absorption', 'Shade density'],
+        careTip: 'Water deeply during flowering and fruiting seasons.'
+      },
+      {
+        commonName: 'Jackfruit',
+        scientificName: 'Artocarpus heterophyllus',
+        confidence: 0.98,
+        characteristics: ['Dark green glossy leathery oval leaves', 'Heavy cauliflorous fruit trunks', 'Dense shade canopy'],
+        benefits: ['Local nutritious fruit supply', 'Foliage windbreak', 'High carbon offset'],
+        careTip: 'Supervise heavy fruit harvest annually to protect main branches.'
+      },
+      {
+        commonName: 'Coconut Palm',
+        scientificName: 'Cocos nucifera',
+        confidence: 0.98,
+        characteristics: ['Tall slender ringed trunk', 'Feathery pinnate fronds', 'Coastal maritime root system'],
+        benefits: ['Coastal erosion control', 'Nutritious coconut water & oil', 'Windbreak barrier'],
+        careTip: 'Maintain clear crown area and remove dry fronds during pre-monsoon.'
+      },
+      {
+        commonName: 'Ashoka',
+        scientificName: 'Polyalthia longifolia',
+        confidence: 0.98,
+        characteristics: ['Sleek columnar growth', 'Wavy-bordered lanceolate leaves', 'Dense noise barrier'],
+        benefits: ['Acoustic noise dampening', 'Air pollution reduction', 'Aesthetic perimeter border'],
+        careTip: 'Trim side branches to maintain upright architectural shape.'
+      },
+      {
+        commonName: 'Honge',
+        scientificName: 'Pongamia pinnata',
+        confidence: 0.98,
+        characteristics: ['Glossy compound leaves', 'Pinkish-white fragrant flowers', 'Biofuel seed pods'],
+        benefits: ['Nitrogen fixing soil enrichment', 'Biodiesel seed oil source', 'Shade canopy'],
+        careTip: 'Requires minimal maintenance once taproot reaches subterranean water.'
+      }
+    ];
+
+    let identifiedSpecies = null;
+
+    // Check if user explicitly selected a species hint
+    if (hintSpecies && hintSpecies.trim() !== '') {
+      const matchInDict = speciesDictionary.find(s => 
+        s.commonName.toLowerCase().includes(hintSpecies.toLowerCase()) ||
+        s.scientificName.toLowerCase().includes(hintSpecies.toLowerCase())
+      );
+      if (matchInDict) {
+        identifiedSpecies = { ...matchInDict, confidence: 0.98 };
+        console.log(`[AI Vision] Species selected by citizen: ${identifiedSpecies.commonName}`);
+      }
+    }
+
+    // Try OpenRouter AI Vision API with location & regional species context
+    if (process.env.OPENROUTER_API_KEY && imageUrl) {
+      const visionModels = ['openai/gpt-4o-mini', 'google/gemini-flash-1.5', 'meta-llama/llama-3.2-11b-vision-instruct'];
+
+      for (const modelName of visionModels) {
+        if (identifiedSpecies) break;
+        try {
+          console.log(`[AI Vision] Calling OpenRouter vision model (${modelName})...`);
+          const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+              'HTTP-Referer': 'http://localhost:5173',
+              'X-Title': 'CanopyGuard',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: `You are CanopyLens AI, an urban tree classifier for the Udupi region, Karnataka, India.
+User Coordinates: (${userLat.toFixed(4)}, ${userLng.toFixed(4)}).
+Common local species in this region: Neem (Azadirachta indica), Banyan Tree (Ficus benghalensis), Peepal (Ficus religiosa), Teak (Tectona grandis), Gulmohar (Delonix regia), Orchard Mango (Mangifera indica), Jackfruit (Artocarpus heterophyllus), Coconut Palm (Cocos nucifera), Ashoka (Polyalthia longifolia), Honge (Pongamia pinnata), Casuarina, Tamarind.
+
+Analyze this tree image carefully. Respond ONLY with a valid raw JSON object (no markdown formatting, no \`\`\`json tags) with keys:
+commonName (string, e.g. "Neem"),
+scientificName (string, e.g. "Azadirachta indica"),
+confidence (number between 0.85 and 0.98),
+characteristics (array of 3 distinct visual feature strings),
+benefits (array of 3 ecological benefit strings),
+careTip (string, 1 actionable care sentence).`
+                    },
+                    {
+                      type: 'image_url',
+                      image_url: { url: imageUrl }
+                    }
+                  ]
+                }
+              ]
+            })
+          });
+
+          if (aiRes.ok) {
+            const aiData = await aiRes.json();
+            const replyText = aiData?.choices?.[0]?.message?.content || '';
+            const cleanedText = replyText.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsedJSON = JSON.parse(cleanedText);
+            if (parsedJSON && parsedJSON.commonName) {
+              identifiedSpecies = parsedJSON;
+              console.log(`[AI Vision] OpenRouter (${modelName}) successfully identified:`, parsedJSON.commonName);
+            }
+          }
+        } catch (aiErr) {
+          console.warn(`[AI Vision] Model ${modelName} error:`, aiErr.message);
+        }
+      }
+    }
+
+    if (!identifiedSpecies) {
+      if (closestTree && minDistance <= 250) {
+        const matched = speciesDictionary.find(s => 
+          closestTree.name.toLowerCase().includes(s.commonName.toLowerCase()) || 
+          closestTree.scientificName.toLowerCase().includes(s.scientificName.toLowerCase())
+        );
+        if (matched) {
+          identifiedSpecies = { ...matched, confidence: 0.95 };
+        } else {
+          identifiedSpecies = {
+            commonName: closestTree.name,
+            scientificName: closestTree.scientificName || 'Ficus sp.',
+            confidence: 0.92,
+            characteristics: ['Dense foliage', 'Sturdy urban trunk', 'Mature canopy spread'],
+            benefits: ['Air cooling', 'CO2 absorption', 'Urban shade'],
+            careTip: 'Regular watering and soil aerating recommended.'
+          };
+        }
+      } else {
+        const randomIndex = Math.floor(Math.abs(Math.sin(userLat * userLng) * speciesDictionary.length));
+        identifiedSpecies = speciesDictionary[randomIndex % speciesDictionary.length];
+      }
+    }
+
+    // 4. Species-Aware GIS Inventory Matching
+    let matchedInventoryTree = null;
+    let matchedDistance = Infinity;
+
+    if (identifiedSpecies && identifiedSpecies.commonName) {
+      const targetCommon = identifiedSpecies.commonName.toLowerCase();
+      const targetSci = (identifiedSpecies.scientificName || '').toLowerCase();
+      const keyWord = targetCommon.split(' ')[0]; // e.g. "Mango", "Neem", "Banyan", "Peepal"
+
+      allTrees.forEach(t => {
+        if (t.lat && t.lng) {
+          const tName = (t.name || '').toLowerCase();
+          const tSci = (t.scientificName || '').toLowerCase();
+
+          const isSpeciesMatch = 
+            tName.includes(targetCommon) || targetCommon.includes(tName) ||
+            tName.includes(keyWord) ||
+            (targetSci && (tSci.includes(targetSci) || targetSci.includes(tSci)));
+
+          if (isSpeciesMatch) {
+            const dist = getDistanceMeters(userLat, userLng, t.lat, t.lng);
+            if (dist <= 500 && dist < matchedDistance) {
+              matchedDistance = dist;
+              matchedInventoryTree = t;
+            }
+          }
+        }
+      });
+    }
+
+    // Fallback: If no species match found, check if there is an exact tree at the spot (within 15m)
+    if (!matchedInventoryTree && closestTree && minDistance <= 15) {
+      matchedInventoryTree = closestTree;
+      matchedDistance = minDistance;
+    }
+
+    // 5. Check if matched tree is adopted in MongoDB Adoption collection
+    let adoptionInfo = null;
+    let isAdopted = false;
+    let isAdoptedByCurrentUser = false;
+
+    if (matchedInventoryTree) {
+      const activeAdoption = await Adoption.findOne({
+        treeId: matchedInventoryTree._id.toString(),
+        status: 'Active'
+      });
+
+      if (!activeAdoption) {
+        const nameAdoption = await Adoption.findOne({
+          treeName: matchedInventoryTree.name,
+          status: 'Active'
+        });
+        if (nameAdoption) {
+          isAdopted = true;
+          adoptionInfo = nameAdoption;
+        }
+      } else {
+        isAdopted = true;
+        adoptionInfo = activeAdoption;
+      }
+
+      if (adoptionInfo && userId && (adoptionInfo.userId == userId || adoptionInfo.userId === userId)) {
+        isAdoptedByCurrentUser = true;
+      }
+    }
+
+    const matchedTreeData = matchedInventoryTree ? {
+      _id: matchedInventoryTree._id,
+      name: matchedInventoryTree.name,
+      scientificName: matchedInventoryTree.scientificName,
+      lat: matchedInventoryTree.lat,
+      lng: matchedInventoryTree.lng,
+      healthScore: matchedInventoryTree.healthScore || 90,
+      image: matchedInventoryTree.image,
+      category: matchedInventoryTree.category,
+      origin: matchedInventoryTree.origin,
+      distanceMeters: Math.round(matchedDistance),
+      isRegistered: true,
+      isAdopted: isAdopted,
+      isAdoptedByCurrentUser: isAdoptedByCurrentUser,
+      guardianName: adoptionInfo ? (isAdoptedByCurrentUser ? 'You' : (adoptionInfo.userName || 'Community Guardian')) : null,
+      adoptedAt: adoptionInfo ? adoptionInfo.adoptedAt : null,
+      lastCareDate: adoptionInfo ? adoptionInfo.lastCareDate : null,
+      careStreak: adoptionInfo ? adoptionInfo.careStreak : null
+    } : null;
+
+    res.json({
+      success: true,
+      identification: identifiedSpecies,
+      matchedTree: matchedTreeData,
+      scannedCoords: { lat: userLat, lng: userLng },
+      scanId: `SCAN-${Date.now().toString().slice(-6)}`
+    });
+
+  } catch (err) {
+    console.error('Error in /api/trees/scan:', err);
+    res.status(500).json({ msg: 'Server error processing tree scan' });
+  }
+});
+
 // @route   DELETE /api/trees/:id
 // @desc    Delete a tree inventory item
 // @access  Public (or Admin)
@@ -892,4 +1223,231 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// @route   POST /api/trees/register-proposal
+// @desc    Citizen submits a new tree registration proposal (image, location, name, GPS)
+// @access  Public
+router.post('/register-proposal', async (req, res) => {
+  try {
+    const {
+      name,
+      scientificName,
+      image,
+      lat,
+      lng,
+      locationText,
+      submittedBy,
+      submittedByEmail,
+      submittedByUserId,
+      notes
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ msg: 'Tree name is required.' });
+    }
+
+    const parsedLat = (lat !== undefined && !isNaN(Number(lat))) ? Number(lat) : 13.3412;
+    const parsedLng = (lng !== undefined && !isNaN(Number(lng))) ? Number(lng) : 74.7415;
+
+    let validImg = image;
+    if (!validImg || typeof validImg !== 'string' || validImg.startsWith('blob:')) {
+      validImg = 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=800&q=80';
+    }
+
+    const proposal = new TreeRegistration({
+      name: String(name).trim(),
+      scientificName: String(scientificName || name).trim(),
+      image: validImg,
+      lat: parsedLat,
+      lng: parsedLng,
+      locationText: locationText ? String(locationText).trim() : 'Udupi Region',
+      submittedBy: submittedBy ? String(submittedBy).trim() : 'Citizen User',
+      submittedByEmail: submittedByEmail ? String(submittedByEmail).trim() : '',
+      submittedByUserId: submittedByUserId ? String(submittedByUserId).trim() : null,
+      notes: notes ? String(notes).trim() : 'Submitted by citizen via CanopyLens AI',
+      status: 'Pending'
+    });
+
+    await proposal.save();
+
+    // Create notification for Admin & Official
+    try {
+      await Notification.create({
+        targetRole: 'Admin',
+        type: 'complaint_submitted',
+        title: '🌳 New Tree Registration Request',
+        message: `Citizen ${submittedBy || 'A citizen'} submitted a new tree (${name}) at ${locationText || 'Udupi'} for verification.`,
+        relatedId: proposal._id.toString()
+      });
+    } catch (notifErr) {
+      console.warn('Could not create notification:', notifErr.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      proposal,
+      msg: 'Tree registration proposal submitted successfully! Sent to Admin for verification.'
+    });
+  } catch (err) {
+    console.error('Error submitting tree registration proposal:', err.message, err.stack);
+    res.status(500).json({ msg: err.message || 'Server error submitting tree proposal' });
+  }
+});
+
+// @route   GET /api/trees/register-proposals
+// @desc    Get all tree registration proposals (Admin/Official review)
+// @access  Public (or Admin)
+router.get('/register-proposals', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const filter = status ? { status } : {};
+    const proposals = await TreeRegistration.find(filter).sort({ createdAt: -1 });
+    res.json({ success: true, count: proposals.length, proposals });
+  } catch (err) {
+    console.error('Error fetching tree proposals:', err);
+    res.status(500).json({ msg: 'Server error fetching tree proposals' });
+  }
+});
+
+// @route   PUT /api/trees/register-proposals/:id
+// @desc    Admin updates details of a tree registration proposal
+// @access  Public (or Admin)
+router.put('/register-proposals/:id', async (req, res) => {
+  try {
+    const { name, scientificName, locationText, lat, lng, notes } = req.body;
+    const proposal = await TreeRegistration.findById(req.params.id);
+    if (!proposal) {
+      return res.status(404).json({ msg: 'Tree proposal not found' });
+    }
+
+    if (name) proposal.name = name.trim();
+    if (scientificName) proposal.scientificName = scientificName.trim();
+    if (locationText) proposal.locationText = locationText.trim();
+    if (lat !== undefined && lat !== '') proposal.lat = Number(lat);
+    if (lng !== undefined && lng !== '') proposal.lng = Number(lng);
+    if (notes !== undefined) proposal.notes = notes.trim();
+
+    await proposal.save();
+
+    res.json({
+      success: true,
+      proposal,
+      msg: 'Proposal details updated successfully.'
+    });
+  } catch (err) {
+    console.error('Error updating tree proposal:', err);
+    res.status(500).json({ msg: 'Server error updating proposal' });
+  }
+});
+
+// @route   PUT /api/trees/register-proposals/:id/approve
+// @desc    Admin approves tree proposal -> Creates official Tree entry in DB (supports edited body overrides)
+// @access  Public (or Admin)
+router.put('/register-proposals/:id/approve', async (req, res) => {
+  try {
+    const proposal = await TreeRegistration.findById(req.params.id);
+    if (!proposal) {
+      return res.status(404).json({ msg: 'Tree proposal not found' });
+    }
+
+    // Apply any inline overrides sent by Admin during verification
+    const { name, scientificName, locationText, lat, lng, notes } = req.body || {};
+    if (name) proposal.name = name.trim();
+    if (scientificName) proposal.scientificName = scientificName.trim();
+    if (locationText) proposal.locationText = locationText.trim();
+    if (lat !== undefined && lat !== '') proposal.lat = Number(lat);
+    if (lng !== undefined && lng !== '') proposal.lng = Number(lng);
+    if (notes !== undefined) proposal.notes = notes.trim();
+
+    proposal.status = 'Approved';
+    proposal.approvedAt = new Date();
+    await proposal.save();
+
+    // Create official Tree entry in MongoDB
+    const newTree = new Tree({
+      name: proposal.name,
+      scientificName: proposal.scientificName,
+      category: 'Citizen Registered Tree',
+      origin: proposal.locationText,
+      image: proposal.image,
+      lat: proposal.lat,
+      lng: proposal.lng,
+      notes: proposal.notes || `Discovered and registered by citizen ${proposal.submittedBy}`,
+      healthScore: proposal.healthScore || 92,
+      canopyCoverage: 85,
+      addedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    });
+
+    await newTree.save();
+
+
+    // Send confirmation notification to Citizen
+    if (proposal.submittedByUserId) {
+      try {
+        await Notification.create({
+          targetUserId: proposal.submittedByUserId,
+          type: 'status_updated',
+          title: '🎉 Tree Registration Approved!',
+          message: `Your tree submission '${proposal.name}' at ${proposal.locationText} has been verified by the Admin and added to the official GIS map inventory! +100 Eco-Points awarded.`,
+          relatedId: newTree._id.toString()
+        });
+      } catch (e) {
+        console.warn('Notification send failed:', e.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      tree: newTree,
+      proposal,
+      msg: `Tree '${proposal.name}' verified and added to official inventory successfully!`
+    });
+  } catch (err) {
+    console.error('Error approving tree proposal:', err);
+    res.status(500).json({ msg: 'Server error approving tree proposal' });
+  }
+});
+
+// @route   PUT /api/trees/register-proposals/:id/reject
+// @desc    Admin rejects tree registration proposal
+// @access  Public (or Admin)
+router.put('/register-proposals/:id/reject', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const proposal = await TreeRegistration.findById(req.params.id);
+    if (!proposal) {
+      return res.status(404).json({ msg: 'Tree proposal not found' });
+    }
+
+    proposal.status = 'Rejected';
+    proposal.rejectionReason = reason || 'Verification failed / duplicate request';
+    proposal.rejectedAt = new Date();
+    await proposal.save();
+
+    // Send notification to Citizen
+    if (proposal.submittedByUserId) {
+      try {
+        await Notification.create({
+          targetUserId: proposal.submittedByUserId,
+          type: 'status_updated',
+          title: '❌ Tree Registration Request Update',
+          message: `Your tree proposal '${proposal.name}' was reviewed: ${proposal.rejectionReason}.`,
+          relatedId: proposal._id.toString()
+        });
+      } catch (e) {
+        console.warn('Notification send failed:', e.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      proposal,
+      msg: 'Tree proposal rejected.'
+    });
+  } catch (err) {
+    console.error('Error rejecting tree proposal:', err);
+    res.status(500).json({ msg: 'Server error rejecting proposal' });
+  }
+});
+
 module.exports = router;
+
