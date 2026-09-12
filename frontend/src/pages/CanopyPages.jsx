@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import NotificationBell from '../components/NotificationBell';
 import CitizenDashboard from '../components/CitizenDashboard';
 import AdminDashboard from '../components/AdminDashboard';
-import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import diseasedLeafImg from '../assets/diseased_leaf.png';
@@ -222,7 +222,7 @@ const speciesImages = {
   ashoka: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
   gulmohar: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
   honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-  coconut: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+  coconut: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=600&q=80',
   default: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'
 };
 
@@ -230,10 +230,12 @@ const getTreeDisplayImage = (tree) => {
   if (!tree) return speciesImages.default;
   if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
     let img = tree.image.trim();
-    if (img.startsWith('/uploads/')) {
-      img = `${API_URL}${img}`;
+    if (!img.includes('1507525428034') && !img.includes('1600718374662') && !img.includes('1448375240586')) {
+      if (img.startsWith('/uploads/')) {
+        img = `${API_URL}${img}`;
+      }
+      return img;
     }
-    return img;
   }
   const nameStr = `${tree.name || ''} ${tree.scientificName || ''} ${tree.family || ''}`.toLowerCase();
   if (nameStr.includes('mango') || nameStr.includes('mangifera')) return speciesImages.mango;
@@ -3325,10 +3327,34 @@ export function ReportIssuePage() {
   const isCitizenUser = normalizeRole(currentUser.role) === 'Citizen';
   const returnPath = isCitizenUser ? '/citizen-dashboard' : '/home';
 
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  const toggleTheme = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+    window.dispatchEvent(new Event('themeChange'));
+  };
+
   if (submitted) {
     return (
       <div className="cg-report">
-        <header><Link to={returnPath}><TreePine /> CanopyGuard</Link><Link to={returnPath}><X /></Link></header>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px' }}>
+          <Link to={returnPath} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', fontWeight: 900, fontSize: '1.2rem', color: 'inherit' }}>
+            <TreePine size={24} color="#10b981" /> <span>CanopyGuard</span>
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="cg-theme-btn"
+              title={darkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+            >
+              {darkMode ? <Sun size={18} color="#fbbf24" /> : <Moon size={18} color="#6366f1" />}
+            </button>
+            <Link to={returnPath} className="close-btn" title="Close"><X size={20} /></Link>
+          </div>
+        </header>
         <main>
           <div className="report-success">
             <div className="report-success-icon"><CheckCircle2 size={64} /></div>
@@ -3353,9 +3379,21 @@ export function ReportIssuePage() {
 
   return (
     <div className="cg-report">
-      <header>
-        <Link to={returnPath}><TreePine size={22} /> <span>CanopyGuard</span></Link>
-        <Link to={returnPath} className="close-btn" title="Close"><X size={20} /></Link>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px' }}>
+        <Link to={returnPath} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', fontWeight: 900, fontSize: '1.2rem', color: 'inherit' }}>
+          <TreePine size={24} color="#10b981" /> <span>CanopyGuard</span>
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="cg-theme-btn"
+            title={darkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+          >
+            {darkMode ? <Sun size={18} color="#fbbf24" /> : <Moon size={18} color="#6366f1" />}
+          </button>
+          <Link to={returnPath} className="close-btn" title="Close"><X size={20} /></Link>
+        </div>
       </header>
       <main>
         <section className="report-title">
@@ -7374,6 +7412,10 @@ export function ViewTreePage() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [adoptingId, setAdoptingId] = useState(null);
+  const [adoptModalTree, setAdoptModalTree] = useState(null);
+  const [adoptNickname, setAdoptNickname] = useState('');
+  const [isSubmittingAdoption, setIsSubmittingAdoption] = useState(false);
+  const [adoptSuccessMsg, setAdoptSuccessMsg] = useState(null);
 
   const currentUser = (() => {
     try {
@@ -7389,7 +7431,7 @@ export function ViewTreePage() {
   const effectiveUserName = currentUser.name || currentUser.username || currentUser.fullName || 'Citizen User';
   const effectiveUserEmail = currentUser.email || 'citizen@treecanopy.org';
 
-  const handleAdoptTree = async (tree, e) => {
+  const triggerAdoptModal = (tree, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     
     // Check if user is logged in
@@ -7400,10 +7442,15 @@ export function ViewTreePage() {
       return;
     }
 
-    const nicknamePrompt = window.prompt(`Give a nickname to this ${tree.name}:`, tree.name);
-    if (nicknamePrompt === null) return; // user cancelled
+    setAdoptModalTree(tree);
+    setAdoptNickname(tree.name || '');
+  };
 
-    setAdoptingId(tree._id || tree.id);
+  const handleConfirmAdoption = async (e) => {
+    if (e) e.preventDefault();
+    if (!adoptModalTree) return;
+    setIsSubmittingAdoption(true);
+    setAdoptingId(adoptModalTree._id || adoptModalTree.id);
     try {
       const res = await fetch(`${API_URL}/api/adoptions/adopt`, {
         method: 'POST',
@@ -7412,24 +7459,28 @@ export function ViewTreePage() {
           userId: effectiveUserId,
           userName: effectiveUserName,
           userEmail: effectiveUserEmail,
-          treeId: tree._id || tree.id,
-          treeName: tree.name,
-          treeScientificName: tree.scientificName,
-          treeFamily: tree.family,
-          treeLocation: tree.origin || 'Udupi Canopy',
-          treeImage: tree.image || '',
-          nickname: nicknamePrompt.trim() || tree.name
+          treeId: adoptModalTree._id || adoptModalTree.id,
+          treeName: adoptModalTree.name,
+          treeScientificName: adoptModalTree.scientificName,
+          treeFamily: adoptModalTree.family,
+          treeLocation: adoptModalTree.origin || 'Udupi Canopy',
+          treeImage: adoptModalTree.image || '',
+          nickname: (adoptNickname || adoptModalTree.name).trim()
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.msg || 'Could not adopt tree');
       
-      if (window.confirm(`🎉 ${data.msg}\nYou earned +${data.pointsAwarded || 100} Eco-Points!\n\nWould you like to view your Certificate and Adopted Trees now?`)) {
+      setAdoptSuccessMsg(data.msg || 'Tree adopted successfully!');
+      setTimeout(() => {
+        setAdoptSuccessMsg(null);
+        setAdoptModalTree(null);
         navigate('/citizen-dashboard?tab=rewards');
-      }
+      }, 1500);
     } catch (err) {
       alert(err.message || 'Error adopting tree');
     } finally {
+      setIsSubmittingAdoption(false);
       setAdoptingId(null);
     }
   };
@@ -7537,21 +7588,6 @@ export function ViewTreePage() {
                   {getHealthLabel(hs)} · {hs}%
                 </span>
               </div>
-              <button
-                onClick={(e) => handleAdoptTree(selectedTree, e)}
-                disabled={isCurrentlyAdopting}
-                style={{
-                  background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '12px',
-                  padding: '10px 20px', fontWeight: 700, fontSize: '0.95rem', cursor: isCurrentlyAdopting ? 'not-allowed' : 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(16,185,129,0.4)',
-                  transition: 'all 0.2s', opacity: isCurrentlyAdopting ? 0.7 : 1
-                }}
-                onMouseEnter={e => { if (!isCurrentlyAdopting) e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                onMouseLeave={e => { if (!isCurrentlyAdopting) e.currentTarget.style.transform = 'translateY(0)'; }}
-              >
-                <Heart size={18} fill="#ffffff" />
-                {isCurrentlyAdopting ? 'Adopting...' : 'Adopt This Tree (+100 Pts)'}
-              </button>
             </div>
             <p style={{ margin: '0 0 16px', fontStyle: 'italic', color: 'rgba(255,255,255,0.75)', fontSize: '1rem' }}>
               {selectedTree.scientificName}
@@ -7575,6 +7611,24 @@ export function ViewTreePage() {
                   <strong>{tag.value}</strong>
                 </span>
               ))}
+            </div>
+            <div style={{ marginTop: '16px' }}>
+              <button
+                onClick={(e) => triggerAdoptModal(selectedTree, e)}
+                disabled={isCurrentlyAdopting}
+                style={{
+                  background: '#10b981', color: '#ffffff', border: 'none',
+                  borderRadius: '10px', padding: '10px 20px', fontSize: '0.9rem', fontWeight: 800,
+                  cursor: isCurrentlyAdopting ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  boxShadow: '0 4px 14px rgba(16,185,129,0.4)', transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#059669'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; }}
+              >
+                <Heart size={16} fill="#ffffff" />
+                {isCurrentlyAdopting ? 'Adopting...' : 'Adopt Tree (+100 Pts)'}
+              </button>
             </div>
           </div>
         </div>
@@ -7890,7 +7944,7 @@ export function ViewTreePage() {
                     )}
                     <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingTop: '10px', borderTop: '1px dashed #e5e7eb' }}>
                       <button
-                        onClick={(e) => handleAdoptTree(tree, e)}
+                        onClick={(e) => triggerAdoptModal(tree, e)}
                         disabled={adoptingId === (tree._id || tree.id)}
                         style={{
                           background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0',
@@ -7919,6 +7973,112 @@ export function ViewTreePage() {
     );
   };
 
+  const renderAdoptModal = () => {
+    if (!adoptModalTree) return null;
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 99999,
+        background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+      }}>
+        <div style={{
+          background: '#ffffff', borderRadius: '24px', maxWidth: '460px', width: '100%',
+          overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
+          border: '1px solid rgba(255,255,255,0.2)', animation: 'scaleUp 0.2s ease-out'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #043224 0%, #065f46 100%)',
+            padding: '24px', color: '#ffffff', position: 'relative'
+          }}>
+            <button
+              onClick={() => setAdoptModalTree(null)}
+              style={{
+                position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.15)',
+                border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.2rem', fontWeight: 'bold'
+              }}
+            >✕</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '14px', overflow: 'hidden',
+                background: 'rgba(255,255,255,0.2)', flexShrink: 0, border: '2px solid rgba(255,255,255,0.3)'
+              }}>
+                <img src={getTreeDisplayImage(adoptModalTree)} alt={adoptModalTree.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>Adopt {adoptModalTree.name}</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#a7f3d0', fontStyle: 'italic' }}>{adoptModalTree.scientificName || 'Canopy Tree'}</p>
+              </div>
+            </div>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              background: 'rgba(16, 185, 129, 0.25)', border: '1px solid #10b981',
+              padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, color: '#ecfdf5', marginTop: '6px'
+            }}>
+              ✨ Earns +100 Eco-Points Upon Adoption
+            </div>
+          </div>
+
+          <form onSubmit={handleConfirmAdoption} style={{ padding: '24px' }}>
+            {adoptSuccessMsg ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎉</div>
+                <h4 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800, color: '#065f46' }}>{adoptSuccessMsg}</h4>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#4b5563' }}>Redirecting to your Adopted Trees & Rewards...</p>
+              </div>
+            ) : (
+              <>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', color: '#1f2937', marginBottom: '8px' }}>
+                  Give your adopted tree a nickname:
+                </label>
+                <input
+                  type="text"
+                  value={adoptNickname}
+                  onChange={(e) => setAdoptNickname(e.target.value)}
+                  placeholder="e.g. Sunny Neem, Mighty Oak"
+                  required
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: '10px',
+                    border: '2px solid #e5e7eb', fontSize: '0.95rem', fontWeight: 600,
+                    color: '#111827', background: '#f9fafb', outline: 'none',
+                    transition: 'all 0.2s', marginBottom: '20px', boxSizing: 'border-box'
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#059669'}
+                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                />
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => setAdoptModalTree(null)}
+                    style={{
+                      padding: '10px 18px', borderRadius: '10px', border: '1px solid #d1d5db',
+                      background: '#ffffff', color: '#374151', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingAdoption}
+                    style={{
+                      padding: '10px 20px', borderRadius: '10px', border: 'none',
+                      background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                      color: '#ffffff', fontWeight: 700, fontSize: '0.875rem', cursor: isSubmittingAdoption ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)'
+                    }}
+                  >
+                    {isSubmittingAdoption ? 'Adopting...' : '🎉 Confirm Adoption (+100 Pts)'}
+                  </button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   if (selectedTree) {
     if (!currentUser.role && !currentUser.username && !currentUser.name) {
       return (
@@ -7927,7 +8087,6 @@ export function ViewTreePage() {
             <Link to="/home" className="cg-brand">CanopyGuard</Link>
             <nav className="desktop-nav-links">
               <Link to="/home">Home</Link>
-              <Link to="/dashboard">Map</Link>
               <Link to="/report-issue">Complaints</Link>
               <Link className="active" to="/view-tree">Tree Database</Link>
               <Link to="/tree-encyclopedia">Tree Encyclopedia</Link>
@@ -7940,6 +8099,7 @@ export function ViewTreePage() {
             </Link>
           </header>
           {renderDetailContent()}
+          {renderAdoptModal()}
         </div>
       );
     } else {
@@ -7949,6 +8109,7 @@ export function ViewTreePage() {
           <div className="cg-workspace">
             <Topbar title="Tree Details" onToggleSidebar={() => setSidebarOpen(true)} />
             {renderDetailContent()}
+            {renderAdoptModal()}
           </div>
         </div>
       );
@@ -7963,7 +8124,6 @@ export function ViewTreePage() {
           <Link to="/home" className="cg-brand">CanopyGuard</Link>
           <nav className="desktop-nav-links">
             <Link to="/home">Home</Link>
-            <Link to="/dashboard">Map</Link>
             <Link to="/report-issue">Complaints</Link>
             <Link className="active" to="/view-tree">Tree Database</Link>
             <Link to="/tree-encyclopedia">Tree Encyclopedia</Link>
@@ -7976,6 +8136,7 @@ export function ViewTreePage() {
           </Link>
         </header>
         {renderListContent()}
+        {renderAdoptModal()}
       </div>
     );
   } else {
@@ -7985,6 +8146,7 @@ export function ViewTreePage() {
         <div className="cg-workspace">
           <Topbar title="Tree Database" onToggleSidebar={() => setSidebarOpen(true)} />
           {renderListContent()}
+          {renderAdoptModal()}
         </div>
       </div>
     );
@@ -9577,6 +9739,146 @@ export function CitizenDashboardPage() {
           <CitizenDashboard user={currentUser} activeTab={activeTab} onTabChange={handleTabChange} />
         </main>
       </div>
+    </div>
+  );
+}
+
+export function VerifyCertificatePage() {
+  const { certificateNumber: paramCert } = useParams();
+  const [certInput, setCertInput] = useState(paramCert || '');
+  const [certData, setCertData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const verifyCertificate = async (codeToVerify) => {
+    const queryCode = codeToVerify || certInput;
+    if (!queryCode.trim()) {
+      setErrorMsg('Please enter a valid certificate reference number.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setCertData(null);
+
+    try {
+      const res = await fetch(`${API_URL}/api/adoptions/certificates/${encodeURIComponent(queryCode.trim())}/verify`);
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setCertData(data);
+      } else {
+        setErrorMsg(data.msg || 'Certificate code not found in official municipal registry.');
+      }
+    } catch (err) {
+      setErrorMsg('Server connection error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (paramCert) {
+      verifyCertificate(paramCert);
+    }
+  }, [paramCert]);
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #064e3b 0%, #0f172a 100%)', color: '#fff', padding: '30px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ maxWidth: '640px', width: '100%', textAlign: 'center', marginBottom: '24px' }}>
+        <Link to="/home" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#6ee7b7', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem', marginBottom: '16px' }}>
+          <ArrowLeft size={16} /> Return to CanopyGuard Home
+        </Link>
+        <div style={{ display: 'inline-flex', padding: '8px 16px', borderRadius: '50px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px' }}>
+          🏛️ Municipal Registry Verification Portal
+        </div>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 8px 0', color: '#ffffff' }}>Digital Credential Verification</h1>
+        <p style={{ color: '#94a3b8', fontSize: '0.95rem', margin: 0 }}>
+          Verify the authenticity of Tree Guardian Certificates issued by the Urban Forestry &amp; Environment Command Center.
+        </p>
+      </div>
+
+      {/* Search Input Box */}
+      <div style={{ maxWidth: '640px', width: '100%', background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)', padding: '20px', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            placeholder="Enter Certificate Code (e.g. CERT-UDUPI-2026-98214)"
+            value={certInput}
+            onChange={(e) => setCertInput(e.target.value)}
+            style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: '0.95rem' }}
+          />
+          <button
+            onClick={() => verifyCertificate()}
+            disabled={loading}
+            style={{ padding: '12px 20px', borderRadius: '10px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            {loading ? 'Verifying...' : <><ShieldCheck size={18} /> Verify</>}
+          </button>
+        </div>
+        {errorMsg && (
+          <div style={{ marginTop: '12px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '10px 14px', borderRadius: '8px', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={18} /> {errorMsg}
+          </div>
+        )}
+      </div>
+
+      {/* Certificate Verification Result Card */}
+      {certData && (
+        <div style={{ maxWidth: '640px', width: '100%', background: '#ffffff', color: '#0f172a', borderRadius: '20px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '4px double #10b981', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px dashed #e2e8f0', paddingBottom: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Trees size={28} color="#059669" />
+              <div>
+                <strong style={{ fontSize: '1.1rem', fontWeight: 800, color: '#065f46', display: 'block', lineHeight: 1.1 }}>CANOPYGUARD REGISTRY</strong>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Official Environmental Credential</span>
+              </div>
+            </div>
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', padding: '6px 14px', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldCheck size={16} /> VERIFIED &amp; VALID
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', fontWeight: 700 }}>This Certifies That</span>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', margin: '6px 0', fontFamily: 'Georgia, serif' }}>{certData.guardianName}</h2>
+            <p style={{ fontSize: '0.9rem', color: '#475569', margin: 0 }}>
+              Is recognized as an official <strong>Tree Guardian &amp; Environmental Steward</strong> under the CanopyGuard Urban Greening Ordinance.
+            </p>
+          </div>
+
+          <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Adopted Tree Species</span>
+              <strong style={{ fontSize: '0.95rem', color: '#047857' }}>{certData.treeName}</strong>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>{certData.treeScientificName}</div>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Location Zone</span>
+              <strong style={{ fontSize: '0.9rem', color: '#1e293b' }}>📍 {certData.treeLocation || 'Udupi Urban Sector'}</strong>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Pledge Adoption Date</span>
+              <strong style={{ fontSize: '0.88rem', color: '#334155' }}>
+                {new Date(certData.adoptedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </strong>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Total Eco-Points Earned</span>
+              <strong style={{ fontSize: '0.95rem', color: '#d97706' }}>⭐ {certData.totalEcoPoints || 100} Eco-Pts</strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px dashed #cbd5e1' }}>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', display: 'block' }}>Certificate Serial Ref</span>
+              <code style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a' }}>{certData.certificateNumber}</code>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, display: 'block' }}>Verified by Urban Forestry Board</span>
+              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Digital Registry Hash Verified</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

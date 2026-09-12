@@ -241,10 +241,28 @@ const LoginPage = () => {
           {isSubmitting ? 'Signing In...' : 'Secure Login'}
         </button>
 
+        {/* Google Login - Commented out for Tree Cutter */}
+        {activeTab !== 'Tree Cutter' && (
+          <>
+            <div className="divider">
+              <span>OR</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setLoginError('Google Sign-In was cancelled or failed.')}
+                theme="filled_blue"
+                shape="pill"
+                text="continue_with"
+              />
+            </div>
+          </>
+        )}
+        {/* 
         <div className="divider">
           <span>OR</span>
         </div>
-
         <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
@@ -254,6 +272,7 @@ const LoginPage = () => {
             text="continue_with"
           />
         </div>
+        */}
 
         <div className="auth-footer">
           {isCutterOnly ? (

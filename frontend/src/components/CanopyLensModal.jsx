@@ -28,6 +28,7 @@ export default function CanopyLensModal({ isOpen, onClose }) {
   const [scanResult, setScanResult] = useState(null);
   const [scanError, setScanError] = useState('');
   const [selectedSpeciesHint, setSelectedSpeciesHint] = useState('');
+  const [isCustomSpecies, setIsCustomSpecies] = useState(false);
   const [submittingProposal, setSubmittingProposal] = useState(false);
   const [proposalSubmitted, setProposalSubmitted] = useState(false);
   const fileInputRef = useRef(null);
@@ -411,36 +412,90 @@ export default function CanopyLensModal({ isOpen, onClose }) {
                   </p>
 
                   {/* Manual Species Correction Option */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(2, 132, 199, 0.06)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(2, 132, 199, 0.2)' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#0369a1', fontWeight: 600 }}>✏️ Not the right tree? Correct species:</span>
-                    <select
-                      style={{ background: '#fff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '4px 8px', fontSize: '0.8rem', color: '#0369a1', fontWeight: 600, cursor: 'pointer' }}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val) {
-                          setScanResult(prev => ({
-                            ...prev,
-                            identification: {
-                              ...prev.identification,
-                              commonName: val,
-                              confidence: 0.98
+                  <div style={{ background: 'rgba(2, 132, 199, 0.06)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(2, 132, 199, 0.2)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.78rem', color: '#0369a1', fontWeight: 600 }}>✏️ Not the right tree? Correct species:</span>
+                      <select
+                        style={{ background: '#fff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '4px 8px', fontSize: '0.8rem', color: '#0369a1', fontWeight: 600, cursor: 'pointer' }}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'CUSTOM') {
+                            setIsCustomSpecies(true);
+                            return;
+                          }
+                          setIsCustomSpecies(false);
+                          if (val) {
+                            setScanResult(prev => {
+                              let updatedMatchedTree = prev.matchedTree;
+                              if (updatedMatchedTree) {
+                                const tName = (updatedMatchedTree.name || '').toLowerCase();
+                                const valLower = val.toLowerCase();
+                                if (!tName.includes(valLower) && !valLower.includes(tName)) {
+                                  updatedMatchedTree = null;
+                                }
+                              }
+                              return {
+                                ...prev,
+                                identification: {
+                                  ...prev.identification,
+                                  commonName: val,
+                                  scientificName: val === 'Guava' ? 'Psidium guajava' : `${val} species`,
+                                  confidence: 0.98
+                                },
+                                matchedTree: updatedMatchedTree
+                              };
+                            });
+                          }
+                        }}
+                      >
+                        <option value="">Switch species...</option>
+                        <option value="Butter Fruit (Avocado)">Butter Fruit / Avocado (Persea americana)</option>
+                        <option value="Guava">Guava (Psidium guajava)</option>
+                        <option value="Bael">Bael / Bilva (Aegle marmelos)</option>
+                        <option value="Neem">Neem (Azadirachta indica)</option>
+                        <option value="Banyan Tree">Banyan Tree (Ficus benghalensis)</option>
+                        <option value="Peepal">Peepal (Ficus religiosa)</option>
+                        <option value="Teak">Teak (Tectona grandis)</option>
+                        <option value="Gulmohar">Gulmohar (Delonix regia)</option>
+                        <option value="Orchard Mango">Orchard Mango (Mangifera indica)</option>
+                        <option value="Jackfruit">Jackfruit (Artocarpus heterophyllus)</option>
+                        <option value="Coconut Palm">Coconut Palm (Cocos nucifera)</option>
+                        <option value="Kadamba">Kadamba (Neolamarckia cadamba)</option>
+                        <option value="Tamarind">Tamarind (Tamarindus indica)</option>
+                        <option value="Indian Tulip">Indian Tulip (Thespesia populnea)</option>
+                        <option value="Indian Almond">Indian Almond (Terminalia catappa)</option>
+                        <option value="Ashoka">Ashoka (Polyalthia longifolia)</option>
+                        <option value="Honge">Honge (Pongamia pinnata)</option>
+                        <option value="Papaya">Papaya (Carica papaya)</option>
+                        <option value="Chiku">Chiku / Sapota (Manilkara zapota)</option>
+                        <option value="CUSTOM">✏️ Other (Type custom species...)</option>
+                      </select>
+                    </div>
+
+                    {isCustomSpecies && (
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '6px' }}>
+                        <input
+                          type="text"
+                          placeholder="Type custom tree species (e.g. Papaya, Chiku, Jamun)..."
+                          style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #0284c7', fontSize: '0.82rem' }}
+                          onChange={(e) => {
+                            const val = e.target.value.trim();
+                            if (val) {
+                              setScanResult(prev => ({
+                                ...prev,
+                                identification: {
+                                  ...prev.identification,
+                                  commonName: val.charAt(0).toUpperCase() + val.slice(1),
+                                  scientificName: `${val} species`,
+                                  confidence: 0.95
+                                },
+                                matchedTree: null
+                              }));
                             }
-                          }));
-                        }
-                      }}
-                    >
-                      <option value="">Switch species...</option>
-                      <option value="Neem">Neem (Azadirachta indica)</option>
-                      <option value="Banyan Tree">Banyan Tree (Ficus benghalensis)</option>
-                      <option value="Peepal">Peepal (Ficus religiosa)</option>
-                      <option value="Teak">Teak (Tectona grandis)</option>
-                      <option value="Gulmohar">Gulmohar (Delonix regia)</option>
-                      <option value="Orchard Mango">Orchard Mango (Mangifera indica)</option>
-                      <option value="Jackfruit">Jackfruit (Artocarpus heterophyllus)</option>
-                      <option value="Coconut Palm">Coconut Palm (Cocos nucifera)</option>
-                      <option value="Ashoka">Ashoka (Polyalthia longifolia)</option>
-                      <option value="Honge">Honge (Pongamia pinnata)</option>
-                    </select>
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

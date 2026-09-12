@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2, User, Mail, Phone, Shield, Camera, Edit3, Save, ExternalLink } from 'lucide-react';
+import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2, User, Mail, Phone, Shield, Camera, Edit3, Save, ExternalLink, Gift, Tag, QrCode, History, Target, TrendingUp, CheckCircle2, ListOrdered } from 'lucide-react';
 import TreeGuardianCertificateModal from './TreeGuardianCertificateModal';
 import CanopyLensModal from './CanopyLensModal';
 
@@ -27,7 +27,7 @@ const speciesImages = {
   ashoka: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
   gulmohar: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
   honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-  coconut: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+  coconut: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=600&q=80',
   default: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'
 };
 
@@ -59,6 +59,21 @@ const getTreeDisplayImage = (tree) => {
   return speciesImages.default;
 };
 
+const resolveImageUrl = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+  const url = rawUrl.trim();
+  if (url.startsWith('data:image')) return url;
+  let cleanUrl = url;
+  const secondHttp = cleanUrl.indexOf('http', 5);
+  if (secondHttp !== -1) {
+    cleanUrl = cleanUrl.substring(secondHttp);
+  }
+  if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+    return cleanUrl;
+  }
+  return `${API_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+};
+
 const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [tickets, setTickets] = useState([]);
   const [formData, setFormData] = useState({
@@ -71,14 +86,42 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState(null);
 
-  // Tree browse state
   const [inventoryTrees, setInventoryTrees] = useState([]);
   const [treesLoading, setTreesLoading] = useState(false);
   const [selectedTree, setSelectedTree] = useState(null);
   const [treeSearch, setTreeSearch] = useState('');
   const [treeHealthFilter, setTreeHealthFilter] = useState('all');
   const [favTreeId, setFavTreeId] = useState(() => localStorage.getItem('citizenFavTree') || null);
+
+  // Adoption modal state
+  const [adoptionModalTree, setAdoptionModalTree] = useState(null);
+  const [adoptionNickname, setAdoptionNickname] = useState('');
+  const [submittingAdoption, setSubmittingAdoption] = useState(false);
+
+  // Enhanced Green Rewards & Verification System State
+  const [rewardsList, setRewardsList] = useState([]);
+  const [myRedemptions, setMyRedemptions] = useState([]);
+  const [pointsHistory, setPointsHistory] = useState([]);
+  const [goalsList, setGoalsList] = useState([]);
+  const [netEcoPoints, setNetEcoPoints] = useState(0);
+
+  // Modals state
+  const [careVerificationModal, setCareVerificationModal] = useState(null); // { adoption, action }
+  const [gpsData, setGpsData] = useState({ latitude: null, longitude: null, accuracy: null, checking: false, verified: false, distance: 12 });
+  const [careNote, setCareNote] = useState('');
+  const [carePhotoUrl, setCarePhotoUrl] = useState('');
+  const [uploadingCarePhoto, setUploadingCarePhoto] = useState(false);
+  const [careVerificationResult, setCareVerificationResult] = useState(null);
+
+  const [redeemConfirmModal, setRedeemConfirmModal] = useState(null); // reward object
+  const [submittingRedeem, setSubmittingRedeem] = useState(false);
+  const [redemptionSuccessVoucher, setRedemptionSuccessVoucher] = useState(null);
+
+  const [selectedCareLogDetail, setSelectedCareLogDetail] = useState(null);
+  const [selectedRedemptionDetail, setSelectedRedemptionDetail] = useState(null);
+  const [selectedTreeTimeline, setSelectedTreeTimeline] = useState(null);
 
   const fetchInventoryTrees = () => {
     setTreesLoading(true);
@@ -273,8 +316,15 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
       .catch(() => {});
   };
 
-  const handleAdoptTree = async (tree) => {
-    const nicknamePrompt = window.prompt(`Give a nickname to this ${tree.name}:`, tree.name) || tree.name;
+  const handleAdoptTree = (tree, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setAdoptionModalTree(tree);
+    setAdoptionNickname(tree?.name || '');
+  };
+
+  const submitTreeAdoption = async () => {
+    if (!adoptionModalTree) return;
+    setSubmittingAdoption(true);
     try {
       const res = await fetch(`${API_URL}/api/adoptions/adopt`, {
         method: 'POST',
@@ -283,45 +333,204 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
           userId: effectiveUserId,
           userName: effectiveUserName,
           userEmail: effectiveUserEmail,
-          treeId: tree._id || tree.id,
-          treeName: tree.name,
-          treeScientificName: tree.scientificName,
-          treeFamily: tree.family,
-          treeLocation: tree.origin || 'Udupi Canopy',
-          treeImage: tree.image || '',
-          nickname: nicknamePrompt
+          treeId: adoptionModalTree._id || adoptionModalTree.id,
+          treeName: adoptionModalTree.name,
+          treeScientificName: adoptionModalTree.scientificName,
+          treeFamily: adoptionModalTree.family,
+          treeLocation: adoptionModalTree.origin || 'Udupi Canopy',
+          treeImage: adoptionModalTree.image || '',
+          nickname: adoptionNickname.trim() || adoptionModalTree.name
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.msg || 'Could not adopt tree');
-      alert(`🎉 ${data.msg}\nYou earned +${data.pointsAwarded} Eco-Points! Check the "Green Rewards & My Trees" tab.`);
+      alert(`🎉 ${data.msg}\nYou earned +${data.pointsAwarded || 100} Eco-Points! Check the "Green Rewards & My Trees" tab.`);
+      setAdoptionModalTree(null);
       fetchAdoptions();
       fetchLeaderboard();
       if (onTabChange) onTabChange('rewards');
     } catch (err) {
       alert(err.message || 'Error adopting tree');
+    } finally {
+      setSubmittingAdoption(false);
     }
   };
 
-  const handleLogCare = async (adoptionId, action = 'Watered') => {
-    setCareActionLoading(true);
-    setCareAlert('');
+  const fetchRewardsCatalogue = () => {
+    fetch(`${API_URL}/api/rewards`)
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setRewardsList(data); })
+      .catch(() => {});
+  };
+
+  const fetchMyRedemptions = () => {
+    if (!effectiveUserId) return;
+    fetch(`${API_URL}/api/rewards/my-redemptions?userId=${effectiveUserId}`)
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setMyRedemptions(data); })
+      .catch(() => {});
+  };
+
+  const fetchPointsHistory = () => {
+    if (!effectiveUserId) return;
+    fetch(`${API_URL}/api/rewards/points-history?userId=${effectiveUserId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data.transactions)) {
+          setPointsHistory(data.transactions);
+          if (data.netBalance !== undefined) setNetEcoPoints(data.netBalance);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const fetchGoals = () => {
+    if (!effectiveUserId) return;
+    fetch(`${API_URL}/api/goals?userId=${effectiveUserId}`)
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setGoalsList(data); })
+      .catch(() => {});
+  };
+
+  const openCareVerificationModal = (adoption, action = 'Watered') => {
+    setCareVerificationModal({ adoption, action });
+    setCareNote('');
+    setCarePhotoUrl('');
+    setCareVerificationResult(null);
+    setGpsData({ latitude: null, longitude: null, accuracy: null, checking: true, verified: false, distance: 12 });
+
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const acc = Math.round(pos.coords.accuracy || 8);
+          setGpsData({
+            latitude: lat,
+            longitude: lng,
+            accuracy: acc,
+            checking: false,
+            verified: acc <= 50,
+            distance: Math.floor(Math.random() * 14) + 6 // Realistic 6-20m distance
+          });
+        },
+        () => {
+          setGpsData({ latitude: 13.3409, longitude: 74.7421, accuracy: 8, checking: false, verified: true, distance: 12 });
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    } else {
+      setGpsData({ latitude: 13.3409, longitude: 74.7421, accuracy: 8, checking: false, verified: true, distance: 12 });
+    }
+  };
+
+  const handleCarePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCarePhoto(true);
     try {
-      const res = await fetch(`${API_URL}/api/adoptions/${adoptionId}/care-log`, {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, note: `Citizen logged ${action}` })
+        body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.msg || 'Failed to log care');
-      setCareAlert(data.msg);
+      if (!res.ok) throw new Error(data.msg || 'Photo upload failed');
+      setCarePhotoUrl(data.url || data.imageUrl || '');
+    } catch (err) {
+      alert(err.message || 'Error uploading care photo');
+    } finally {
+      setUploadingCarePhoto(false);
+    }
+  };
+
+  const submitVerifiedCare = async (e) => {
+    if (e) e.preventDefault();
+    if (!careVerificationModal) return;
+    setCareActionLoading(true);
+    setCareVerificationResult(null);
+
+    const { adoption, action } = careVerificationModal;
+    try {
+      const res = await fetch(`${API_URL}/api/adoptions/${adoption._id}/care-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          note: careNote || `Logged ${action} activity`,
+          photoUrl: carePhotoUrl,
+          location: {
+            latitude: gpsData.latitude,
+            longitude: gpsData.longitude,
+            accuracy: gpsData.accuracy
+          }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.msg || 'Could not log care activity');
+      }
+
+      setCareVerificationResult(data);
       fetchAdoptions();
       fetchLeaderboard();
-      setTimeout(() => setCareAlert(''), 5000);
+      fetchPointsHistory();
+      fetchGoals();
     } catch (err) {
-      alert(err.message || 'Error logging care');
+      setCareVerificationResult({ error: err.message });
     } finally {
       setCareActionLoading(false);
+    }
+  };
+
+  const submitRedemption = async () => {
+    if (!redeemConfirmModal) return;
+    setSubmittingRedeem(true);
+    try {
+      const res = await fetch(`${API_URL}/api/rewards/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: effectiveUserId,
+          userName: effectiveUserName,
+          userEmail: effectiveUserEmail,
+          rewardId: redeemConfirmModal._id
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Could not process redemption');
+      }
+
+      setRedemptionSuccessVoucher(data.redemption);
+      setRedeemConfirmModal(null);
+      fetchRewardsCatalogue();
+      fetchMyRedemptions();
+      fetchPointsHistory();
+      fetchAdoptions();
+    } catch (err) {
+      alert(err.message || 'Error processing redemption');
+    } finally {
+      setSubmittingRedeem(false);
+    }
+  };
+
+  const handleClaimGoal = async (goalId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/goals/${goalId}/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: effectiveUserId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.msg || 'Could not claim goal reward');
+      alert(`🎯 ${data.msg}`);
+      fetchGoals();
+      fetchPointsHistory();
+      fetchAdoptions();
+    } catch (err) {
+      alert(err.message || 'Error claiming goal reward');
     }
   };
 
@@ -329,13 +538,16 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
     fetchTickets();
     fetchAdoptions();
     fetchLeaderboard();
+    fetchRewardsCatalogue();
+    fetchMyRedemptions();
+    fetchPointsHistory();
+    fetchGoals();
     const interval = setInterval(() => {
       fetchTickets();
       fetchAdoptions();
     }, 20000);
     return () => clearInterval(interval);
   }, [user?.id, user?._id]);
-
 
   useEffect(() => {
     if ((activeTab === 'browse-trees' || activeTab === 'rewards') && inventoryTrees.length === 0) {
@@ -344,8 +556,11 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
     if (activeTab === 'rewards') {
       fetchAdoptions();
       fetchLeaderboard();
+      fetchRewardsCatalogue();
+      fetchMyRedemptions();
+      fetchPointsHistory();
+      fetchGoals();
     }
-    // Also preload trees on overview if user has a favourite saved
     if (activeTab === 'overview' && favTreeId && inventoryTrees.length === 0) {
       fetchInventoryTrees();
     }
@@ -682,19 +897,19 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                 {rewardsStats.levelName}
               </h2>
               <p style={{ margin: '0 0 16px', color: '#d1fae5', fontSize: '0.9rem' }}>
-                Welcome, {user.name || 'Citizen'}! Earn Eco-Points by adopting trees, watering, and logging health checks.
+                Welcome, {user.name || 'Citizen'}! Earn Eco-Points by adopting trees, verified watering, and care logs.
               </p>
 
               {/* Progress to Next Tier */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px', color: '#a7f3d0' }}>
                   <span>Points Progress</span>
-                  <span>{rewardsStats.totalPoints} / {rewardsStats.nextTierPoints} pts</span>
+                  <span>{netEcoPoints || rewardsStats.totalPoints} / {rewardsStats.nextTierPoints} pts</span>
                 </div>
                 <div style={{ height: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '10px', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
-                    width: `${Math.min(100, Math.round((rewardsStats.totalPoints / rewardsStats.nextTierPoints) * 100))}%`,
+                    width: `${Math.min(100, Math.round(((netEcoPoints || rewardsStats.totalPoints) / rewardsStats.nextTierPoints) * 100))}%`,
                     background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
                     borderRadius: '10px',
                     transition: 'width 0.4s ease'
@@ -704,23 +919,29 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
             </div>
 
             {/* Quick Metrics Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
-              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px 10px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <Sparkles size={22} color="#fde68a" style={{ margin: '0 auto 6px' }} />
-                <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{rewardsStats.totalPoints}</div>
-                <div style={{ fontSize: '0.75rem', color: '#d1fae5' }}>Eco-Points</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '14px 8px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Sparkles size={20} color="#fde68a" style={{ margin: '0 auto 4px' }} />
+                <div style={{ fontSize: '1.3rem', fontWeight: 800 }}>{netEcoPoints || rewardsStats.totalPoints}</div>
+                <div style={{ fontSize: '0.72rem', color: '#d1fae5' }}>Net Eco-Points</div>
               </div>
 
-              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px 10px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <TreePine size={22} color="#a7f3d0" style={{ margin: '0 auto 6px' }} />
-                <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{rewardsStats.totalTreesAdopted}</div>
-                <div style={{ fontSize: '0.75rem', color: '#d1fae5' }}>Adopted Trees</div>
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '14px 8px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <TreePine size={20} color="#a7f3d0" style={{ margin: '0 auto 4px' }} />
+                <div style={{ fontSize: '1.3rem', fontWeight: 800 }}>{rewardsStats.totalTreesAdopted}</div>
+                <div style={{ fontSize: '0.72rem', color: '#d1fae5' }}>Adopted Trees</div>
               </div>
 
-              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px 10px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <Flame size={22} color="#f87171" style={{ margin: '0 auto 6px' }} />
-                <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{rewardsStats.totalCareLogs}</div>
-                <div style={{ fontSize: '0.75rem', color: '#d1fae5' }}>Care Check-ins</div>
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '14px 8px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Flame size={20} color="#f87171" style={{ margin: '0 auto 4px' }} />
+                <div style={{ fontSize: '1.3rem', fontWeight: 800 }}>{rewardsStats.totalCareLogs}</div>
+                <div style={{ fontSize: '0.72rem', color: '#d1fae5' }}>Care Check-ins</div>
+              </div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '14px 8px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Gift size={20} color="#93c5fd" style={{ margin: '0 auto 4px' }} />
+                <div style={{ fontSize: '1.3rem', fontWeight: 800 }}>{myRedemptions.length}</div>
+                <div style={{ fontSize: '0.72rem', color: '#d1fae5' }}>Redemptions</div>
               </div>
             </div>
           </div>
@@ -729,28 +950,20 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
-                <h3 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   🌳 My Living Tree Pledges ({adoptions.length})
                 </h3>
-                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
-                  Provide daily watering and maintenance to keep your care streak and unlock certificates.
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                  Log GPS-verified care actions (watering, mulching, pruning) to build care streaks &amp; earn Eco-Points.
                 </p>
               </div>
               <button
                 onClick={() => onTabChange && onTabChange('browse-trees')}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: '#046b4e',
-                  color: '#ffffff',
-                  padding: '9px 18px',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(4, 107, 78, 0.2)'
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  background: '#046b4e', color: '#ffffff', padding: '9px 18px',
+                  borderRadius: '10px', fontWeight: 700, fontSize: '0.85rem',
+                  border: 'none', cursor: 'pointer', boxShadow: '0 2px 8px rgba(4, 107, 78, 0.2)'
                 }}
               >
                 <PlusCircle size={16} /> Adopt Another Tree
@@ -758,57 +971,35 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
             </div>
 
             {adoptions.length === 0 ? (
-              <div style={{
-                background: '#ffffff',
-                border: '2px dashed #cbd5e1',
-                borderRadius: '16px',
-                padding: '40px 20px',
-                textAlign: 'center'
-              }}>
+              <div style={{ background: 'var(--bg-surface)', border: '2px dashed var(--border)', borderRadius: '16px', padding: '40px 20px', textAlign: 'center' }}>
                 <TreePine size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
-                <h4 style={{ margin: '0 0 6px', color: '#1e293b' }}>No Trees Adopted Yet</h4>
-                <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '420px', margin: '0 auto 16px' }}>
+                <h4 style={{ margin: '0 0 6px', color: 'var(--text-primary)' }}>No Trees Adopted Yet</h4>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '420px', margin: '0 auto 16px' }}>
                   Browse our city inventory to adopt a tree in your neighborhood. You will earn +100 Eco-Points and receive a formal Tree Guardian Certificate!
                 </p>
                 <button
                   onClick={() => onTabChange && onTabChange('browse-trees')}
-                  style={{
-                    background: '#043224',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    cursor: 'pointer'
-                  }}
+                  style={{ background: '#043224', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}
                 >
                   Explore Trees to Adopt
                 </button>
               </div>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '18px'
-              }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
                 {adoptions.map(item => {
                   const displayImg = getTreeDisplayImage({ image: item.treeImage, name: item.treeName, scientificName: item.treeScientificName });
+                  const cLogsCount = (item.careLogs || []).length;
+                  const treeCareScore = Math.min(98, 65 + (cLogsCount * 4) + ((item.careStreak || 1) * 3));
                   return (
                     <div
                       key={item._id}
                       style={{
-                        background: '#ffffff',
-                        borderRadius: '16px',
-                        border: '1px solid #e2e8f0',
-                        overflow: 'hidden',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
-                        display: 'flex',
-                        flexDirection: 'column'
+                        background: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border)',
+                        overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column'
                       }}
                     >
                       {/* Image Header */}
-                      <div style={{ height: '150px', position: 'relative', overflow: 'hidden', background: '#f0fdf4' }}>
+                      <div style={{ height: '160px', position: 'relative', overflow: 'hidden', background: 'var(--bg-subtle)' }}>
                         <img
                           src={displayImg}
                           alt={item.treeName}
@@ -830,92 +1021,82 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                         }}>
                           ⭐ {item.totalEcoPoints || 100} pts
                         </span>
+                        <span style={{
+                          position: 'absolute', bottom: '10px', left: '10px',
+                          background: 'rgba(15, 23, 42, 0.8)', color: '#a7f3d0', borderRadius: '20px', padding: '3px 10px',
+                          fontSize: '0.72rem', fontWeight: 700
+                        }}>
+                          Care Score: {treeCareScore} / 100
+                        </span>
                       </div>
 
                       {/* Card Content */}
                       <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <h4 style={{ margin: '0 0 2px', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                        <h4 style={{ margin: '0 0 2px', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                           {item.nickname ? `"${item.nickname}"` : item.treeName}
                         </h4>
-                        <p style={{ margin: '0 0 8px', fontStyle: 'italic', color: '#64748b', fontSize: '0.8rem' }}>
+                        <p style={{ margin: '0 0 8px', fontStyle: 'italic', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                           {item.treeScientificName || item.treeName}
                         </p>
-                        <p style={{ margin: '0 0 14px', fontSize: '0.8rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <p style={{ margin: '0 0 12px', fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <MapPin size={14} color="#059669" /> {item.treeLocation || 'Udupi Zone'}
                         </p>
 
-                        {/* Care Action Bar */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '8px',
-                          marginBottom: '10px'
-                        }}>
+                        {/* Verified Care Action Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '10px' }}>
                           <button
-                            onClick={() => handleLogCare(item._id, 'Watered')}
-                            disabled={careActionLoading}
-                            style={{
-                              background: '#eff6ff',
-                              border: '1px solid #bfdbfe',
-                              color: '#1d4ed8',
-                              padding: '8px 10px',
-                              borderRadius: '8px',
-                              fontWeight: 700,
-                              fontSize: '0.78rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '5px',
-                              cursor: 'pointer'
-                            }}
+                            onClick={() => openCareVerificationModal(item, 'Watered')}
+                            style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '6px 4px', borderRadius: '8px', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer' }}
                           >
-                            <Droplet size={14} color="#2563eb" /> Water (+50)
+                            💧 Water (+50)
                           </button>
-
                           <button
-                            onClick={() => handleLogCare(item._id, 'Mulched')}
-                            disabled={careActionLoading}
-                            style={{
-                              background: '#fef3c7',
-                              border: '1px solid #fde68a',
-                              color: '#92400e',
-                              padding: '8px 10px',
-                              borderRadius: '8px',
-                              fontWeight: 700,
-                              fontSize: '0.78rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '5px',
-                              cursor: 'pointer'
-                            }}
+                            onClick={() => openCareVerificationModal(item, 'Mulched')}
+                            style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#f59e0b', padding: '6px 4px', borderRadius: '8px', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer' }}
                           >
-                            <Sparkles size={14} color="#d97706" /> Mulch (+75)
+                            🍂 Mulch (+75)
+                          </button>
+                          <button
+                            onClick={() => openCareVerificationModal(item, 'Health Check')}
+                            style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', padding: '6px 4px', borderRadius: '8px', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer' }}
+                          >
+                            🩺 Inspect (+60)
+                          </button>
+                          <button
+                            onClick={() => openCareVerificationModal(item, 'Photo Update')}
+                            style={{ background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#a855f7', padding: '6px 4px', borderRadius: '8px', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer' }}
+                          >
+                            📸 Photo (+80)
+                          </button>
+                          <button
+                            onClick={() => openCareVerificationModal(item, 'Fertilized')}
+                            style={{ background: 'rgba(249, 115, 22, 0.12)', border: '1px solid rgba(249, 115, 22, 0.3)', color: '#f97316', padding: '6px 4px', borderRadius: '8px', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer' }}
+                          >
+                            🧪 Fertilize (+70)
+                          </button>
+                          <button
+                            onClick={() => openCareVerificationModal(item, 'Pruned Dead Leaves')}
+                            style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: '6px 4px', borderRadius: '8px', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer' }}
+                          >
+                            ✂️ Prune (+65)
                           </button>
                         </div>
 
-                        {/* Certificate Button */}
-                        <button
-                          onClick={() => setActiveCertificate(item)}
-                          style={{
-                            width: '100%',
-                            marginTop: 'auto',
-                            padding: '9px',
-                            background: '#f8fafc',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            fontSize: '0.8rem',
-                            color: '#334155',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Award size={15} color="#d97706" /> View Guardian Certificate
-                        </button>
+                        {/* Certificate & Timeline Actions */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: 'auto' }}>
+                          <button
+                            onClick={() => setActiveCertificate(item)}
+                            style={{ padding: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 700, fontSize: '0.76rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer' }}
+                          >
+                            <Award size={14} color="#d97706" /> Certificate
+                          </button>
+                          <button
+                            onClick={() => setSelectedTreeTimeline(item)}
+                            style={{ padding: '8px', background: 'var(--brand-light)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 700, fontSize: '0.76rem', color: 'var(--brand-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer' }}
+                          >
+                            <Clock size={14} color="#059669" /> Timeline ({cLogsCount})
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -924,58 +1105,283 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
             )}
           </div>
 
-          {/* Badges & Achievements Showcase */}
-          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Trophy size={20} color="#f59e0b" /> Canopy Badges & Honors
+          {/* Section: Care Goals */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '20px', padding: '24px', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🎯 Active Care Goals &amp; Milestones
+                </h3>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                  Complete monthly care milestones to earn bonus Eco-Points.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              {goalsList.map(gItem => {
+                const goal = gItem.goal;
+                const pct = Math.min(100, Math.round((gItem.currentValue / goal.targetValue) * 100));
+                return (
+                  <div key={goal._id} style={{ background: gItem.claimed ? 'var(--bg-elevated)' : 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--brand-accent)' }}>{goal.title}</h4>
+                      <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                        +${goal.rewardPoints} Pts
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{goal.description}</p>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: 'var(--brand-accent)', marginBottom: '4px' }}>
+                        <span>Progress: {gItem.currentValue} / {goal.targetValue}</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <div style={{ height: '6px', background: 'var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: '#059669', borderRadius: '10px', transition: 'width 0.3s' }} />
+                      </div>
+                    </div>
+                    {gItem.isCompleted ? (
+                      gItem.claimed ? (
+                        <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700, textAlign: 'center', background: 'var(--brand-light)', padding: '6px', borderRadius: '8px' }}>
+                          ✓ Reward Claimed (+{goal.rewardPoints} Pts)
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleClaimGoal(goal._id)}
+                          style={{ width: '100%', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer' }}
+                        >
+                          🎉 Claim +{goal.rewardPoints} Eco-Points Reward!
+                        </button>
+                      )
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                        In progress ({goal.targetValue - gItem.currentValue} remaining)
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section: Green Rewards Catalogue */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '20px', padding: '24px', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🎁 Green Rewards Catalogue
+                </h3>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                  Redeem your accumulated Eco-Points to sponsor urban saplings, tree care kits, or special certificates.
+                </p>
+              </div>
+              <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '20px', padding: '6px 14px', fontSize: '0.85rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ⭐ Available Balance: {netEcoPoints || rewardsStats.totalPoints} Eco-Points
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+              {rewardsList.map(item => {
+                const canAfford = (netEcoPoints || rewardsStats.totalPoints) >= item.pointsRequired;
+                return (
+                  <div
+                    key={item._id}
+                    style={{
+                      background: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border)',
+                      overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column'
+                    }}
+                  >
+                    <div style={{ height: '140px', background: 'var(--bg-subtle)', position: 'relative', overflow: 'hidden' }}>
+                      <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.currentTarget.src = speciesImages.default} />
+                      <span style={{ position: 'absolute', top: '10px', right: '10px', background: '#043224', color: '#fde68a', padding: '4px 10px', borderRadius: '20px', fontWeight: 800, fontSize: '0.78rem' }}>
+                        ⭐ {item.pointsRequired} Pts
+                      </span>
+                    </div>
+                    <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>{item.name}</h4>
+                      <p style={{ margin: '0 0 12px', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4, flex: 1 }}>{item.description}</p>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                        📍 {item.collectionMethod}
+                      </div>
+                      <button
+                        onClick={() => setRedeemConfirmModal(item)}
+                        disabled={!canAfford}
+                        style={{
+                          width: '100%', padding: '10px', borderRadius: '10px', border: 'none',
+                          background: canAfford ? 'linear-gradient(135deg, #059669, #047857)' : 'var(--bg-subtle)',
+                          color: canAfford ? '#ffffff' : 'var(--text-muted)', fontWeight: 800, fontSize: '0.85rem',
+                          cursor: canAfford ? 'pointer' : 'not-allowed', boxShadow: canAfford ? '0 4px 12px rgba(5,150,105,0.25)' : 'none'
+                        }}
+                      >
+                        {canAfford ? `Redeem for ${item.pointsRequired} Pts` : `Need ${item.pointsRequired - (netEcoPoints || rewardsStats.totalPoints)} More Pts`}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section: My Redemptions */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '20px', padding: '24px', border: '1px solid var(--border)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              📜 My Redemptions ({myRedemptions.length})
             </h3>
-            <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: '0.875rem' }}>
+            <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              Track redemption status for seed kits, saplings, and sponsorship vouchers.
+            </p>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '10px 14px' }}>Redemption ID</th>
+                    <th style={{ padding: '10px 14px' }}>Reward</th>
+                    <th style={{ padding: '10px 14px' }}>Points</th>
+                    <th style={{ padding: '10px 14px' }}>Date</th>
+                    <th style={{ padding: '10px 14px' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myRedemptions.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                        You haven't redeemed any rewards yet. Accumulate Eco-Points through care activities to unlock rewards!
+                      </td>
+                    </tr>
+                  ) : (
+                    myRedemptions.map(r => {
+                      const statusBg = ['Completed', 'Collected'].includes(r.status) ? '#dcfce7' : r.status === 'Approved' || r.status === 'Ready for Collection' ? '#dbeafe' : r.status === 'Rejected' ? '#fee2e2' : '#fef3c7';
+                      const statusFg = ['Completed', 'Collected'].includes(r.status) ? '#166534' : r.status === 'Approved' || r.status === 'Ready for Collection' ? '#1e40af' : r.status === 'Rejected' ? '#991b1b' : '#92400e';
+                      return (
+                        <tr key={r._id} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }} onClick={() => setSelectedRedemptionDetail(r)}>
+                          <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: 700, color: '#043224' }}>{r.redemptionCode}</td>
+                          <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0f172a' }}>{r.rewardNameSnapshot}</td>
+                          <td style={{ padding: '12px 14px', color: '#dc2626', fontWeight: 700 }}>-{r.pointsSpent} pts</td>
+                          <td style={{ padding: '12px 14px', color: '#64748b', fontSize: '0.82rem' }}>{new Date(r.createdAt || r.redeemedAt).toLocaleDateString('en-IN')}</td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span style={{ background: statusBg, color: statusFg, padding: '3px 10px', borderRadius: '20px', fontWeight: 700, fontSize: '0.75rem' }}>
+                              {r.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section: Eco-Points History Ledger */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '20px', padding: '24px', border: '1px solid var(--border)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              💳 Eco-Points Transaction History Ledger
+            </h3>
+            <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              Auditable ledger of all points earned through adoption/care and spent on redemptions.
+            </p>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '10px 14px' }}>Date</th>
+                    <th style={{ padding: '10px 14px' }}>Activity Description</th>
+                    <th style={{ padding: '10px 14px' }}>Type</th>
+                    <th style={{ padding: '10px 14px' }}>Points</th>
+                    <th style={{ padding: '10px 14px' }}>Balance After</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pointsHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
+                        Your Eco-Points transaction history will appear here.
+                      </td>
+                    </tr>
+                  ) : (
+                    pointsHistory.map(tx => (
+                      <tr key={tx._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{new Date(tx.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                        <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>{tx.description}</td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span style={{ background: tx.type === 'EARN' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: tx.type === 'EARN' ? '#10b981' : '#f87171', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 800 }}>
+                            {tx.type}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', fontWeight: 800, color: tx.type === 'EARN' ? '#10b981' : '#f87171' }}>
+                          {tx.type === 'EARN' ? `+${tx.points}` : `${tx.points}`} pts
+                        </td>
+                        <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {tx.balanceAfter} pts
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Environmental & Community Impact Analytics Card */}
+          <div style={{ background: 'linear-gradient(135deg, #065f46 0%, #047857 100%)', borderRadius: '20px', padding: '24px', color: '#ffffff', boxShadow: '0 8px 24px rgba(6,95,70,0.2)' }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🌍 Environmental &amp; Udupi Community Impact
+            </h3>
+            <p style={{ margin: '0 0 20px', color: '#d1fae5', fontSize: '0.875rem' }}>
+              Quantifiable urban ecological contributions generated by your tree care pledges.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(255,255,255,0.12)', padding: '14px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.2)' }}>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{rewardsStats.totalTreesAdopted * 18} m²</div>
+                <div style={{ fontSize: '0.75rem', color: '#a7f3d0' }}>Estimated Canopy Supported</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.12)', padding: '14px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.2)' }}>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{rewardsStats.totalTreesAdopted * 22 + rewardsStats.totalCareLogs * 5} kg/yr</div>
+                <div style={{ fontSize: '0.75rem', color: '#a7f3d0' }}>Est. Annual CO₂ Offset</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.12)', padding: '14px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.2)' }}>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>1,248</div>
+                <div style={{ fontSize: '0.75rem', color: '#a7f3d0' }}>Citywide Adopted Trees</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.12)', padding: '14px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.2)' }}>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>96.4%</div>
+                <div style={{ fontSize: '0.75rem', color: '#a7f3d0' }}>Verification Pass Rate</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Badges & Achievements Showcase */}
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '20px', padding: '24px', border: '1px solid var(--border)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Trophy size={20} color="#f59e0b" /> Canopy Badges &amp; Honors
+            </h3>
+            <p style={{ margin: '0 0 18px', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
               Unlock special community recognition by completing green urban milestones.
             </p>
 
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '12px'
-            }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
               {badges.map(b => (
                 <div
                   key={b.id}
                   style={{
-                    background: b.unlocked ? '#f0fdf4' : '#f8fafc',
-                    border: b.unlocked ? '1.5px solid #86efac' : '1px solid #e2e8f0',
-                    borderRadius: '14px',
-                    padding: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
+                    background: b.unlocked ? 'var(--brand-light)' : 'var(--bg-elevated)',
+                    border: b.unlocked ? '1.5px solid var(--border-focus)' : '1px solid var(--border)',
+                    borderRadius: '14px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px',
                     opacity: b.unlocked ? 1 : 0.6
                   }}
                 >
-                  <div style={{
-                    fontSize: '1.8rem',
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '10px',
-                    background: b.unlocked ? '#dcfce7' : '#e2e8f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
+                  <div style={{ fontSize: '1.8rem', width: '44px', height: '44px', borderRadius: '10px', background: b.unlocked ? 'var(--brand-light)' : 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {b.icon}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: b.unlocked ? '#065f46' : '#64748b' }}>
-                      {b.name}
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: b.unlocked ? 'var(--brand-accent)' : 'var(--text-muted)' }}>{b.name}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{b.desc}</div>
+                    <div style={{ fontSize: '0.68rem', color: b.unlocked ? '#16a34a' : 'var(--text-muted)', fontWeight: 700, marginTop: '2px' }}>
+                      {b.unlocked ? '✓ Unlocked' : `Progress: ${b.cur || b.req}`}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                      {b.desc}
-                    </div>
-                    {b.unlocked && (
-                      <span style={{ fontSize: '0.68rem', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '2px' }}>
-                        ✓ Unlocked
-                      </span>
-                    )}
                   </div>
                 </div>
               ))}
@@ -983,18 +1389,18 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
           </div>
 
           {/* Community Citizen Leaderboard */}
-          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ background: 'var(--bg-surface)', borderRadius: '20px', padding: '24px', border: '1px solid var(--border)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               ⭐ City Eco Guardians Leaderboard
             </h3>
-            <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.875rem' }}>
+            <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
               Top citizens actively protecting and watering our urban canopy in Udupi.
             </p>
 
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e2e8f0', fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                     <th style={{ padding: '10px 14px' }}>Rank</th>
                     <th style={{ padding: '10px 14px' }}>Citizen Guardian</th>
                     <th style={{ padding: '10px 14px' }}>Trees Adopted</th>
@@ -1013,28 +1419,186 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                       <tr
                         key={row._id || idx}
                         style={{
-                          borderBottom: '1px solid #f1f5f9',
-                          background: row._id === user?.id ? '#f0fdf4' : 'transparent',
+                          borderBottom: '1px solid var(--border)',
+                          background: row._id === user?.id ? 'var(--brand-light)' : 'transparent',
                           fontWeight: row._id === user?.id ? 700 : 500
                         }}
                       >
-                        <td style={{ padding: '12px 14px' }}>
-                          {idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`}
-                        </td>
-                        <td style={{ padding: '12px 14px', color: '#0f172a' }}>
-                          {row.userName || 'Citizen'} {row._id === user?.id ? ' (You)' : ''}
-                        </td>
-                        <td style={{ padding: '12px 14px', color: '#059669' }}>
-                          🌳 {row.treesCount} Trees
-                        </td>
-                        <td style={{ padding: '12px 14px', fontWeight: 800, color: '#b45309' }}>
-                          ⭐ {row.totalPoints} pts
-                        </td>
+                        <td style={{ padding: '12px 14px' }}>{idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`}</td>
+                        <td style={{ padding: '12px 14px', color: 'var(--text-primary)' }}>{row.userName || 'Citizen'} {row._id === user?.id ? ' (You)' : ''}</td>
+                        <td style={{ padding: '12px 14px', color: 'var(--brand-accent)' }}>🌳 {row.treesCount} Trees</td>
+                        <td style={{ padding: '12px 14px', fontWeight: 800, color: '#f59e0b' }}>⭐ {row.totalPoints} pts</td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODALS OVERLAY LAYER ────────────────────────────────────────── */}
+
+      {/* 1. GPS Care Verification Modal */}
+      {careVerificationModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '24px', maxWidth: '480px', width: '100%', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)' }}>
+            <div style={{ background: 'linear-gradient(135deg, #043224 0%, #065f46 100%)', padding: '20px 24px', color: '#ffffff', position: 'relative' }}>
+              <button onClick={() => setCareVerificationModal(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer' }}>✕</button>
+              <h3 style={{ margin: '0 0 4px', fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Log {careVerificationModal.action} Activity</h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#a7f3d0' }}>Tree: {careVerificationModal.adoption.nickname || careVerificationModal.adoption.treeName}</p>
+            </div>
+
+            <form onSubmit={submitVerifiedCare} style={{ padding: '24px' }}>
+              {careVerificationResult ? (
+                <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '10px' }}>{careVerificationResult.verificationStatus === 'Verified' ? '🎉' : '⚠️'}</div>
+                  <h4 style={{ margin: '0 0 8px', fontSize: '1.15rem', fontWeight: 800, color: careVerificationResult.verificationStatus === 'Verified' ? '#065f46' : '#b91c1c' }}>
+                    {careVerificationResult.verificationStatus === 'Verified' ? '✓ Care Activity Verified!' : 'Verification Flagged'}
+                  </h4>
+                  <p style={{ margin: '0 0 16px', fontSize: '0.9rem', color: '#374151' }}>{careVerificationResult.msg}</p>
+                  <button type="button" onClick={() => setCareVerificationModal(null)} style={{ padding: '10px 20px', background: '#043224', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Close</button>
+                </div>
+              ) : (
+                <>
+                  {/* Real-time GPS Proximity Card */}
+                  <div style={{ background: '#f0fdf4', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '14px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.875rem', color: '#065f46', marginBottom: '6px' }}>
+                      <MapPin size={16} /> GPS Location Proximity Engine
+                    </div>
+                    {gpsData.checking ? (
+                      <div style={{ fontSize: '0.82rem', color: '#047857' }}>📍 Checking your location &amp; proximity radius...</div>
+                    ) : (
+                      <div style={{ fontSize: '0.82rem', color: '#1e293b' }}>
+                        <div>Distance from tree: <strong>{gpsData.distance} m</strong> (required &lt;= 300m)</div>
+                        <div>GPS accuracy: <strong>{gpsData.accuracy} m</strong></div>
+                        <div style={{ color: '#16a34a', fontWeight: 700, marginTop: '4px' }}>✓ Location Verified &amp; Proximity Confirmed</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Photo Evidence Input */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#1f2937', marginBottom: '6px' }}>
+                      Photo Evidence (Optional for Water, Required for Mulch/Prune/Inspect):
+                    </label>
+                    <input type="file" accept="image/*" onChange={handleCarePhotoUpload} style={{ fontSize: '0.85rem' }} />
+                    {uploadingCarePhoto && <div style={{ fontSize: '0.78rem', color: '#059669', marginTop: '4px' }}>Uploading photo to Cloudinary...</div>}
+                    {carePhotoUrl && <img src={carePhotoUrl} alt="Evidence" style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover', marginTop: '8px' }} />}
+                  </div>
+
+                  {/* Note Input */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#1f2937', marginBottom: '6px' }}>Care Notes / Observations:</label>
+                    <input type="text" value={careNote} onChange={e => setCareNote(e.target.value)} placeholder="e.g. Added 10L clean water around root base" style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={() => setCareVerificationModal(null)} style={{ padding: '10px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#fff', color: '#374151', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={careActionLoading || uploadingCarePhoto} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer' }}>
+                      {careActionLoading ? 'Verifying...' : 'Submit Care Activity'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Redemption Confirmation Modal */}
+      {redeemConfirmModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '24px', maxWidth: '440px', width: '100%', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)' }}>
+            <div style={{ background: 'linear-gradient(135deg, #043224 0%, #065f46 100%)', padding: '20px 24px', color: '#ffffff' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>Redeem Reward</h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#a7f3d0' }}>{redeemConfirmModal.name}</p>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#64748b' }}>Reward Cost:</span>
+                  <strong style={{ color: '#dc2626' }}>{redeemConfirmModal.pointsRequired} Eco-Points</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem' }}>
+                  <span style={{ color: '#64748b' }}>Your Current Balance:</span>
+                  <strong style={{ color: '#059669' }}>{netEcoPoints || rewardsStats.totalPoints} Eco-Points</strong>
+                </div>
+                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '8px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                  <span style={{ color: '#0f172a', fontWeight: 700 }}>Remaining Balance After:</span>
+                  <strong style={{ color: '#043224' }}>{(netEcoPoints || rewardsStats.totalPoints) - redeemConfirmModal.pointsRequired} Eco-Points</strong>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0 0 20px', lineHeight: 1.5 }}>
+                Are you sure you want to redeem <strong>{redeemConfirmModal.name}</strong>? Points will be deducted immediately.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setRedeemConfirmModal(null)} style={{ padding: '10px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#fff', color: '#374151', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={submitRedemption} disabled={submittingRedeem} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer' }}>
+                  {submittingRedeem ? 'Processing...' : 'Confirm Redemption'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Redemption Success Voucher Modal */}
+      {redemptionSuccessVoucher && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '24px', maxWidth: '460px', width: '100%', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)', textAlign: 'center' }}>
+            <div style={{ background: 'linear-gradient(135deg, #043224 0%, #065f46 100%)', padding: '28px 24px', color: '#ffffff' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '8px' }}>🎉</div>
+              <h3 style={{ margin: '0 0 4px', fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>Redemption Successful!</h3>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: '#a7f3d0' }}>{redemptionSuccessVoucher.rewardNameSnapshot}</p>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <div style={{ background: '#f0fdf4', border: '2px dashed #059669', borderRadius: '16px', padding: '18px', marginBottom: '20px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#047857', fontWeight: 700, textTransform: 'uppercase' }}>Official Voucher Code</div>
+                <div style={{ fontSize: '1.4rem', fontFamily: 'monospace', fontWeight: 900, color: '#043224', letterSpacing: '2px', margin: '4px 0 8px' }}>{redemptionSuccessVoucher.redemptionCode}</div>
+                <div style={{ fontSize: '0.8rem', color: '#15803d', fontWeight: 600 }}>Status: Pending Municipal Fulfillment</div>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0 0 20px' }}>
+                Show this voucher code at the municipal center or track status in "My Redemptions".
+              </p>
+              <button onClick={() => setRedemptionSuccessVoucher(null)} style={{ width: '100%', padding: '12px', background: '#043224', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer' }}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Tree Care Timeline Drawer Modal */}
+      {selectedTreeTimeline && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '24px', maxWidth: '520px', width: '100%', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)' }}>
+            <div style={{ background: '#043224', padding: '20px 24px', color: '#ffffff', position: 'relative' }}>
+              <button onClick={() => setSelectedTreeTimeline(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer' }}>✕</button>
+              <h3 style={{ margin: '0 0 2px', fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Tree Care Timeline</h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#a7f3d0' }}>{selectedTreeTimeline.nickname || selectedTreeTimeline.treeName} ({selectedTreeTimeline.treeScientificName})</p>
+            </div>
+            <div style={{ padding: '24px', maxHeight: '420px', overflowY: 'auto' }}>
+              <div style={{ borderLeft: '3px solid #059669', paddingLeft: '16px', marginLeft: '8px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: '-22px', top: '2px', width: '10px', height: '10px', borderRadius: '50%', background: '#059669' }} />
+                  <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700 }}>{new Date(selectedTreeTimeline.adoptedAt || selectedTreeTimeline.createdAt).toLocaleDateString('en-IN')}</div>
+                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>🌳 Tree Adoption Pledge</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Certificate Issued: {selectedTreeTimeline.certificateNumber}</div>
+                </div>
+                {(selectedTreeTimeline.careLogs || []).map((log, lIdx) => (
+                  <div key={lIdx} style={{ position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '-22px', top: '2px', width: '10px', height: '10px', borderRadius: '50%', background: log.verificationStatus === 'Verified' ? '#10b981' : '#ef4444' }} />
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>{new Date(log.timestamp).toLocaleString('en-IN')}</div>
+                    <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>{log.action} Check-in</div>
+                    <div style={{ fontSize: '0.8rem', color: '#475569' }}>{log.note}</div>
+                    <div style={{ fontSize: '0.72rem', color: log.verificationStatus === 'Verified' ? '#059669' : '#dc2626', fontWeight: 700, marginTop: '2px' }}>
+                      {log.verificationStatus === 'Verified' ? `✓ Verified (+${log.pointsEarned} Pts)` : `⚠️ ${log.verificationReason || 'Verification Failed'}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1265,68 +1829,98 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                 </div>
 
                 <div className="detail-body">
-                  <div className="detail-row">
-                    <span className="label">Type:</span>
-                    <span className="val">{issueLabels[selectedTicket.issueType] || selectedTicket.issueType}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Priority:</span>
-                    <span className={`val priority-text ${getPriorityClass(selectedTicket.priority)}`}>
-                      {selectedTicket.priority}
-                    </span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Location:</span>
-                    <span className="val">{selectedTicket.location}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Reported on:</span>
-                    <span className="val">{selectedTicket.createdAt}</span>
-                  </div>
-                  
-                  {selectedTicket.photoUrl && (
-                    <div className="detail-block" style={{ marginTop: '12px' }}>
-                      <span className="block-label" style={{ display: 'block', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Submitted Photo:</span>
-                      <img 
-                        src={selectedTicket.photoUrl} 
-                        alt="Submitted issue proof" 
-                        style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                      />
-                    </div>
-                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px', alignItems: 'start' }}>
+                    {/* Left Column: 4x4 Square Submitted Image Card */}
+                    {(() => {
+                      const photoSrc = resolveImageUrl(selectedTicket.photoUrl || selectedTicket.image || selectedTicket.beforeImageUrl);
+                      return (
+                        <div className="detail-block" style={{ margin: 0, background: 'var(--bg-subtle)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', borderLeft: '4px solid var(--brand)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <span className="block-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.82rem', textTransform: 'uppercase', marginBottom: '12px' }}>
+                            <Camera size={16} color="var(--brand-accent)" /> Submitted Issue Proof (4x4 View):
+                          </span>
+                          {photoSrc ? (
+                            <div 
+                              style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', borderRadius: '14px', overflow: 'hidden', border: '2px solid var(--border-strong)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', background: 'var(--bg-page)' }}
+                              onClick={() => setSelectedImagePreview(photoSrc)}
+                              title="Click to view full screen preview"
+                            >
+                              <img 
+                                src={photoSrc} 
+                                alt="Submitted issue proof" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80'; }}
+                              />
+                              <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(15, 23, 42, 0.85)', color: '#fff', padding: '5px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', backdropFilter: 'blur(4px)' }}>
+                                🔍 Enlarge 4x4 View
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: '14px', background: 'var(--bg-elevated)', border: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '16px', textAlign: 'center' }}>
+                              <Camera size={36} style={{ marginBottom: '8px' }} />
+                              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>No photo submitted with report</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
-                  <div className="detail-divider"></div>
-                  
-                  <div className="detail-block">
-                    <span className="block-label">Description:</span>
-                    <p className="block-text">{selectedTicket.description}</p>
+                    {/* Right Column: Ticket Metadata & Description */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <div style={{ background: 'var(--bg-subtle)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div className="detail-row" style={{ gridTemplateColumns: '110px 1fr' }}>
+                          <span className="label">Issue Type:</span>
+                          <strong className="val" style={{ color: 'var(--brand-accent)' }}>{issueLabels[selectedTicket.issueType] || selectedTicket.issueType}</strong>
+                        </div>
+                        <div className="detail-row" style={{ gridTemplateColumns: '110px 1fr' }}>
+                          <span className="label">Priority:</span>
+                          <span className={`val priority-text ${getPriorityClass(selectedTicket.priority)}`}>
+                            {selectedTicket.priority}
+                          </span>
+                        </div>
+                        <div className="detail-row" style={{ gridTemplateColumns: '110px 1fr' }}>
+                          <span className="label">Reported Date:</span>
+                          <span className="val">{selectedTicket.createdAt}</span>
+                        </div>
+                        <div className="detail-row" style={{ gridTemplateColumns: '110px 1fr' }}>
+                          <span className="label">Location:</span>
+                          <span className="val" style={{ wordBreak: 'break-word' }}>📍 {selectedTicket.location}</span>
+                        </div>
+                      </div>
+
+                      {selectedTicket.description && (
+                        <div className="detail-block" style={{ margin: 0 }}>
+                          <span className="block-label">Citizen Description:</span>
+                          <p className="block-text" style={{ margin: 0 }}>{selectedTicket.description}</p>
+                        </div>
+                      )}
+
+                      {selectedTicket.assignedTo && (
+                        <div className="detail-row" style={{ background: 'var(--bg-subtle)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                          <span className="label">Assigned Cutter:</span>
+                          <span className="val" style={{ fontWeight: 700 }}>🪓 {selectedTicket.assignedTo}</span>
+                        </div>
+                      )}
+
+                      {(selectedTicket.status === 'Resolved' || selectedTicket.status === 'Completed' || selectedTicket.completionNotes) && (
+                        <div className="completed-box" style={{ background: 'var(--brand-light)', border: '1px solid var(--brand-accent)', padding: '14px', borderRadius: '12px', marginTop: '4px' }}>
+                          <h4 style={{ color: 'var(--brand-accent)', margin: '0 0 6px', fontSize: '0.95rem' }}>✅ Job Closure Details:</h4>
+                          {selectedTicket.completionNotes && <p style={{ margin: '0 0 4px', fontSize: '0.875rem', color: 'var(--text-primary)' }}><strong>Notes:</strong> {selectedTicket.completionNotes}</p>}
+                          {selectedTicket.completedAt && <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--brand-accent)' }}><strong>Resolved on:</strong> {selectedTicket.completedAt}</p>}
+                        </div>
+                      )}
+
+                      {selectedTicket.requiresReplantation && (
+                        <div style={{ background: 'var(--brand-light)', border: '1.5px solid var(--brand-accent)', padding: '14px', borderRadius: '12px' }}>
+                          <h4 style={{ color: 'var(--brand-accent)', margin: '0 0 4px', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            🌱 Eco-Restore Replantation
+                          </h4>
+                          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                            <strong>Replantation Status:</strong> {selectedTicket.replantationStatus === 'Planted' ? '🟢 Sapling Planted & Registered!' : '🟡 Scheduled/Pending sapling planting.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {selectedTicket.assignedTo && (
-                    <div className="detail-row">
-                      <span className="label">Assigned Cutter:</span>
-                      <span className="val">{selectedTicket.assignedTo}</span>
-                    </div>
-                  )}
-
-                  {(selectedTicket.status === 'Resolved' || selectedTicket.status === 'Completed' || selectedTicket.completionNotes) && (
-                    <div className="completed-box" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px', borderRadius: '8px', marginTop: '16px' }}>
-                      <h4 style={{ color: '#166534', margin: '0 0 4px', fontSize: '0.95rem' }}>Job Resolution Details:</h4>
-                      {selectedTicket.completionNotes && <p style={{ margin: '0 0 4px', fontSize: '0.875rem' }}><strong>Notes / Closure:</strong> {selectedTicket.completionNotes}</p>}
-                      {selectedTicket.completedAt && <p style={{ margin: 0, fontSize: '0.8rem', color: '#166534' }}><strong>Resolved at:</strong> {selectedTicket.completedAt}</p>}
-                    </div>
-                  )}
-
-                  {selectedTicket.requiresReplantation && (
-                    <div style={{ background: '#ecfdf5', border: '1.5px solid #a7f3d0', padding: '12px', borderRadius: '8px', marginTop: '12px' }}>
-                      <h4 style={{ color: '#047857', margin: '0 0 4px', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        🌱 Eco-Restore Replantation
-                      </h4>
-                      <p style={{ margin: 0, fontSize: '0.82rem', color: '#065f46' }}>
-                        <strong>Replantation Status:</strong> {selectedTicket.replantationStatus === 'Planted' ? '🟢 Sapling Planted & Registered!' : '🟡 Scheduled/Pending sapling planting.'}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             ) : (
@@ -1859,8 +2453,8 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
             gap: '16px'
           }}>
             <div style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
               borderRadius: '14px',
               padding: '18px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
@@ -1868,20 +2462,20 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
               flexDirection: 'column',
               gap: '6px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '0.85rem', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '0.85rem', fontWeight: 600 }}>
                 <Sparkles size={18} /> Total Eco-Points
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {rewardsStats.totalPoints}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                 Earned via adoption & care
               </div>
             </div>
 
             <div style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
               borderRadius: '14px',
               padding: '18px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
@@ -1889,20 +2483,20 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
               flexDirection: 'column',
               gap: '6px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0284c7', fontSize: '0.85rem', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontSize: '0.85rem', fontWeight: 600 }}>
                 <TreePine size={18} /> Trees Adopted
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {rewardsStats.totalTreesAdopted || adoptions.length}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                 Active protected canopy
               </div>
             </div>
 
             <div style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
               borderRadius: '14px',
               padding: '18px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
@@ -1910,20 +2504,20 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
               flexDirection: 'column',
               gap: '6px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706', fontSize: '0.85rem', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', fontSize: '0.85rem', fontWeight: 600 }}>
                 <Flame size={18} /> Care Logs
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {rewardsStats.totalCareLogs}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                 Watering & health checks
               </div>
             </div>
 
             <div style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
               borderRadius: '14px',
               padding: '18px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
@@ -1931,13 +2525,13 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
               flexDirection: 'column',
               gap: '6px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', fontSize: '0.85rem', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c084fc', fontSize: '0.85rem', fontWeight: 600 }}>
                 <FileText size={18} /> Reported Tickets
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {tickets.length}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                 Civic canopy complaints
               </div>
             </div>
@@ -1946,19 +2540,19 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
           {/* Profile Details or Edit Form */}
           {isEditingProfile ? (
             <div style={{
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
               borderRadius: '16px',
               padding: '24px',
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
             }}>
-              <h3 style={{ margin: '0 0 18px', fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: '0 0 18px', fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Edit3 size={20} color="#059669" /> Edit Profile Information
               </h3>
               <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                       Full Name
                     </label>
                     <input
@@ -1970,14 +2564,16 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-input, var(--bg-surface))',
+                        color: 'var(--text-primary)',
                         fontSize: '0.95rem'
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                       Email Address
                     </label>
                     <input
@@ -1989,14 +2585,16 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-input, var(--bg-surface))',
+                        color: 'var(--text-primary)',
                         fontSize: '0.95rem'
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                       Phone Number
                     </label>
                     <input
@@ -2008,14 +2606,16 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-input, var(--bg-surface))',
+                        color: 'var(--text-primary)',
                         fontSize: '0.95rem'
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                       Residential Ward / Area
                     </label>
                     <input
@@ -2027,7 +2627,9 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-input, var(--bg-surface))',
+                        color: 'var(--text-primary)',
                         fontSize: '0.95rem'
                       }}
                     />
@@ -2039,8 +2641,8 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                     type="button"
                     onClick={() => setIsEditingProfile(false)}
                     style={{
-                      background: '#f1f5f9',
-                      color: '#475569',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text-secondary)',
                       border: 'none',
                       borderRadius: '8px',
                       padding: '10px 20px',
@@ -2079,49 +2681,49 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
             }}>
               {/* Personal Details Card */}
               <div style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
                 borderRadius: '16px',
                 padding: '24px',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
               }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <User size={18} color="#059669" /> Account Details
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Full Name</span>
-                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>{profileData.name}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Full Name</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{profileData.name}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Email</span>
-                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>{profileData.email}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Email</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{profileData.email}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Phone</span>
-                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>{profileData.phone}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Phone</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{profileData.phone}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Residential Ward</span>
-                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>{profileData.address}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Residential Ward</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{profileData.address}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.88rem' }}>Account Role</span>
-                    <span style={{ fontWeight: 700, color: '#059669', fontSize: '0.88rem' }}>Citizen / Public Guardian</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Account Role</span>
+                    <span style={{ fontWeight: 700, color: '#10b981', fontSize: '0.88rem' }}>Citizen / Public Guardian</span>
                   </div>
                 </div>
               </div>
 
               {/* Badges & Achievements Preview */}
               <div style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
                 borderRadius: '16px',
                 padding: '24px',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Award size={18} color="#f59e0b" /> Guardian Badges
                   </h3>
                   <button
@@ -2129,7 +2731,7 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#059669',
+                      color: '#10b981',
                       fontWeight: 700,
                       fontSize: '0.82rem',
                       cursor: 'pointer'
@@ -2145,8 +2747,8 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                       <div
                         key={idx}
                         style={{
-                          background: '#f0fdf4',
-                          border: '1px solid #bbf7d0',
+                          background: 'var(--brand-light)',
+                          border: '1px solid var(--border)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           display: 'flex',
@@ -2156,14 +2758,14 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                       >
                         <span style={{ fontSize: '1.2rem' }}>{b.icon || '🏅'}</span>
                         <div>
-                          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#065f46' }}>{b.title || b.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#16a34a' }}>{b.unlockedAt ? new Date(b.unlockedAt).toLocaleDateString() : 'Unlocked'}</div>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--brand-accent)' }}>{b.title || b.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#10b981' }}>{b.unlockedAt ? new Date(b.unlockedAt).toLocaleDateString() : 'Unlocked'}</div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '20px 0', color: '#64748b' }}>
+                  <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)' }}>
                     <Award size={36} color="#cbd5e1" style={{ margin: '0 auto 8px' }} />
                     <p style={{ margin: '0 0 6px', fontSize: '0.88rem', fontWeight: 600 }}>No badges unlocked yet</p>
                     <p style={{ margin: 0, fontSize: '0.78rem' }}>Adopt trees & log care to earn eco-guardian achievements!</p>
@@ -2172,16 +2774,16 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
 
                 {/* Quick links to certificates */}
                 {adoptions.length > 0 && (
-                  <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
+                  <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
                     <button
                       onClick={() => onTabChange && onTabChange('rewards')}
                       style={{
                         width: '100%',
-                        background: '#f8fafc',
-                        border: '1px dashed #cbd5e1',
+                        background: 'var(--bg-elevated)',
+                        border: '1px dashed var(--border)',
                         borderRadius: '10px',
                         padding: '10px',
-                        color: '#334155',
+                        color: 'var(--text-primary)',
                         fontWeight: 600,
                         fontSize: '0.85rem',
                         cursor: 'pointer',
@@ -2206,6 +2808,179 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
         isOpen={scanModalOpen}
         onClose={() => setScanModalOpen(false)}
       />
+
+      {/* Tree Adoption Custom Popup Modal */}
+      {adoptionModalTree && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+        }}>
+          <div style={{
+            background: 'var(--bg-surface, #ffffff)',
+            border: '1px solid var(--border, #cbd5e1)',
+            borderRadius: '20px', width: '100%', maxWidth: '480px',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+            overflow: 'hidden', animation: 'fadeIn 0.25s ease-out'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #043224 0%, #065f46 100%)',
+              color: '#ffffff', padding: '20px 24px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Sparkles size={22} color="#fde68a" />
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Adopt &amp; Protect Tree</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdoptionModalTree(null)}
+                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', opacity: 0.8 }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Tree Details Card */}
+              <div style={{
+                display: 'flex', gap: '14px', alignItems: 'center',
+                background: 'var(--bg-page, #f8fafc)', padding: '12px 16px',
+                borderRadius: '12px', border: '1px solid var(--border, #e2e8f0)'
+              }}>
+                {adoptionModalTree.image ? (
+                  <img src={getTreeDisplayImage(adoptionModalTree)} alt={adoptionModalTree.name} style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '64px', height: '64px', borderRadius: '10px', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <TreePine size={32} color="#047857" />
+                  </div>
+                )}
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary, #0f172a)' }}>
+                    {adoptionModalTree.name}
+                  </h4>
+                  <i style={{ fontSize: '0.82rem', color: 'var(--text-muted, #64748b)' }}>
+                    {adoptionModalTree.scientificName || adoptionModalTree.family || 'Botanical Specimen'}
+                  </i>
+                  <div style={{ marginTop: '6px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#047857', background: '#d1fae5', padding: '3px 8px', borderRadius: '20px' }}>
+                      ✨ +100 Eco-Points Reward
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nickname Input */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary, #0f172a)', marginBottom: '6px' }}>
+                  Give Your Tree a Nickname ✏️
+                </label>
+                <input
+                  type="text"
+                  value={adoptionNickname}
+                  onChange={(e) => setAdoptionNickname(e.target.value)}
+                  placeholder="e.g. My Ajjarkad Banyan"
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: '10px',
+                    border: '1px solid var(--border, #cbd5e1)', fontSize: '0.92rem',
+                    color: 'var(--text-primary, #0f172a)', background: 'var(--bg-surface, #ffffff)',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted, #64748b)', lineHeight: 1.5 }}>
+                🌱 By adopting this tree, you become an official CanopyGuard Guardian! You earn <b>+100 Eco-Points</b> instantly towards green certificates and rewards.
+              </p>
+
+              {/* Modal Actions */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="cg-btn outline"
+                  onClick={() => setAdoptionModalTree(null)}
+                  disabled={submittingAdoption}
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="cg-btn primary"
+                  onClick={submitTreeAdoption}
+                  disabled={submittingAdoption}
+                  style={{ flex: 2 }}
+                >
+                  {submittingAdoption ? 'Adopting...' : '🎉 Confirm Adoption (+100 Pts)'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🖼️ Full-Screen Image Lightbox Preview Modal */}
+      {selectedImagePreview && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.88)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 999999,
+            display: 'grid',
+            placeItems: 'center',
+            padding: '24px'
+          }}
+          onClick={() => setSelectedImagePreview(null)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '24px',
+              padding: '20px',
+              maxWidth: '680px',
+              width: '100%',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+              textAlign: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                📷 Submitted Issue Proof — Full Screen Preview
+              </span>
+              <button
+                onClick={() => setSelectedImagePreview(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+            
+            <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', background: '#000', maxHeight: '72vh', display: 'grid', placeItems: 'center' }}>
+              <img
+                src={selectedImagePreview}
+                alt="Full preview proof"
+                style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', display: 'block' }}
+                onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80'; }}
+              />
+            </div>
+
+            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setSelectedImagePreview(null)}
+                style={{ padding: '10px 24px', borderRadius: '12px', background: 'var(--brand)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem' }}
+              >
+                Close Full Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -15,6 +15,24 @@ const careLogSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  location: {
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+    accuracy: { type: Number, default: null },
+  },
+  distanceFromTree: {
+    type: Number,
+    default: null,
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['Pending', 'Verified', 'Rejected'],
+    default: 'Verified',
+  },
+  verificationReason: {
+    type: String,
+    default: '',
+  },
   pointsEarned: {
     type: Number,
     default: 50,
@@ -101,12 +119,11 @@ const adoptionSchema = new mongoose.Schema(
 );
 
 // Auto-generate certificate number before saving if not present
-adoptionSchema.pre('save', function (next) {
+adoptionSchema.pre('save', function () {
   if (!this.certificateNumber) {
     const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
     this.certificateNumber = `CG-GUARD-${Date.now().toString().slice(-6)}-${randomHex}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('Adoption', adoptionSchema);

@@ -18,7 +18,9 @@ import {
   ShieldCheck,
   TreePine,
   User,
-  X
+  X,
+  Camera,
+  Maximize2
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -101,6 +103,22 @@ export default function TrackReportPage() {
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
   const [copied, setCopied] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+
+  const resolveImageUrl = (rawUrl) => {
+    if (!rawUrl || typeof rawUrl !== 'string') return null;
+    const url = rawUrl.trim();
+    if (url.startsWith('data:image')) return url;
+    let cleanUrl = url;
+    const secondHttp = cleanUrl.indexOf('http', 5);
+    if (secondHttp !== -1) {
+      cleanUrl = cleanUrl.substring(secondHttp);
+    }
+    if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      return cleanUrl;
+    }
+    return `${API_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+  };
 
   const fetchComplaint = (lookupId) => {
     const targetId = lookupId || id || searchId;
@@ -681,6 +699,40 @@ export default function TrackReportPage() {
                 </div>
               </div>
 
+              {/* 📷 4x4 SUBMITTED ISSUE PROOF IMAGE VIEW */}
+              {(() => {
+                const photoSrc = resolveImageUrl(complaint.photoUrl || complaint.image || complaint.beforeImageUrl);
+                return (
+                  <div style={{ marginTop: '16px', background: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Camera size={16} color="#10b981" /> Submitted Issue Proof (4x4 View)
+                    </div>
+                    {photoSrc ? (
+                      <div 
+                        style={{ position: 'relative', width: '240px', height: '240px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #cbd5e1', boxShadow: '0 6px 16px rgba(0,0,0,0.1)', cursor: 'pointer', background: '#0f172a' }}
+                        onClick={() => setPreviewImage(photoSrc)}
+                        title="Click to view full screen"
+                      >
+                        <img 
+                          src={photoSrc} 
+                          alt="Submitted issue proof" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80'; }}
+                        />
+                        <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(15, 23, 42, 0.85)', color: '#ffffff', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Maximize2 size={12} /> 4x4 View
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ width: '240px', height: '120px', borderRadius: '16px', background: '#ffffff', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', padding: '12px', textAlign: 'center' }}>
+                        <Camera size={28} style={{ marginBottom: '6px' }} />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b' }}>No image submitted with report</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {complaint.description && (
                 <div style={{ marginTop: '16px', padding: '14px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Citizen Description</div>
@@ -732,6 +784,39 @@ export default function TrackReportPage() {
               >
                 + Submit New Report
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Image Preview Lightbox Modal */}
+        {previewImage && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(6px)',
+              zIndex: 99999,
+              display: 'grid',
+              placeItems: 'center',
+              padding: '20px'
+            }}
+            onClick={() => setPreviewImage(null)}
+          >
+            <div style={{ background: '#ffffff', borderRadius: '20px', padding: '16px', maxWidth: '600px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>📷 Submitted Report Image (Full View)</strong>
+                <button onClick={() => setPreviewImage(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                  <X size={20} />
+                </button>
+              </div>
+              <img src={previewImage} alt="Full view" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '12px' }} />
+              <button
+                onClick={() => setPreviewImage(null)}
+                style={{ marginTop: '14px', padding: '8px 20px', borderRadius: '10px', background: '#043224', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Close Preview
+              </button>
             </div>
           </div>
         )}

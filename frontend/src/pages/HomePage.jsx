@@ -86,7 +86,7 @@ const speciesImages = {
   ashoka: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
   gulmohar: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
   honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-  coconut: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+  coconut: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=600&q=80',
   default: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'
 };
 
@@ -234,6 +234,24 @@ function FeedbackSection() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    try {
+      const savedUser = JSON.parse(localStorage.getItem('currentUser'));
+      if (savedUser) {
+        if (savedUser.name) setName(savedUser.name);
+        if (savedUser.email) setEmail(savedUser.email);
+        if (savedUser.role) {
+          const roleLower = String(savedUser.role).toLowerCase();
+          if (roleLower.includes('cutter')) setCategory('Tree Cutter');
+          else if (roleLower.includes('official') || roleLower.includes('admin') || roleLower.includes('corporation')) setCategory('Official');
+          else setCategory('Citizen');
+        }
+      }
+    } catch (e) {
+      console.error('Error auto-filling user profile for feedback', e);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedRating) { setError('Please select a rating first.'); return; }
@@ -280,9 +298,6 @@ function FeedbackSection() {
             onClick={() => {
               setSubmitted(false);
               setSelectedRating(null);
-              setCategory('Citizen');
-              setName('');
-              setEmail('');
               setMessage('');
             }}
           >
@@ -492,22 +507,28 @@ function CommunityFeedback() {
   if (loading) return null;
   if (feedbacks.length === 0) return null;
 
+  // Repeat feedback array 4x for seamless infinite marquee loop
+  const baseItems = feedbacks.slice(0, 10);
+  const marqueeItems = [...baseItems, ...baseItems, ...baseItems, ...baseItems];
+
   return (
-    <section style={{ padding: '80px 5%', background: 'transparent', position: 'relative', overflow: 'hidden' }}>
+    <section style={{ padding: '80px 0', background: 'transparent', position: 'relative', overflow: 'hidden' }}>
       <h2 style={{ textAlign: 'center', marginBottom: 8, fontSize: 32, fontWeight: 900, color: '#ffffff', textShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>What Our Community Says 🌱</h2>
       <p style={{ textAlign: 'center', color: '#b7e4c7', marginBottom: 36, fontSize: '1rem' }}>Real voices from our urban forestry community</p>
+      
       <div className="cg-marquee-container">
-        <div className="cg-marquee-content">
-          {[...feedbacks.slice(0, 6), ...feedbacks.slice(0, 6)].map((fb, idx) => {
+        <div className="cg-marquee-track">
+          {marqueeItems.map((fb, idx) => {
             const face = feedbackFaces.find(f => f.rating === fb.rating) || feedbackFaces[2];
             return (
-              <div key={`${fb._id}-${idx}`} style={{
-                width: 290,
+              <div key={`${fb._id || 'fb'}-${idx}`} style={{
+                width: 320,
+                minWidth: 320,
                 flexShrink: 0,
                 background: 'rgba(18, 48, 36, 0.85)',
                 backdropFilter: 'blur(16px)',
                 WebkitBackdropFilter: 'blur(16px)',
-                padding: '22px 24px',
+                padding: '24px 26px',
                 borderRadius: 22,
                 boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
                 border: '1px solid rgba(82, 183, 136, 0.25)',
@@ -537,7 +558,7 @@ function CommunityFeedback() {
                     {fb.category}
                   </span>
                 </div>
-                <p style={{ color: '#e2e8f0', lineHeight: 1.6, marginBottom: 14, fontSize: '0.92rem', fontWeight: 500 }}>"{fb.message}"</p>
+                <p style={{ color: '#e2e8f0', lineHeight: 1.6, marginBottom: 14, fontSize: '0.95rem', fontWeight: 500 }}>"{fb.message}"</p>
                 <div style={{ fontSize: 12, color: '#74c69d', fontWeight: 700 }}>
                   — {fb.name || 'Anonymous'}
                 </div>
@@ -797,7 +818,6 @@ const HomePage = () => {
         <nav className="desktop-nav-links">
           <Link className="active" to="/home">Home</Link>
           <Link to="/citizen-dashboard">Dashboard</Link>
-          <Link to="/dashboard">Map</Link>
           <Link to="/report-issue">Complaints</Link>
           <Link to="/tree-encyclopedia">Tree Encyclopedia</Link>
           <Link to="/view-tree">Tree Database</Link>
@@ -961,17 +981,6 @@ const HomePage = () => {
               }}
             >
               🌱 Home
-            </Link>
-
-            <Link
-              to="/dashboard"
-              onClick={() => setMenuOpen(false)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '10px',
-                color: darkMode ? '#cbd5e1' : '#334155', fontWeight: 600, fontSize: '0.95rem'
-              }}
-            >
-              🗺️ Canopy Map
             </Link>
 
             <Link

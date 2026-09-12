@@ -230,6 +230,14 @@ export default function TreeGuardianCertificateModal({ adoption, onClose }) {
                 <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#043224', fontSize: '0.85rem' }}>
                   {adoption.certificateNumber || `CG-GUARDIAN-${adoption._id?.slice(-8).toUpperCase()}`}
                 </div>
+                <a
+                  href={`/verify-certificate/${adoption.certificateNumber || 'CG-GUARD-SAMPLE'}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, textDecoration: 'underline', display: 'inline-block', marginTop: '2px' }}
+                >
+                  ✓ Verify Credential Registry
+                </a>
               </div>
 
               <div style={{ textAlign: 'center' }}>

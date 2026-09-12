@@ -31,7 +31,7 @@ const defaultUdupiTrees = [
     benefits: ['Substantial canopy cooling effect', 'Nesting habitat for over 15 bird species', 'Prevents soil erosion and maintains local humidity', 'Traditional and cultural significance'],
     diseases: ['Leaf spot', 'Root rot (minor)'],
     pests: ['Banyan thrips', 'Scale insects'],
-    image: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80',
     lat: 13.3412,
     lng: 74.7415,
     addedAt: '12 Jan 2026'
@@ -62,7 +62,7 @@ const defaultUdupiTrees = [
     benefits: ['Improves local air quality and purifies atmosphere', 'Natural insect repellent', 'Shedding leaves enrich soil organic matter', 'Shade reduces ambient building temperature'],
     diseases: ['Powdery mildew (seasonal)'],
     pests: ['Tea mosquito bug'],
-    image: 'https://images.unsplash.com/photo-1600718374662-0483d2b9da44?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=800&q=80',
     lat: 13.3538,
     lng: 74.7865,
     addedAt: '15 Feb 2026'
@@ -186,7 +186,7 @@ const defaultUdupiTrees = [
     benefits: ['Leaves and fruit harvested for therapeutic infusions', 'Spiritual significance for patient mindfulness', 'High oxygen discharge during daytime'],
     diseases: ['Citrus canker (susceptible)'],
     pests: ['Lemon butterfly caterpillar'],
-    image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=800&q=80',
     lat: 13.3445,
     lng: 74.7485,
     addedAt: '03 Mar 2026'
@@ -310,7 +310,7 @@ const defaultUdupiTrees = [
     benefits: ['Outstanding aesthetic and landscape appeal', 'Supports native butterflies and honeybees', 'Soil nitrogen fixation', 'Traditional therapeutic value'],
     diseases: ['Twig blight'],
     pests: ['Caterpillars', 'Aphids'],
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1598512752271-33f913a5af13?auto=format&fit=crop&w=800&q=80',
     lat: 13.3405,
     lng: 74.7412,
     addedAt: '14 Aug 2026'
@@ -465,7 +465,7 @@ const defaultUdupiTrees = [
     benefits: ['Medicinal bark and leaf extracts', '24-hour oxygen release cycle', 'Wide cooling shade cover', 'Spiritual comfort for patients'],
     diseases: ['Leaf spot'],
     pests: ['Peepal leaf worm'],
-    image: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80',
     lat: 13.3440,
     lng: 74.7495,
     addedAt: '14 Aug 2026'
@@ -558,7 +558,7 @@ const defaultUdupiTrees = [
     benefits: ['Spectacular landscape decoration', 'Provides wide canopy shade', 'Nitrogen-fixing capabilities'],
     diseases: ['Root rot'],
     pests: ['Stem borer'],
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=800&q=80',
     lat: 13.3421,
     lng: 74.7438,
     addedAt: '14 Aug 2026'
@@ -620,7 +620,7 @@ const defaultUdupiTrees = [
     benefits: ['Leaves used for traditional therapeutic recipes', 'High diurnal oxygen release rate', 'Calming spiritual presence'],
     diseases: ['Powdery mildew'],
     pests: ['Citrus butterfly larvae'],
-    image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=800&q=80',
     lat: 13.3530,
     lng: 74.7858,
     addedAt: '14 Aug 2026'
@@ -744,7 +744,7 @@ const defaultUdupiTrees = [
     benefits: ['Visual therapeutic value for recovery', 'Supports beneficial insect populations', 'Soil enrichment properties'],
     diseases: ['Mild leaf spot'],
     pests: ['Leaf caterpillars'],
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1598512752271-33f913a5af13?auto=format&fit=crop&w=800&q=80',
     lat: 13.3448,
     lng: 74.7480,
     addedAt: '14 Aug 2026'

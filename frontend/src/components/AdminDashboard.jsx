@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCog, Users, Settings, Database, Activity, CheckCircle, Trash2, RefreshCw, Download, Trees, Plus, Check, X, Pencil } from 'lucide-react';
+import { UserCog, Users, Settings, Database, Activity, CheckCircle, Trash2, RefreshCw, Download, Trees, Plus, Check, X, Pencil, Gift, Tag, Clock, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -20,6 +20,130 @@ const AdminDashboard = ({ user, activeTab }) => {
   const [selectedImagePreview, setSelectedImagePreview] = useState(null);
   const [editingProposal, setEditingProposal] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', scientificName: '', locationText: '', lat: '', lng: '', notes: '' });
+
+  // Rewards & Redemptions Admin State
+  const [adminRedemptions, setAdminRedemptions] = useState([]);
+  const [redemptionMetrics, setRedemptionMetrics] = useState({ totalRedemptions: 0, pendingCount: 0, approvedCount: 0, completedCount: 0, totalPointsRedeemed: 0 });
+  const [loadingRedemptions, setLoadingRedemptions] = useState(false);
+  const [catalogueRewards, setCatalogueRewards] = useState([]);
+  const [showAddRewardModal, setShowAddRewardModal] = useState(false);
+  const [newRewardForm, setNewRewardForm] = useState({
+    name: '',
+    description: '',
+    pointsRequired: 500,
+    rewardType: 'Native Sapling',
+    imageUrl: '',
+    quantityAvailable: 50,
+    redemptionInstructions: '',
+    collectionMethod: 'Sector Nursery Pickup'
+  });
+
+  const fetchAdminRedemptions = async () => {
+    setLoadingRedemptions(true);
+    try {
+      const res = await fetch(`${API_URL}/api/rewards/admin/redemptions`);
+      const data = await res.json();
+      if (res.ok) {
+        setAdminRedemptions(data.redemptions || []);
+        if (data.metrics) setRedemptionMetrics(data.metrics);
+      }
+    } catch (err) {
+      console.error('Error fetching admin redemptions:', err);
+    } finally {
+      setLoadingRedemptions(false);
+    }
+  };
+
+  const fetchCatalogueRewards = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/rewards`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setCatalogueRewards(data);
+      }
+    } catch (err) {
+      console.error('Error fetching rewards catalogue:', err);
+    }
+  };
+
+  const handleUpdateRedemptionStatus = async (id, newStatus, currentRewardName) => {
+    let notes = '';
+    if (newStatus === 'Rejected') {
+      notes = prompt(`Enter rejection reason for '${currentRewardName}':`, 'Criteria unfulfilled or out of stock');
+      if (notes === null) return;
+    } else if (newStatus === 'Ready for Collection') {
+      notes = prompt('Add collection details or notes for citizen (optional):', 'Available at Udupi Sector Nursery Desk #2');
+      if (notes === null) notes = '';
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/rewards/admin/redemptions/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, notes })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(`Redemption status updated to '${newStatus}'!`);
+        fetchAdminRedemptions();
+      } else {
+        showMsg(data.msg || 'Failed to update redemption status.');
+      }
+    } catch {
+      showMsg('Server error updating redemption status.');
+    }
+  };
+
+  const handleCreateReward = async (e) => {
+    e.preventDefault();
+    if (!newRewardForm.name || !newRewardForm.description || !newRewardForm.pointsRequired) {
+      alert('Please fill out all required fields.');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/rewards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRewardForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(`New reward item '${newRewardForm.name}' added to catalogue!`);
+        setShowAddRewardModal(false);
+        setNewRewardForm({
+          name: '',
+          description: '',
+          pointsRequired: 500,
+          rewardType: 'Native Sapling',
+          imageUrl: '',
+          quantityAvailable: 50,
+          redemptionInstructions: '',
+          collectionMethod: 'Sector Nursery Pickup'
+        });
+        fetchCatalogueRewards();
+      } else {
+        alert(data.msg || 'Error adding reward');
+      }
+    } catch {
+      alert('Server error creating reward.');
+    }
+  };
+
+  const handleToggleRewardActive = async (rewardId, currentIsActive) => {
+    try {
+      const res = await fetch(`${API_URL}/api/rewards/${rewardId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !currentIsActive })
+      });
+      if (res.ok) {
+        showMsg(`Reward catalogue availability updated.`);
+        fetchCatalogueRewards();
+      }
+    } catch {
+      showMsg('Server error toggling reward availability.');
+    }
+  };
 
 
   // Fetch users from real MongoDB
@@ -86,6 +210,8 @@ const AdminDashboard = ({ user, activeTab }) => {
     fetchAttendance();
     fetchTreesCount();
     fetchProposals();
+    fetchAdminRedemptions();
+    fetchCatalogueRewards();
   }, []);
 
   const handleApproveProposal = async (proposalId, treeName) => {
@@ -537,6 +663,180 @@ const AdminDashboard = ({ user, activeTab }) => {
             )}
           </div>
 
+          {/* 🎁 ECO REWARDS & CITIZEN REDEMPTIONS MANAGEMENT PANEL */}
+          <div
+            className="data-table-container"
+            style={{
+              marginTop: '1.5rem',
+              marginBottom: '1.5rem',
+              background: '#ffffff',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.06)',
+              border: '1px solid #e2e8f0',
+              color: '#0f172a'
+            }}
+          >
+            <div className="table-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Gift size={22} color="#16a34a" /> 🎁 Eco Rewards &amp; Citizen Redemptions ({redemptionMetrics.pendingCount} Pending)
+                </h2>
+                <p className="table-subtitle" style={{ margin: 0, color: '#64748b', fontSize: '0.88rem' }}>
+                  Manage citizen reward redemptions, update voucher status, and configure the municipal rewards catalogue.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => setShowAddRewardModal(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700 }}
+                >
+                  <Plus size={16} /> Add Catalogue Reward
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => { fetchAdminRedemptions(); fetchCatalogueRewards(); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}
+                >
+                  <RefreshCw size={14} /> Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Metrics Mini-Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Total Redemptions</span>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>{redemptionMetrics.totalRedemptions}</div>
+              </div>
+              <div style={{ background: '#fffbeb', padding: '12px 16px', borderRadius: '10px', border: '1px solid #fef3c7' }}>
+                <span style={{ fontSize: '0.78rem', color: '#b45309', fontWeight: 600 }}>Pending Approval</span>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#d97706' }}>{redemptionMetrics.pendingCount}</div>
+              </div>
+              <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '10px', border: '1px solid #dcfce7' }}>
+                <span style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: 600 }}>Approved / Ready</span>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#16a34a' }}>{redemptionMetrics.approvedCount}</div>
+              </div>
+              <div style={{ background: '#eff6ff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #dbeafe' }}>
+                <span style={{ fontSize: '0.78rem', color: '#1d4ed8', fontWeight: 600 }}>Total Points Redeemed</span>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2563eb' }}>{redemptionMetrics.totalPointsRedeemed.toLocaleString()} Pts</div>
+              </div>
+            </div>
+
+            {/* Redemptions Table */}
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', marginBottom: '12px' }}>Citizen Redemption Requests</h3>
+            {loadingRedemptions ? (
+              <p style={{ textAlign: 'center', color: '#64748b', padding: '20px' }}>Loading redemption records…</p>
+            ) : adminRedemptions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', background: '#f8fafc', borderRadius: '12px' }}>
+                <Gift size={32} color="#94a3b8" style={{ marginBottom: '6px' }} />
+                <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>No redemption requests recorded yet.</p>
+              </div>
+            ) : (
+              <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                <table className="custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', color: '#475569' }}>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', borderRadius: '8px 0 0 8px' }}>Voucher Code</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Citizen</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Reward Requested</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Pts Spent</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Collection Method</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Date</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Status</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', borderRadius: '0 8px 8px 0' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminRedemptions.map(r => {
+                      const isPending = r.status === 'Pending';
+                      const isApproved = r.status === 'Approved';
+                      const isReady = r.status === 'Ready for Collection' || r.status === 'Plantation Scheduled';
+                      const isCompleted = r.status === 'Completed' || r.status === 'Collected';
+                      const isRejected = r.status === 'Rejected';
+
+                      let badgeBg = '#fffbeb'; let badgeColor = '#b45309';
+                      if (isApproved || isReady) { badgeBg = '#f0fdf4'; badgeColor = '#16a34a'; }
+                      else if (isCompleted) { badgeBg = '#eff6ff'; badgeColor = '#2563eb'; }
+                      else if (isRejected) { badgeBg = '#fef2f2'; badgeColor = '#dc2626'; }
+
+                      return (
+                        <tr key={r._id} style={{ background: '#ffffff', borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '10px 12px' }}>
+                            <code style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', fontSize: '0.82rem', color: '#0f172a', fontWeight: 700 }}>
+                              {r.redemptionCode}
+                            </code>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <strong style={{ fontSize: '0.88rem', color: '#0f172a', display: 'block' }}>{r.userName || 'Citizen'}</strong>
+                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{r.userEmail}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <strong style={{ fontSize: '0.88rem', color: '#16a34a', display: 'block' }}>{r.rewardNameSnapshot}</strong>
+                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Type: {r.rewardTypeSnapshot}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#dc2626' }}>-{r.pointsSpent} Pts</span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ fontSize: '0.82rem', color: '#334155' }}>📍 {r.collectionMethodSnapshot || 'Nursery Pickup'}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                              {new Date(r.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ background: badgeBg, color: badgeColor, padding: '4px 8px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, display: 'inline-block' }}>
+                              {r.status}
+                            </span>
+                            {r.notes && <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', fontStyle: 'italic' }}>Note: {r.notes}</div>}
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                              {isPending && (
+                                <button
+                                  onClick={() => handleUpdateRedemptionStatus(r._id, 'Approved', r.rewardNameSnapshot)}
+                                  style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  Approve
+                                </button>
+                              )}
+                              {(isPending || isApproved) && (
+                                <button
+                                  onClick={() => handleUpdateRedemptionStatus(r._id, 'Ready for Collection', r.rewardNameSnapshot)}
+                                  style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  Mark Ready
+                                </button>
+                              )}
+                              {!isCompleted && !isRejected && (
+                                <button
+                                  onClick={() => handleUpdateRedemptionStatus(r._id, 'Completed', r.rewardNameSnapshot)}
+                                  style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  Complete
+                                </button>
+                              )}
+                              {!isCompleted && !isRejected && (
+                                <button
+                                  onClick={() => handleUpdateRedemptionStatus(r._id, 'Rejected', r.rewardNameSnapshot)}
+                                  style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  Reject
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* Edit / Verify Tree Proposal Details Modal */}
           {editingProposal && (
             <div
@@ -672,7 +972,150 @@ const AdminDashboard = ({ user, activeTab }) => {
               </div>
             </div>
           )}
-          {/* Photo Modal Preview */}
+          {/* Add New Catalogue Reward Modal */}
+          {showAddRewardModal && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(15, 23, 42, 0.75)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 99999,
+                display: 'grid',
+                placeItems: 'center',
+                padding: '20px'
+              }}
+            >
+              <div style={{ background: '#ffffff', padding: '24px', borderRadius: '16px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Gift size={20} color="#16a34a" /> Add New Reward to Catalogue
+                  </h3>
+                  <button onClick={() => setShowAddRewardModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateReward} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Reward Title / Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Solar Garden Light"
+                      value={newRewardForm.name}
+                      onChange={(e) => setNewRewardForm({ ...newRewardForm, name: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Description *</label>
+                    <textarea
+                      required
+                      rows="2"
+                      placeholder="Brief details about what the citizen receives upon redeeming points..."
+                      value={newRewardForm.description}
+                      onChange={(e) => setNewRewardForm({ ...newRewardForm, description: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Eco-Points Required *</label>
+                      <input
+                        type="number"
+                        min="10"
+                        required
+                        value={newRewardForm.pointsRequired}
+                        onChange={(e) => setNewRewardForm({ ...newRewardForm, pointsRequired: e.target.value })}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Category / Type</label>
+                      <select
+                        value={newRewardForm.rewardType}
+                        onChange={(e) => setNewRewardForm({ ...newRewardForm, rewardType: e.target.value })}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#fff' }}
+                      >
+                        <option value="Native Sapling">Native Sapling</option>
+                        <option value="Native Seed Kit">Native Seed Kit</option>
+                        <option value="Tree Care Kit">Tree Care Kit</option>
+                        <option value="Special Certificate">Special Certificate</option>
+                        <option value="Tree Plantation Sponsorship">Tree Plantation Sponsorship</option>
+                        <option value="Adopt Another Tree">Adopt Another Tree</option>
+                        <option value="Community Plantation">Community Plantation</option>
+                        <option value="Digital / Voucher">Digital / Voucher</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Stock Available (Optional)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 50"
+                        value={newRewardForm.quantityAvailable || ''}
+                        onChange={(e) => setNewRewardForm({ ...newRewardForm, quantityAvailable: e.target.value })}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Collection Method</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Nursery Pickup"
+                        value={newRewardForm.collectionMethod}
+                        onChange={(e) => setNewRewardForm({ ...newRewardForm, collectionMethod: e.target.value })}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Image URL (Optional)</label>
+                    <input
+                      type="url"
+                      placeholder="https://..."
+                      value={newRewardForm.imageUrl}
+                      onChange={(e) => setNewRewardForm({ ...newRewardForm, imageUrl: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Redemption Instructions</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Present code at Municipal Forestry Office"
+                      value={newRewardForm.redemptionInstructions}
+                      onChange={(e) => setNewRewardForm({ ...newRewardForm, redemptionInstructions: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '14px', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddRewardModal(false)}
+                      style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}
+                    >
+                      Save Reward Item
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* Photo Modal Preview */}
           {selectedImagePreview && (

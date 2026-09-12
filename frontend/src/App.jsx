@@ -20,6 +20,7 @@ import {
   TreeInventoryPage,
   ViewTreePage,
   CitizenDashboardPage,
+  VerifyCertificatePage,
 } from './pages/CanopyPages';
 
 function App() {
@@ -86,6 +87,8 @@ function App() {
         <Route path="/tree-encyclopedia" element={<TreeEncyclopediaPage />} />
         <Route path="/track" element={<TrackReportPage />} />
         <Route path="/track/:id" element={<TrackReportPage />} />
+        <Route path="/verify-certificate" element={<VerifyCertificatePage />} />
+        <Route path="/verify-certificate/:certificateNumber" element={<VerifyCertificatePage />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

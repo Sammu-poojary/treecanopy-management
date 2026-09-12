@@ -82,6 +82,12 @@ router.post('/', upload.single('image'), async (req, res) => {
     );
 
     if (isCloudinaryConfigured) {
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+      });
+
       // Upload to Cloudinary
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: 'treecanopy_uploads',
