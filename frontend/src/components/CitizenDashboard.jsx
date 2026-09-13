@@ -1905,7 +1905,51 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                         <div className="completed-box" style={{ background: 'var(--brand-light)', border: '1px solid var(--brand-accent)', padding: '14px', borderRadius: '12px', marginTop: '4px' }}>
                           <h4 style={{ color: 'var(--brand-accent)', margin: '0 0 6px', fontSize: '0.95rem' }}>✅ Job Closure Details:</h4>
                           {selectedTicket.completionNotes && <p style={{ margin: '0 0 4px', fontSize: '0.875rem', color: 'var(--text-primary)' }}><strong>Notes:</strong> {selectedTicket.completionNotes}</p>}
-                          {selectedTicket.completedAt && <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--brand-accent)' }}><strong>Resolved on:</strong> {selectedTicket.completedAt}</p>}
+                          {selectedTicket.completedAt && <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--brand-accent)' }}><strong>Resolved on:</strong> {selectedTicket.completedAt}</p>}
+                          <button
+                            onClick={() => {
+                              Swal.fire({
+                                title: 'Not Satisfied? Re-Open Ticket',
+                                text: 'Please enter the reason why you wish to re-open this complaint:',
+                                input: 'textarea',
+                                inputPlaceholder: 'e.g. Broken branches still blocking my gate...',
+                                showCancelButton: true,
+                                confirmButtonColor: '#ef4444',
+                                confirmButtonText: '🔄 Re-Open Complaint',
+                                cancelButtonText: 'Cancel',
+                                inputValidator: (val) => !val && 'Please specify a reason!'
+                              }).then(async (res) => {
+                                if (res.isConfirmed && res.value) {
+                                  try {
+                                    await fetch(`${API_URL}/api/complaints/${selectedTicket._id}/status`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: 'In Progress' }),
+                                    });
+                                    Swal.fire('Ticket Re-Opened', 'Your ticket has been re-opened for official re-inspection.', 'warning');
+                                    setTimeout(() => window.location.reload(), 1500);
+                                  } catch (err) {
+                                    Swal.fire('Error', 'Failed to update ticket status', 'error');
+                                  }
+                                }
+                              });
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid rgba(239, 68, 68, 0.4)',
+                              color: '#ef4444',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              fontSize: '0.82rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            🔄 Not Satisfied? Re-Open Complaint
+                          </button>
                         </div>
                       )}
 

@@ -4713,11 +4713,24 @@ html[data-theme="dark"] .report-success-details b {
 .official-detail-body p b    { color: #74c69d !important; font-weight: 700 !important; }
 .official-detail-body p span { color: #ffffff !important; font-weight: 600 !important; text-align: right; }
 
-.official-photo-review { margin: 18px 0 !important; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.official-photo-review div { background: #082018 !important; border: 1px solid rgba(82,183,136,0.25) !important; border-radius: 14px !important; padding: 15px !important; display: flex !important; flex-direction: column !important; gap: 5px !important; align-items: flex-start !important; }
-.official-photo-review div svg  { color: #52b788 !important; }
-.official-photo-review div b    { font-size: 13px !important; color: #ffffff !important; }
-.official-photo-review div span { font-size: 12px !important; color: #b7e4c7 !important; }
+.official-photo-review-v2 {
+  margin: 18px 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.official-photo-card-item {
+  background: #082018 !important;
+  border: 1px solid rgba(82, 183, 136, 0.3) !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  box-sizing: border-box !important;
+}
 
 .official-field,
 .official-task-form label { display: grid; gap: 8px; color: #74c69d; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 18px; }
@@ -5026,12 +5039,12 @@ html[data-theme="dark"] .report-success-details b {
 
 .section-title { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 10px; margin: 0 0 18px; }
 
-.icon-wrapper { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: #dcfce7; color: #166534; }
-.icon-wrapper.disease  { background: var(--danger-bg);  color: var(--danger-text); }
-.icon-wrapper.notes    { background: var(--info-bg);    color: var(--info-text); }
-.icon-wrapper.health   { background: var(--success-bg); color: var(--success-text); }
-.icon-wrapper.benefits { background: #dcfce7; color: #15803d; }
-.icon-wrapper.pests    { background: #ffedd5; color: #c2410c; }
+.icon-wrapper { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.icon-wrapper.disease  { background: rgba(239, 68, 68, 0.15);  color: #f87171; }
+.icon-wrapper.notes    { background: rgba(59, 130, 246, 0.15);  color: #60a5fa; }
+.icon-wrapper.health   { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.icon-wrapper.benefits { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.icon-wrapper.pests    { background: rgba(245, 158, 11, 0.15); color: #facc15; }
 
 .about-text { color: var(--text-secondary); font-size: 0.92rem; line-height: 1.6; margin: 0 0 18px; }
 .characteristics-list { display: flex; flex-direction: column; gap: 14px; border-top: 1px dashed var(--border); padding-top: 18px; }
@@ -5048,16 +5061,17 @@ html[data-theme="dark"] .report-success-details b {
 .card-img-side img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
 .bullet-list { list-style: disc; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; margin: 0; font-size: 0.92rem; font-weight: 600; }
-.bullet-list.disease { color: var(--danger-text); }
-.bullet-list.pests   { color: #9a3412; }
+.bullet-list.disease { color: #f87171; }
+.bullet-list.pests   { color: #fbbf24; }
 
-.disease-card { background: var(--danger-bg); border: 1px solid var(--danger-border); }
-.notes-card   { background: var(--info-bg);   border: 1px solid var(--info-border); }
-.notes-text   { color: var(--info-text); font-size: 0.92rem; line-height: 1.6; margin: 0; }
+.tree-section-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow-sm); margin-bottom: 20px; }
+.disease-card { background: var(--bg-surface); border: 1px solid var(--border); }
+.notes-card   { background: var(--bg-surface); border: 1px solid var(--border); }
+.notes-text   { color: var(--text-primary); font-size: 0.92rem; line-height: 1.6; margin: 0; }
 .tree-title-card { background: transparent; border: none; box-shadow: none; padding: 0; margin-bottom: 24px; }
 
-.green-tree-icon-circle { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: #dcfce7; border: 1px solid #bbf7d0; flex-shrink: 0; }
-.detail-tree-name { font-size: 2.2rem; font-weight: 800; color: var(--brand-deep); margin: 0; }
+.green-tree-icon-circle { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); flex-shrink: 0; }
+.detail-tree-name { font-size: 2.2rem; font-weight: 800; color: var(--text-primary); margin: 0; }
 .detail-sci-name  { font-size: 1.1rem; font-style: italic; color: var(--text-secondary); margin: 4px 0 0; }
 
 .badge-pill.healthy-badge { background: var(--success); color: #fff; padding: 6px 14px; border-radius: 30px; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; margin-left: 16px; box-shadow: 0 4px 10px rgba(16,185,129,0.18); }
@@ -5087,27 +5101,27 @@ html[data-theme="dark"] .report-success-details b {
 .progress-bar-fill.green { background: var(--success); }
 .progress-bar-fill.blue  { background: var(--info); }
 
-.benefits-card { background: #f0fdf4; border: 1px solid #dcfce7; }
+.benefits-card { background: var(--bg-surface); border: 1px solid var(--border); }
 .benefits-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
 @media (min-width: 640px) { .benefits-grid { grid-template-columns: repeat(2, 1fr); } }
 
-.benefit-item { display: flex; align-items: center; gap: 12px; background: var(--bg-surface); padding: 12px 16px; border-radius: 10px; border: 1px solid #dcfce7; }
-.benefit-icon-wrap { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: #dcfce7; flex-shrink: 0; }
-.benefit-text { font-size: 0.875rem; color: #166534; font-weight: 600; line-height: 1.4; }
+.benefit-item { display: flex; align-items: center; gap: 12px; background: var(--bg-elevated); padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); }
+.benefit-icon-wrap { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: #34d399; flex-shrink: 0; }
+.benefit-text { font-size: 0.875rem; color: var(--text-primary); font-weight: 600; line-height: 1.4; }
 
-.pests-card { background: #fff7ed; border: 1px solid #ffedd5; }
+.pests-card { background: var(--bg-surface); border: 1px solid var(--border); }
 .card-img-side.pests { width: 120px; height: 120px; }
-.card-img-side.pests img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; border: 1px solid #ffedd5; }
+.card-img-side.pests img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); }
 
 .detail-actions-row { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-bottom: 36px; }
 
 .btn-detail-action { padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s ease; }
-.btn-detail-action.edit    { background: var(--bg-surface); border: 1px solid #059669; color: #059669; }
-.btn-detail-action.edit:hover    { background: #f0fdf4; box-shadow: 0 4px 10px rgba(5,150,105,0.1); }
-.btn-detail-action.delete  { background: var(--danger-bg); border: 1px solid var(--danger); color: var(--danger); }
-.btn-detail-action.delete:hover  { background: #fee2e2; box-shadow: 0 4px 10px rgba(239,68,68,0.1); }
-.btn-detail-action.details { background: var(--info-bg);   border: 1px solid var(--info);   color: var(--info); }
-.btn-detail-action.details:hover { background: #dbeafe; box-shadow: 0 4px 10px rgba(59,130,246,0.1); }
+.btn-detail-action.edit    { background: rgba(52, 211, 153, 0.15); border: 1px solid rgba(52, 211, 153, 0.3); color: #34d399; }
+.btn-detail-action.edit:hover    { background: rgba(52, 211, 153, 0.25); box-shadow: 0 4px 10px rgba(5,150,105,0.2); }
+.btn-detail-action.delete  { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
+.btn-detail-action.delete:hover  { background: rgba(239, 68, 68, 0.25); box-shadow: 0 4px 10px rgba(239,68,68,0.2); }
+.btn-detail-action.details { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; }
+.btn-detail-action.details:hover { background: rgba(59, 130, 246, 0.25); box-shadow: 0 4px 10px rgba(59,130,246,0.2); }
 
 /* ═══════════════════════════════════════════════════════════════
    CITIZEN DASHBOARD SPECIFIC

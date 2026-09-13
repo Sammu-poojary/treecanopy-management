@@ -16,6 +16,7 @@ const propertyRoutes = require('./routes/properties');
 const adoptionRoutes = require('./routes/adoptions');
 const rewardRoutes = require('./routes/rewards');
 const goalRoutes = require('./routes/goals');
+const chatRoutes = require('./routes/chat');
 
 dotenv.config();
 
@@ -73,6 +74,7 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/adoptions', adoptionRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/goals', goalRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check route
 app.get('/', (req, res) => {

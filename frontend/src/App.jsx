@@ -22,8 +22,10 @@ import {
   TaskPage,
   TreeInventoryPage,
   ViewTreePage,
+  ViewTreeCutterPage,
   CitizenDashboardPage,
   VerifyCertificatePage,
+  CommunicationPage,
 } from './pages/CanopyPages';
 
 function App() {
@@ -83,6 +85,7 @@ function App() {
         <Route path="/admin" element={<AdminConsolePage />} />
         <Route path="/admin/console" element={<AdminConsolePage />} />
         <Route path="/admin/dashboard" element={<AdminOnly><DashboardPage /></AdminOnly>} />
+        <Route path="/admin/communication" element={<AdminOnly><CommunicationPage /></AdminOnly>} />
         <Route path="/admin/scheduler" element={<AdminOnly><SchedulerPage /></AdminOnly>} />
         <Route path="/admin-complaints" element={<AdminOnly><AdminComplaintsPage /></AdminOnly>} />
         <Route path="/admin/complaints" element={<AdminOnly><AdminComplaintsPage /></AdminOnly>} />
@@ -94,28 +97,34 @@ function App() {
         <Route path="/admin/add-property" element={<AdminOnly><AddPropertyPage /></AdminOnly>} />
         <Route path="/admin/property-inventory" element={<AdminOnly><PropertyInventoryPage /></AdminOnly>} />
         <Route path="/admin/purchase-equipment" element={<AdminOnly><PropertyInventoryPage /></AdminOnly>} />
+        <Route path="/admin/view-tree-cutter" element={<AdminOnly><ViewTreeCutterPage /></AdminOnly>} />
 
         {/* ── Official Namespaced Routes ── */}
         <Route path="/official/login" element={<Navigate to="/login?portal=Official" replace />} />
         <Route path="/official-login" element={<Navigate to="/login?portal=Official" replace />} />
         <Route path="/official" element={<OfficialOnly><DashboardPage /></OfficialOnly>} />
         <Route path="/official/dashboard" element={<OfficialOnly><DashboardPage /></OfficialOnly>} />
+        <Route path="/official/communication" element={<OfficialOnly><CommunicationPage /></OfficialOnly>} />
         <Route path="/official/scheduler" element={<OfficialOnly><SchedulerPage /></OfficialOnly>} />
         <Route path="/official/complaints" element={<OfficialOnly><OfficialManagementPage /></OfficialOnly>} />
         <Route path="/official-management" element={<OfficialOnly><OfficialManagementPage /></OfficialOnly>} />
         <Route path="/officials-management" element={<OfficialOnly><OfficialManagementPage /></OfficialOnly>} />
         <Route path="/officials" element={<OfficialOnly><OfficialManagementPage /></OfficialOnly>} />
         <Route path="/official/attendance" element={<OfficialOnly><AttendancePage /></OfficialOnly>} />
+        <Route path="/official/view-tree-cutter" element={<OfficialOnly><ViewTreeCutterPage /></OfficialOnly>} />
         <Route path="/official/tree-inventory" element={<OfficialOnly><TreeInventoryPage /></OfficialOnly>} />
         <Route path="/official/add-tree" element={<OfficialOnly><TreeInventoryPage /></OfficialOnly>} />
         <Route path="/official/view-tree" element={<OfficialOnly><ViewTreePage /></OfficialOnly>} />
         <Route path="/official/tree-encyclopedia" element={<OfficialOnly><TreeEncyclopediaPage /></OfficialOnly>} />
         <Route path="/official/add-property" element={<OfficialOnly><AddPropertyPage /></OfficialOnly>} />
         <Route path="/official/property-inventory" element={<OfficialOnly><PropertyInventoryPage /></OfficialOnly>} />
+        <Route path="/view-tree-cutter" element={<ViewTreeCutterPage />} />
 
         {/* ── Tree Cutter Namespaced Routes ── */}
         <Route path="/treecutter/dashboard" element={<CutterOnly><DashboardPage /></CutterOnly>} />
         <Route path="/cutter/dashboard" element={<CutterOnly><DashboardPage /></CutterOnly>} />
+        <Route path="/treecutter/communication" element={<CutterOnly><CommunicationPage /></CutterOnly>} />
+        <Route path="/cutter/communication" element={<CutterOnly><CommunicationPage /></CutterOnly>} />
         <Route path="/treecutter/task" element={<CutterOnly><TaskPage /></CutterOnly>} />
         <Route path="/cutter/task" element={<CutterOnly><TaskPage /></CutterOnly>} />
         <Route path="/treecutter/attendance" element={<CutterOnly><AttendancePage /></CutterOnly>} />
@@ -132,6 +141,7 @@ function App() {
         {/* ── Standard / Fallback Routes ── */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/citizen-dashboard" element={<CitizenDashboardPage />} />
+        <Route path="/communication" element={<CommunicationPage />} />
         <Route path="/task" element={<CutterOnly><TaskPage /></CutterOnly>} />
         <Route path="/report-issue" element={<ReportIssuePage />} />
         <Route path="/scheduler" element={<OfficialOnly><SchedulerPage /></OfficialOnly>} />

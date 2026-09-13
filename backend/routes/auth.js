@@ -530,6 +530,18 @@ router.patch('/users/:id/status', async (req, res) => {
   }
 });
 
+// @route   GET /api/auth/cutters
+// @desc    Get all registered Tree Cutters (Real database query)
+// @access  Public / Protected
+router.get('/cutters', async (req, res) => {
+  try {
+    const cutters = await User.find({ role: 'Tree Cutter' }).select('-password').sort({ createdAt: -1 });
+    res.json({ cutters });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to fetch tree cutters', error: error.message });
+  }
+});
+
 // @route   DELETE /api/auth/users/:id
 // @desc    Delete a user account (Admin only)
 // @access  Admin

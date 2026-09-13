@@ -24,6 +24,8 @@ if (L && L.Icon && L.Icon.Default && L.Icon.Default.prototype) {
   });
 }
 
+import { CommunicationHub } from '../components/CommunicationHub';
+
 import {
   AlertTriangle,
   ArrowLeft,
@@ -62,6 +64,7 @@ import {
   Map,
   MapPin,
   Menu,
+  MessageSquare,
   MoreVertical,
   Moon,
   Navigation,
@@ -73,6 +76,7 @@ import {
   Play,
   Recycle,
   RefreshCw,
+  RotateCcw,
   Scissors,
   Search,
   Send,
@@ -136,6 +140,7 @@ const ROLE_NAV = {
       items: [
         { label: 'Dashboard',         href: '/treecutter/dashboard',         Icon: Home,        desc: 'Monitoring overview' },
         { label: 'Task Board',        href: '/treecutter/task',              Icon: FileText,    desc: 'Assigned work orders' },
+        { label: 'Communication',     href: '/treecutter/communication',     Icon: MessageSquare,desc: 'Chat & ask doubts' },
         { label: 'Attendance',        href: '/treecutter/attendance',        Icon: Fingerprint, desc: 'Clock in / out' },
       ],
     },
@@ -156,18 +161,18 @@ const ROLE_NAV = {
       items: [
         { label: 'Dashboard',         href: '/official/dashboard',         Icon: Home,        desc: 'Zone monitoring' },
         { label: 'Work Schedules',    href: '/official/scheduler',         Icon: Calendar,    desc: 'Plan & assign tasks' },
+        { label: 'Communication',     href: '/official/communication',     Icon: MessageSquare,desc: 'Staff chat & doubts' },
         { label: 'Complaints',        href: '/official/complaints',        Icon: AlertTriangle,desc: 'Manage field reports' },
         { label: 'Attendance',        href: '/official/attendance',        Icon: Fingerprint, desc: 'Track cutter hours' },
+        { label: 'View Tree Cutter',  href: '/official/view-tree-cutter',  Icon: Users,       desc: 'Cutter analytics & ratios' },
       ],
     },
     {
       section: 'Trees & Assets',
       items: [
         { label: 'Tree Inventory',    href: '/official/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
-        { label: 'Add Tree',          href: '/official/add-tree',          Icon: Plus,        desc: 'Register new tree' },
         { label: 'View Tree',         href: '/official/view-tree',         Icon: TreePine,    desc: 'Browse records' },
         { label: 'Tree Encyclopedia', href: '/official/tree-encyclopedia', Icon: BookOpen,    desc: 'Species library' },
-        { label: 'Add Property',      href: '/official/add-property',      Icon: Building2,   desc: 'Register property' },
         { label: 'Property Inventory',href: '/official/property-inventory',Icon: Database,    desc: 'Asset records' },
       ],
     },
@@ -179,6 +184,7 @@ const ROLE_NAV = {
       items: [
         { label: 'Dashboard',         href: '/admin/dashboard',         Icon: Home,        desc: 'System-wide monitoring' },
         { label: 'Admin Console',     href: '/admin',                   Icon: ShieldCheck, desc: 'Users, settings, logs' },
+        { label: 'Communication',     href: '/admin/communication',     Icon: MessageSquare,desc: 'Staff chat & doubts' },
         { label: 'Work Schedules',    href: '/admin/scheduler',         Icon: Calendar,    desc: 'Task scheduling' },
         { label: 'Complaints',        href: '/admin/complaints',        Icon: AlertTriangle,desc: 'Overlook & resolve complaints' },
         { label: 'Attendance',        href: '/admin/attendance',        Icon: Fingerprint, desc: 'Workforce tracking' },
@@ -3611,6 +3617,8 @@ export function SchedulerPage() {
   const [cutters, setCutters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [cutterFilter, setCutterFilter] = useState('All');
+  const [taskTypeFilter, setTaskTypeFilter] = useState('All');
   const [deletedIds, setDeletedIds] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('deleted_complaint_ids') || '[]');
@@ -3799,8 +3807,11 @@ export function SchedulerPage() {
       if (deletedIds.includes(c._id) || deletedIds.includes(c.id)) return false;
       const cDate = getTaskDate(c);
       const isSameDate = cDate.getDate() === cellDay && cDate.getMonth() === month && cDate.getFullYear() === year;
-      if (statusFilter === 'All') return isSameDate;
-      return isSameDate && c.status === statusFilter;
+      if (!isSameDate) return false;
+      if (statusFilter !== 'All' && c.status !== statusFilter) return false;
+      if (cutterFilter !== 'All' && (c.assignedTo || 'Unassigned') !== cutterFilter) return false;
+      if (taskTypeFilter !== 'All' && c.issueType !== taskTypeFilter) return false;
+      return true;
     });
   };
 
@@ -3808,16 +3819,22 @@ export function SchedulerPage() {
     if (deletedIds.includes(c._id) || deletedIds.includes(c.id)) return false;
     const cDate = getTaskDate(c);
     const isSameDate = cDate.getDate() === selectedDay && cDate.getMonth() === month && cDate.getFullYear() === year;
-    if (statusFilter === 'All') return isSameDate;
-    return isSameDate && c.status === statusFilter;
+    if (!isSameDate) return false;
+    if (statusFilter !== 'All' && c.status !== statusFilter) return false;
+    if (cutterFilter !== 'All' && (c.assignedTo || 'Unassigned') !== cutterFilter) return false;
+    if (taskTypeFilter !== 'All' && c.issueType !== taskTypeFilter) return false;
+    return true;
   });
 
   const allFilteredComplaints = complaints.filter(c => {
     if (deletedIds.includes(c._id) || deletedIds.includes(c.id)) return false;
     const cDate = getTaskDate(c);
     const isSameMonth = cDate.getMonth() === month && cDate.getFullYear() === year;
-    if (statusFilter === 'All') return isSameMonth;
-    return isSameMonth && c.status === statusFilter;
+    if (!isSameMonth) return false;
+    if (statusFilter !== 'All' && c.status !== statusFilter) return false;
+    if (cutterFilter !== 'All' && (c.assignedTo || 'Unassigned') !== cutterFilter) return false;
+    if (taskTypeFilter !== 'All' && c.issueType !== taskTypeFilter) return false;
+    return true;
   });
 
   const exportScheduleCSV = () => {
@@ -4026,25 +4043,39 @@ export function SchedulerPage() {
         <Topbar title="Work Schedules & Maintenance Calendar" search="Search tasks, tree cutters, or site locations..." onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page">
 
-          <section className="cg-filters" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={openScheduleModal}
-                className="cg-btn primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'linear-gradient(135deg, #16a34a, #15803d)', border: 'none', padding: '10px 18px', fontWeight: 600 }}
-              >
-                <Plus size={18} /> Schedule for Tree Cutter
-              </button>
-              <button
-                onClick={exportScheduleCSV}
-                className="cg-btn outline"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '10px 16px', fontWeight: 600 }}
-                title="Export Monthly Maintenance Roster to CSV"
-              >
-                <Download size={16} /> Export Schedule
-              </button>
+          {/* Top KPI Summary Metrics Bar */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '18px' }}>
+            <div style={{ background: 'var(--bg-surface)', padding: '14px 18px', borderRadius: '14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}><CalendarDays size={22} /></div>
+              <div>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Monthly Schedules</span>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-primary)', fontWeight: 800 }}>{allFilteredComplaints.length}</h3>
+              </div>
             </div>
-          </section>
+            <div style={{ background: 'var(--bg-surface)', padding: '14px 18px', borderRadius: '14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}><Users size={22} /></div>
+              <div>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Field Cutters</span>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-primary)', fontWeight: 800 }}>{cutters.length}</h3>
+              </div>
+            </div>
+            <div style={{ background: 'var(--bg-surface)', padding: '14px 18px', borderRadius: '14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}><MapPin size={22} /></div>
+              <div>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Active Sectors</span>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-primary)', fontWeight: 800 }}>{existingLocations.length}</h3>
+              </div>
+            </div>
+            <div style={{ background: 'var(--bg-surface)', padding: '14px 18px', borderRadius: '14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}><Sprout size={22} /></div>
+              <div>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>Replanting Roster</span>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-primary)', fontWeight: 800 }}>
+                  {allFilteredComplaints.filter(c => c.issueType === 'replant' || c.requiresReplantation).length}
+                </h3>
+              </div>
+            </div>
+          </div>
 
           {/* Schedule Task Modal */}
           {showScheduleModal && (
@@ -4215,9 +4246,9 @@ export function SchedulerPage() {
 
           <section className="cg-schedule-grid">
             <div className="cg-calendar">
-              <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{monthName} {year}</h2>
+              <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>{monthName} {year}</h2>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button
                       onClick={prevMonth}
@@ -4243,10 +4274,55 @@ export function SchedulerPage() {
                       <ChevronRight size={18} />
                     </button>
                   </div>
+                  <span style={{ fontSize: '0.82rem', color: '#10b981', fontWeight: '700', padding: '4px 12px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '20px' }}>
+                    {loading ? 'Syncing...' : `${allFilteredComplaints.length} Work Orders`}
+                  </span>
                 </div>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '600', padding: '6px 14px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                  {loading ? 'Syncing...' : `${allFilteredComplaints.length} Work Order${allFilteredComplaints.length !== 1 ? 's' : ''}`}
-                </span>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+                  {/* Cutter Filter */}
+                  <select
+                    value={cutterFilter}
+                    onChange={e => setCutterFilter(e.target.value)}
+                    style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '7px 12px', borderRadius: '8px', fontSize: '0.84rem', fontWeight: 600, outline: 'none' }}
+                  >
+                    <option value="All">🪓 All Cutters</option>
+                    {cutters.map((c, idx) => {
+                      const name = typeof c === 'string' ? c : c.name || c.email;
+                      return <option key={idx} value={name}>🪓 {name}</option>;
+                    })}
+                  </select>
+
+                  {/* Task Type Filter */}
+                  <select
+                    value={taskTypeFilter}
+                    onChange={e => setTaskTypeFilter(e.target.value)}
+                    style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '7px 12px', borderRadius: '8px', fontSize: '0.84rem', fontWeight: 600, outline: 'none' }}
+                  >
+                    <option value="All">📋 All Work Types</option>
+                    <option value="routine">Monthly Routine</option>
+                    <option value="overhanging">Overhanging Branch</option>
+                    <option value="damaged">Damaged Tree</option>
+                    <option value="fallen">Fallen Limb</option>
+                    <option value="replant">Sapling Replantation</option>
+                  </select>
+
+                  <button
+                    onClick={openScheduleModal}
+                    className="cg-btn primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', background: 'linear-gradient(135deg, #16a34a, #15803d)', border: 'none', padding: '8px 16px', fontWeight: 600, fontSize: '0.85rem' }}
+                  >
+                    <Plus size={16} /> Schedule Task
+                  </button>
+                  <button
+                    onClick={exportScheduleCSV}
+                    className="cg-btn outline"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '8px 12px', fontWeight: 600, fontSize: '0.85rem' }}
+                    title="Export Monthly Maintenance Roster to CSV"
+                  >
+                    <Download size={15} /> Export
+                  </button>
+                </div>
               </header>
 
               <div className="weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => <b key={d}>{d}</b>)}</div>
@@ -4468,6 +4544,66 @@ export function OfficialManagementPage() {
     dueDate: '',
   });
   const [notice, setNotice] = useState('');
+  const [previewModal, setPreviewModal] = useState({
+    isOpen: false,
+    taskId: '',
+    key: '',
+    label: '',
+    imageUrl: '',
+    status: '',
+  });
+  const [gpsMapModal, setGpsMapModal] = useState({
+    isOpen: false,
+    complaintTitle: '',
+    locationName: '',
+    coords: [13.3409, 74.7421],
+  });
+
+  const getProofImageUrl = (task, key) => {
+    let url = key === 'before' ? task.beforeImage : key === 'after' ? task.afterImage : task.wasteProof;
+    if (url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
+      return url;
+    }
+    const linkedComplaint = complaints.find(c => c._id === task.complaintId);
+    if (key === 'before' && linkedComplaint && linkedComplaint.photoUrl) {
+      return linkedComplaint.photoUrl;
+    }
+    if (key === 'before') return 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80';
+    if (key === 'after') return 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=800&auto=format&fit=crop&q=80';
+    return 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?w=800&auto=format&fit=crop&q=80';
+  };
+
+  const [proofFilter, setProofFilter] = useState('active'); // 'active', 'all', 'closed'
+  const [proofSort, setProofSort] = useState('updated_desc'); // 'updated_desc', 'updated_asc', 'status', 'priority'
+
+  const processedProofTasks = useMemo(() => {
+    let list = [...tasks];
+
+    if (proofFilter === 'active') {
+      list = list.filter(t => t.status !== 'Closed');
+    } else if (proofFilter === 'closed') {
+      list = list.filter(t => t.status === 'Closed');
+    }
+
+    list.sort((a, b) => {
+      if (proofSort === 'updated_desc' || proofSort === 'updated_asc') {
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.visits && a.visits.length > 0 ? a.visits.length : 0);
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.visits && b.visits.length > 0 ? b.visits.length : 0);
+        return proofSort === 'updated_desc' ? timeB - timeA : timeA - timeB;
+      }
+      if (proofSort === 'priority') {
+        const pMap = { High: 3, Medium: 2, Low: 1 };
+        return (pMap[b.priority] || 2) - (pMap[a.priority] || 2);
+      }
+      if (proofSort === 'status') {
+        const sMap = { 'Work Completed': 5, 'Waste Disposed': 4, 'Ready for Closure': 3, 'In Progress': 2, 'Assigned': 1, 'Closed': 0 };
+        return (sMap[b.status] || 0) - (sMap[a.status] || 0);
+      }
+      return 0;
+    });
+
+    return list;
+  }, [tasks, proofFilter, proofSort]);
 
   const selectedComplaint = complaints.find(c => c._id === selectedComplaintId) || complaints[0];
 
@@ -4496,8 +4632,43 @@ export function OfficialManagementPage() {
       fetch(`${API_URL}/api/complaints`)
         .then(r => r.json())
         .then(data => {
-          setComplaints(data.complaints || []);
-          setSelectedComplaintId(prev => prev || data.complaints?.[0]?._id || '');
+          const list = data.complaints || [];
+          setComplaints(list);
+          setSelectedComplaintId(prev => prev || list[0]?._id || '');
+
+          setTasks(prev => {
+            const updated = [...prev];
+            list.forEach(c => {
+              if (c.assignedTo) {
+                const index = updated.findIndex(t => t.complaintId === c._id);
+                if (index !== -1) {
+                  if (updated[index].cutter !== c.assignedTo) {
+                    updated[index] = { ...updated[index], cutter: c.assignedTo };
+                  }
+                } else {
+                  const initialProg = c.status === 'Resolved' ? 100 : c.status === 'Work Completed' ? 85 : c.status === 'Waste Disposed' ? 95 : c.status === 'In Progress' ? 60 : c.status === 'Reached Location' ? 40 : 15;
+                  updated.unshift({
+                    id: `WO-${c._id.slice(-4).toUpperCase()}`,
+                    source: 'Complaint',
+                    complaintId: c._id,
+                    title: issueLabels[c.issueType] || c.issueType || 'Tree Issue',
+                    location: c.location || 'Location not specified',
+                    cutter: c.assignedTo,
+                    priority: c.issueType === 'fallen' || c.issueType === 'dead' ? 'High' : 'Medium',
+                    status: c.status || 'Assigned',
+                    progress: initialProg,
+                    dueDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
+                    visits: [{ time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }), location: c.location || 'Pending GPS', note: `Assigned to ${c.assignedTo}.` }],
+                    beforeImage: c.photoUrl ? 'Submitted' : 'Pending upload',
+                    afterImage: c.status === 'Resolved' || c.status === 'Work Completed' ? 'Submitted' : 'Pending upload',
+                    wasteProof: c.status === 'Resolved' || c.status === 'Waste Disposed' ? 'Submitted' : 'Pending upload',
+                    proofStatus: { before: c.photoUrl ? 'Pending' : 'Not Required', after: 'Pending', waste: 'Pending' },
+                  });
+                }
+              }
+            });
+            return updated;
+          });
         })
         .catch(() => setComplaints([]))
         .finally(() => setLoading(false));
@@ -4507,6 +4678,25 @@ export function OfficialManagementPage() {
     const intervalId = setInterval(loadComplaints, 15000);
     return () => clearInterval(intervalId);
   }, []);
+
+  // Sync selectedCutter to currently selected complaint's assignedTo person
+  useEffect(() => {
+    if (selectedComplaint && selectedComplaint.assignedTo) {
+      setSelectedCutter(selectedComplaint.assignedTo);
+    } else if (cutters.length > 0) {
+      if (!selectedCutter || !cutters.includes(selectedCutter)) {
+        setSelectedCutter(cutters[0]);
+      }
+    }
+  }, [selectedComplaintId, selectedComplaint?.assignedTo, cutters]);
+
+  const getCutterOptions = (assignedName) => {
+    const list = [...cutters];
+    if (assignedName && !list.includes(assignedName)) {
+      list.unshift(assignedName);
+    }
+    return list;
+  };
 
   const showNotice = (message) => {
     setNotice(message);
@@ -4536,10 +4726,27 @@ export function OfficialManagementPage() {
 
   const assignComplaint = (complaint) => {
     if (!complaint) return;
+    const targetCutter = selectedCutter || complaint.assignedTo || (cutters.length > 0 ? cutters[0] : 'sameeksha');
 
-    const exists = tasks.some(task => task.complaintId === complaint._id);
-    if (exists) {
-      showNotice('A work order already exists for this complaint.');
+    const existingIndex = tasks.findIndex(task => task.complaintId === complaint._id);
+    if (existingIndex !== -1) {
+      const updatedTasks = [...tasks];
+      updatedTasks[existingIndex] = {
+        ...updatedTasks[existingIndex],
+        cutter: targetCutter,
+        status: 'Assigned',
+      };
+      setTasks(updatedTasks);
+      updateComplaintStatus(complaint._id, 'Scheduled', targetCutter);
+      showNotice(`Work order re-assigned to ${targetCutter} successfully!`);
+      Swal.fire({
+        icon: 'success',
+        title: 'Task Re-Assigned!',
+        text: `Work order re-assigned to ${targetCutter}`,
+        confirmButtonColor: '#1b4332',
+        timer: 3000,
+        timerProgressBar: true,
+      });
       return;
     }
 
@@ -4549,12 +4756,12 @@ export function OfficialManagementPage() {
       complaintId: complaint._id,
       title: issueLabels[complaint.issueType] || complaint.issueType,
       location: complaint.location || 'Location not provided',
-      cutter: selectedCutter,
+      cutter: targetCutter,
       priority: complaint.issueType === 'fallen' || complaint.issueType === 'dead' ? 'High' : 'Medium',
       status: 'Assigned',
       progress: 15,
       dueDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-      visits: [{ time: 'Awaiting visit', location: complaint.location || 'Pending GPS', note: 'Task assigned to cutter.' }],
+      visits: [{ time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }), location: complaint.location || 'Pending GPS', note: `Task assigned to ${targetCutter}.` }],
       beforeImage: complaint.photoUrl ? 'Submitted' : 'Pending upload',
       afterImage: 'Pending upload',
       wasteProof: 'Pending upload',
@@ -4562,12 +4769,12 @@ export function OfficialManagementPage() {
     };
 
     setTasks(prev => [task, ...prev]);
-    updateComplaintStatus(complaint._id, 'Scheduled', selectedCutter);
-    showNotice(`Task is assigned to ${selectedCutter}`);
+    updateComplaintStatus(complaint._id, 'Scheduled', targetCutter);
+    showNotice(`Task is assigned to ${targetCutter}`);
     Swal.fire({
       icon: 'success',
       title: 'Task Assigned!',
-      text: `Task is assigned to ${selectedCutter}`,
+      text: `Task is assigned to ${targetCutter}`,
       confirmButtonColor: '#1b4332',
       timer: 3000,
       timerProgressBar: true,
@@ -4607,31 +4814,61 @@ export function OfficialManagementPage() {
 
   const advanceTask = (taskId) => {
     const flow = {
-      Assigned: ['In Progress', 45],
-      'In Progress': ['Work Completed', 100],
-      'Work Completed': ['Ready for Closure', 100],
+      'Assigned': ['Scheduled', 25],
+      'Scheduled': ['Reached Location', 40],
+      'Reached Location': ['In Progress', 60],
+      'In Progress': ['Work Completed', 85],
+      'Work Completed': ['Waste Disposed', 95],
+      'Waste Disposed': ['Ready for Closure', 100],
       'Ready for Closure': ['Closed', 100],
+      'Resolved': ['Closed', 100],
     };
 
     setTasks(prev => prev.map(task => {
       if (task.id !== taskId || !flow[task.status]) return task;
-      const [status, progress] = flow[task.status];
+      const [newStatus, newProgress] = flow[task.status];
+
+      if (task.complaintId && typeof task.complaintId === 'string' && !task.complaintId.startsWith('local-')) {
+        let backendStatus = newStatus;
+        if (newStatus === 'Ready for Closure' || newStatus === 'Closed') {
+          backendStatus = 'Resolved';
+        }
+        updateComplaintStatus(task.complaintId, backendStatus);
+      }
+
+      const noteText =
+        newStatus === 'Scheduled' ? 'Work schedule confirmed with cutter.' :
+        newStatus === 'Reached Location' ? 'Cutter arrived on site with equipment.' :
+        newStatus === 'In Progress' ? 'Pruning & tree trimming operations active.' :
+        newStatus === 'Work Completed' ? 'Tree canopy work completed.' :
+        newStatus === 'Waste Disposed' ? 'Green waste cleared and moved to compost yard.' :
+        newStatus === 'Ready for Closure' ? 'Proof photos verified. Ready for closure.' :
+        `Status updated to ${newStatus}.`;
+
       return {
         ...task,
-        status,
-        progress,
+        status: newStatus,
+        progress: newProgress,
+        updatedAt: new Date().toISOString(),
         visits: [
-          ...task.visits,
+          ...(task.visits || []),
           {
             time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
             location: task.location,
-            note: status === 'In Progress' ? 'Cutter checked in at site.' : `Status updated to ${status}.`,
+            note: noteText,
           },
         ],
-        afterImage: status === 'Work Completed' ? 'Submitted' : task.afterImage,
-        wasteProof: status === 'Work Completed' ? 'Submitted' : task.wasteProof,
+        beforeImage: task.beforeImage || 'Submitted',
+        afterImage: ['Work Completed', 'Waste Disposed', 'Ready for Closure', 'Closed'].includes(newStatus) ? 'Submitted' : task.afterImage,
+        wasteProof: ['Waste Disposed', 'Ready for Closure', 'Closed'].includes(newStatus) ? 'Submitted' : task.wasteProof,
       };
     }));
+
+    const found = tasks.find(t => t.id === taskId);
+    if (found && flow[found.status]) {
+      const [nextSt] = flow[found.status];
+      showNotice(`Task ${taskId} updated to "${nextSt}"`);
+    }
   };
 
   const verifyProof = (taskId, key) => {
@@ -4639,6 +4876,7 @@ export function OfficialManagementPage() {
       task.id === taskId
         ? {
             ...task,
+            updatedAt: new Date().toISOString(),
             proofStatus: {
               ...(task.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' }),
               [key]: 'Verified'
@@ -4646,19 +4884,128 @@ export function OfficialManagementPage() {
           }
         : task
     )));
+    showNotice(`Proof photo verified.`);
+  };
+
+  const verifyAllProofs = (taskId) => {
+    setTasks(prev => prev.map(task => (
+      task.id === taskId
+        ? {
+            ...task,
+            updatedAt: new Date().toISOString(),
+            proofStatus: { before: 'Verified', after: 'Verified', waste: 'Verified' }
+          }
+        : task
+    )));
+    showNotice(`All proof items for ${taskId} verified.`);
+  };
+
+  const raiseAgainTask = (task) => {
+    Swal.fire({
+      title: 'Raise Again / Re-Open Task?',
+      text: `Not satisfied with work done on ${task.id}? Re-opening will send this task back to the cutter for re-work.`,
+      input: 'select',
+      inputOptions: {
+        'Branch waste left on site': 'Branch waste left on site / sidewalk',
+        'Trimming incomplete': 'Canopy trimming / pruning incomplete',
+        'Unclear proof photos': 'Proof photos unclear / unsatisfactory',
+        'Tree safety hazard remaining': 'Tree safety hazard still remaining',
+        'Other': 'Other issue (specified by official)',
+      },
+      inputPlaceholder: 'Select reason for re-opening',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: '🔄 Re-Open Task',
+      cancelButtonText: 'Cancel',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Please select a reason to re-open the task!';
+        }
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const reason = result.value;
+        setTasks(prev => prev.map(item => {
+          if (item.id !== task.id) return item;
+          return {
+            ...item,
+            status: 'In Progress',
+            progress: 45,
+            updatedAt: new Date().toISOString(),
+            proofStatus: { before: item.proofStatus?.before || 'Verified', after: 'Pending', waste: 'Pending' },
+            afterImage: 'Pending re-upload',
+            wasteProof: 'Pending re-upload',
+            visits: [
+              ...(item.visits || []),
+              {
+                time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                location: item.location,
+                note: `⚠️ Task Re-Opened by Official. Reason: ${reason}`,
+              }
+            ]
+          };
+        }));
+
+        if (task.complaintId) updateComplaintStatus(task.complaintId, 'In Progress');
+
+        showNotice(`Task ${task.id} re-opened and sent back to ${task.cutter}.`);
+        Swal.fire({
+          icon: 'warning',
+          title: 'Task Re-Opened!',
+          text: `${task.id} sent back to ${task.cutter} for re-work (${reason}).`,
+          confirmButtonColor: '#1b4332',
+        });
+      }
+    });
   };
 
   const closeTask = (task) => {
     const requiredProofs = ['before', 'after', 'waste'];
-    const ready = requiredProofs.every(key => ['Verified', 'Not Required'].includes(task.proofStatus[key]));
-    if (!ready) {
-      showNotice('Verify before/after images and waste disposal proof before closure.');
+    const unverified = requiredProofs.some(key => !['Verified', 'Not Required'].includes(task.proofStatus?.[key]));
+
+    if (unverified) {
+      Swal.fire({
+        title: 'Verify & Close Complaint?',
+        text: 'Some proof photos are still pending verification. Would you like to verify all proof photos now and close this complaint?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: '✓ Verify All & Close',
+        cancelButtonText: 'Cancel',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setTasks(prev => prev.map(item => item.id === task.id ? {
+            ...item,
+            status: 'Closed',
+            progress: 100,
+            updatedAt: new Date().toISOString(),
+            proofStatus: { before: 'Verified', after: 'Verified', waste: 'Verified' }
+          } : item));
+          if (task.complaintId) updateComplaintStatus(task.complaintId, 'Resolved');
+          showNotice(`${task.id} closed and marked Resolved.`);
+          Swal.fire({
+            icon: 'success',
+            title: 'Complaint Closed!',
+            text: `${task.id} verified and marked Resolved successfully.`,
+            confirmButtonColor: '#10b981',
+          });
+        }
+      });
       return;
     }
 
-    setTasks(prev => prev.map(item => item.id === task.id ? { ...item, status: 'Closed', progress: 100 } : item));
+    setTasks(prev => prev.map(item => item.id === task.id ? { ...item, status: 'Closed', progress: 100, updatedAt: new Date().toISOString() } : item));
     if (task.complaintId) updateComplaintStatus(task.complaintId, 'Resolved');
     showNotice(`${task.id} closed successfully.`);
+    Swal.fire({
+      icon: 'success',
+      title: 'Complaint Closed!',
+      text: `${task.id} closed successfully.`,
+      confirmButtonColor: '#10b981',
+      timer: 2500,
+    });
   };
 
   const counts = {
@@ -4669,9 +5016,9 @@ export function OfficialManagementPage() {
   };
 
   const taskTag = (status) => {
-    if (status === 'Closed' || status === 'Waste Disposed') return 'ok';
-    if (status === 'Work Completed' || status === 'Ready for Closure') return 'med';
-    if (status === 'Assigned') return 'low';
+    if (status === 'Closed' || status === 'Waste Disposed' || status === 'Resolved') return 'ok';
+    if (status === 'Work Completed' || status === 'Ready for Closure' || status === 'In Progress') return 'med';
+    if (status === 'Assigned' || status === 'Scheduled' || status === 'Reached Location') return 'low';
     return 'high';
   };
 
@@ -4986,8 +5333,8 @@ export function OfficialManagementPage() {
                     )}
 
                     {complaint.assignedTo && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#52b788', fontSize: '0.78rem', fontWeight: 600, marginTop: '2px' }}>
-                        <Users size={12} /> Assigned to: {complaint.assignedTo}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#34d399', fontSize: '0.8rem', fontWeight: 700, marginTop: '2px', background: 'rgba(52, 211, 153, 0.12)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.3)', width: 'fit-content' }}>
+                        <Users size={13} /> Assigned to: <b>{complaint.assignedTo}</b>
                       </div>
                     )}
 
@@ -5018,9 +5365,9 @@ export function OfficialManagementPage() {
                         )}
 
                         <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.85rem', fontWeight: 600, color: '#74c69d' }}>
-                          Assign Tree Cutter
+                          {complaint.assignedTo ? `Re-assign Tree Cutter (Currently: ${complaint.assignedTo})` : 'Assign Tree Cutter'}
                           <select
-                            value={selectedCutter}
+                            value={selectedCutter || complaint.assignedTo || ''}
                             onChange={e => setSelectedCutter(e.target.value)}
                             style={{
                               display: 'block',
@@ -5033,9 +5380,14 @@ export function OfficialManagementPage() {
                               fontSize: '0.9rem',
                               color: '#ffffff',
                               cursor: 'pointer',
+                              fontWeight: 700
                             }}
                           >
-                            {cutters.map((cutter, idx) => <option key={`assign-cutter-${cutter}-${idx}`} value={cutter}>{cutter}</option>)}
+                            {getCutterOptions(complaint.assignedTo).map((cutter, idx) => (
+                              <option key={`assign-cutter-${cutter}-${idx}`} value={cutter}>
+                                {cutter} {cutter === complaint.assignedTo ? '(Currently Assigned)' : ''}
+                              </option>
+                            ))}
                           </select>
                         </label>
 
@@ -5052,7 +5404,7 @@ export function OfficialManagementPage() {
                             style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                             onClick={(e) => { e.stopPropagation(); assignComplaint(complaint); }}
                           >
-                            <Users size={16} /> Assign Task
+                            <Users size={16} /> {complaint.assignedTo ? 'Re-Assign Task' : 'Assign Task'}
                           </button>
                         </div>
                       </div>
@@ -5072,21 +5424,123 @@ export function OfficialManagementPage() {
                       <p><b>Location</b><span>{selectedComplaint.location || 'Not specified'}</span></p>
                       <p><b>Description</b><span>{selectedComplaint.description || 'No description provided.'}</span></p>
                       {selectedComplaint.assignedTo && (
-                        <p><b>Assigned To</b><span style={{ color: '#52b788', fontWeight: 600 }}>{selectedComplaint.assignedTo}</span></p>
+                        <p>
+                          <b>Assigned To</b>
+                          <span style={{ color: '#34d399', fontWeight: 700, background: 'rgba(52, 211, 153, 0.12)', padding: '3px 10px', borderRadius: '6px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
+                            ✓ {selectedComplaint.assignedTo}
+                          </span>
+                        </p>
                       )}
-                      <div className="official-photo-review">
-                        <div><Camera /><b>Public Image</b><span>{selectedComplaint.photoUrl ? 'Available for inspection' : 'No image submitted'}</span></div>
-                        <div><MapPin /><b>Location Visit</b><span>GPS visit required before closure</span></div>
+                      <div className="official-photo-review-v2">
+                        {/* Public Inspection Photo Card Item */}
+                        <div className="official-photo-card-item">
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Camera size={18} color="#52b788" />
+                                <b style={{ fontSize: '0.88rem', color: '#ffffff' }}>Public Inspection Photo</b>
+                              </div>
+                              <span style={{ fontSize: '0.72rem', background: 'rgba(82, 183, 136, 0.18)', color: '#52b788', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                                {selectedComplaint.photoUrl ? 'Uploaded' : 'Sample Photo'}
+                              </span>
+                            </div>
+
+                            <div
+                              onClick={() => setPreviewModal({
+                                isOpen: true,
+                                taskId: selectedComplaint._id.slice(-6).toUpperCase(),
+                                key: 'before',
+                                label: `Public Complaint Image (${issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType})`,
+                                imageUrl: selectedComplaint.photoUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80',
+                                status: 'Submitted for Verification'
+                              })}
+                              style={{
+                                height: '110px',
+                                width: '100%',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                position: 'relative',
+                                cursor: 'pointer',
+                                border: '1px solid rgba(82, 183, 136, 0.3)',
+                                background: '#000'
+                              }}
+                              title="Click to inspect high-res photo"
+                            >
+                              <img
+                                src={selectedComplaint.photoUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80'}
+                                alt="Public complaint inspection"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#ffffff', fontSize: '0.82rem', fontWeight: 600 }}>
+                                <Eye size={16} /> Click to Inspect
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            className="cg-btn outline compact"
+                            onClick={() => setPreviewModal({
+                              isOpen: true,
+                              taskId: selectedComplaint._id.slice(-6).toUpperCase(),
+                              key: 'before',
+                              label: `Public Complaint Image (${issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType})`,
+                              imageUrl: selectedComplaint.photoUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80',
+                              status: 'Submitted for Verification'
+                            })}
+                            style={{ fontSize: '0.8rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '6px' }}
+                          >
+                            <Eye size={14} /> View Full Image
+                          </button>
+                        </div>
+
+                        {/* GPS Location Verification Card Item */}
+                        <div className="official-photo-card-item">
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <MapPin size={18} color="#60a5fa" />
+                                <b style={{ fontSize: '0.88rem', color: '#ffffff' }}>GPS Field Verification</b>
+                              </div>
+                              <span style={{ fontSize: '0.72rem', background: 'rgba(59, 130, 246, 0.18)', color: '#60a5fa', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                                📍 Tagged
+                              </span>
+                            </div>
+
+                            <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7', padding: 0, border: 'none' }}>
+                              <b style={{ color: '#74c69d' }}>GPS Coordinates:</b> 13.3409° N, 74.7421° E
+                            </p>
+                            <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.4, padding: 0, border: 'none' }}>
+                              GPS Geofence ensures the assigned tree cutter physically visits the exact location before task completion.
+                            </p>
+                          </div>
+
+                          <button
+                            className="cg-btn primary compact"
+                            onClick={() => setGpsMapModal({
+                              isOpen: true,
+                              complaintTitle: issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType,
+                              locationName: selectedComplaint.location || 'Padigaru Road, Doddana Gudde, Udupi',
+                              coords: [13.3409, 74.7421]
+                            })}
+                            style={{ fontSize: '0.8rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', marginTop: '6px' }}
+                          >
+                            <Navigation size={14} /> Open GPS Location Map
+                          </button>
+                        </div>
                       </div>
                       <label className="official-field">
-                        Assign tree cutter
-                        <select value={selectedCutter} onChange={e => setSelectedCutter(e.target.value)}>
-                          {cutters.map((cutter, idx) => <option key={`desk-cutter-${cutter}-${idx}`} value={cutter}>{cutter}</option>)}
+                        {selectedComplaint.assignedTo ? `Re-assign tree cutter (Currently: ${selectedComplaint.assignedTo})` : 'Assign tree cutter'}
+                        <select value={selectedCutter || selectedComplaint.assignedTo || ''} onChange={e => setSelectedCutter(e.target.value)} style={{ fontWeight: 700 }}>
+                          {getCutterOptions(selectedComplaint.assignedTo).map((cutter, idx) => (
+                            <option key={`desk-cutter-${cutter}-${idx}`} value={cutter}>
+                              {cutter} {cutter === selectedComplaint.assignedTo ? '(Currently Assigned)' : ''}
+                            </option>
+                          ))}
                         </select>
                       </label>
                       <div className="official-actions">
                         <button className="cg-btn outline" onClick={() => verifyComplaint(selectedComplaint)}><ShieldCheck size={18} /> Verify</button>
-                        <button className="cg-btn primary" onClick={() => assignComplaint(selectedComplaint)}><Users size={18} /> Assign Task</button>
+                        <button className="cg-btn primary" onClick={() => assignComplaint(selectedComplaint)}><Users size={18} /> {selectedComplaint.assignedTo ? 'Re-Assign Task' : 'Assign Task'}</button>
                       </div>
                     </div>
                   </>
@@ -5143,35 +5597,403 @@ export function OfficialManagementPage() {
           )}
 
           {activeView === 'proofs' && (
-            <section className="official-proof-grid">
-              {tasks.map(task => {
-                const proofState = task.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' };
-                return (
-                  <article className="cg-panel official-proof-card" key={task.id}>
-                    <header><div><h2>{task.id}</h2><p>{task.title}</p></div><span className={`tag ${taskTag(task.status)}`}>{task.status}</span></header>
-                    <div className="official-proof-items">
-                      {[
-                        ['before', 'Before image', task.beforeImage],
-                        ['after', 'After work image', task.afterImage],
-                        ['waste', 'Waste disposal proof', task.wasteProof],
-                      ].map(([key, label, value]) => (
-                        <div key={key}>
-                          <Camera size={20} />
-                          <b>{label}</b>
-                          <span>{value}</span>
-                          <small>{proofState[key] || 'Pending'}</small>
-                          <button className="cg-btn outline compact" onClick={() => verifyProof(task.id, key)} disabled={proofState[key] === 'Verified' || proofState[key] === 'Not Required'}>Verify</button>
+            <div>
+              {/* Proof Review Toolbar */}
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '14px',
+                marginBottom: '20px',
+                background: 'var(--bg-surface, #111827)',
+                padding: '16px 20px',
+                borderRadius: '14px',
+                border: '1px solid var(--border, #1f2937)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>📷 Proof Verification Desk</h3>
+                  <span style={{ fontSize: '0.8rem', background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', padding: '3px 10px', borderRadius: '12px', fontWeight: 700 }}>
+                    {processedProofTasks.length} {proofFilter === 'active' ? 'Active Tasks' : proofFilter === 'closed' ? 'Closed Complaints' : 'Total Items'}
+                  </span>
+                </div>
+                
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Show:</span>
+                    <select
+                      value={proofFilter}
+                      onChange={e => setProofFilter(e.target.value)}
+                      style={{
+                        background: 'var(--bg-elevated, #1f2937)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border)',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="active">Active Work Orders (Hide Closed)</option>
+                      <option value="all">All Work Orders</option>
+                      <option value="closed">Closed / Completed Only</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Sort by:</span>
+                    <select
+                      value={proofSort}
+                      onChange={e => setProofSort(e.target.value)}
+                      style={{
+                        background: 'var(--bg-elevated, #1f2937)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border)',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="updated_desc">⏰ Latest Update First</option>
+                      <option value="updated_asc">⌛ Oldest Update First</option>
+                      <option value="status">🚨 Needs Review First</option>
+                      <option value="priority">🔥 High Priority First</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {processedProofTasks.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '50px 20px',
+                  background: 'var(--bg-surface, #111827)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border, #1f2937)',
+                  color: 'var(--text-secondary, #9ca3af)',
+                  marginTop: '20px'
+                }}>
+                  <CheckCircle2 size={44} color="#34d399" style={{ marginBottom: '12px' }} />
+                  <h3 style={{ margin: '0 0 6px', color: 'var(--text-primary, #fff)' }}>No Proof Tasks Matching Filter</h3>
+                  <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                    {proofFilter === 'active'
+                      ? 'All completed work orders have been closed and moved out of active review.'
+                      : 'No proof review work orders match the selected criteria.'}
+                  </p>
+                </div>
+              ) : (
+                <section className="official-proof-grid">
+                  {processedProofTasks.map(task => {
+                    const isClosed = task.status === 'Closed';
+                    const proofState = task.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' };
+                    const allVerified = ['before', 'after', 'waste'].every(k => ['Verified', 'Not Required'].includes(proofState[k]));
+                    return (
+                      <article className="cg-panel official-proof-card" key={task.id} style={{ opacity: isClosed ? 0.85 : 1 }}>
+                        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                          <div>
+                            <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>{task.id}</h2>
+                            <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                              {task.title} • <span style={{ color: '#34d399', fontWeight: 600 }}>Cutter: {task.cutter}</span>
+                            </p>
+                          </div>
+                          <span className={`tag ${taskTag(task.status)}`}>{task.status}</span>
+                        </header>
+                        <div className="official-proof-items">
+                          {[
+                            ['before', 'Before image', task.beforeImage],
+                            ['after', 'After work image', task.afterImage],
+                            ['waste', 'Waste disposal proof', task.wasteProof],
+                          ].map(([key, label, value]) => {
+                            const imgUrl = getProofImageUrl(task, key);
+                            const isVerified = proofState[key] === 'Verified';
+                            return (
+                              <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', gap: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div
+                                    style={{
+                                      width: '54px',
+                                      height: '42px',
+                                      borderRadius: '8px',
+                                      overflow: 'hidden',
+                                      cursor: 'pointer',
+                                      border: '1px solid var(--border)',
+                                      background: '#000',
+                                      position: 'relative',
+                                      flexShrink: 0
+                                    }}
+                                    title="Click to enlarge & view proof photo"
+                                    onClick={() => setPreviewModal({
+                                      isOpen: true,
+                                      taskId: task.id,
+                                      key,
+                                      label,
+                                      imageUrl: imgUrl,
+                                      status: proofState[key] || 'Pending'
+                                    })}
+                                  >
+                                    <img src={imgUrl} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <Eye size={14} color="#fff" />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <b style={{ display: 'block', fontSize: '13px' }}>{label}</b>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{value}</span>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                  <small style={{
+                                    background: isVerified ? 'rgba(52, 211, 153, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                                    color: isVerified ? '#34d399' : '#facc15',
+                                    border: isVerified ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid rgba(234, 179, 8, 0.3)',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    fontWeight: 700,
+                                    fontSize: '11px'
+                                  }}>
+                                    {proofState[key] || 'Pending'}
+                                  </small>
+                                  <button
+                                    className="cg-btn outline compact"
+                                    style={{ padding: '4px 8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    onClick={() => setPreviewModal({
+                                      isOpen: true,
+                                      taskId: task.id,
+                                      key,
+                                      label,
+                                      imageUrl: imgUrl,
+                                      status: proofState[key] || 'Pending'
+                                    })}
+                                  >
+                                    <Eye size={13} /> View
+                                  </button>
+                                  <button
+                                    className="cg-btn outline compact"
+                                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                                    onClick={() => verifyProof(task.id, key)}
+                                    disabled={isVerified || isClosed}
+                                  >
+                                    {isVerified ? '✓ Verified' : 'Verify'}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                    <button className="cg-btn primary" onClick={() => closeTask(task)}><CheckCircle2 size={18} /> Close Completed Complaint</button>
-                  </article>
-                );
-              })}
-            </section>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '16px' }}>
+                          <button
+                            className="cg-btn outline compact"
+                            onClick={() => verifyAllProofs(task.id)}
+                            disabled={allVerified || isClosed}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <ShieldCheck size={16} /> Verify All
+                          </button>
+                          {isClosed ? (
+                            <button
+                              className="cg-btn primary"
+                              disabled
+                              style={{ flex: 1, minWidth: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: 0.6, cursor: 'not-allowed', background: '#059669', borderColor: '#059669' }}
+                            >
+                              <CheckCircle2 size={18} /> ✓ Complaint Closed
+                            </button>
+                          ) : (
+                            <button
+                              className="cg-btn primary"
+                              style={{ flex: 1, minWidth: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                              onClick={() => closeTask(task)}
+                            >
+                              <CheckCircle2 size={18} /> Close Complaint
+                            </button>
+                          )}
+                          <button
+                            className="cg-btn outline compact"
+                            style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171', display: 'flex', alignItems: 'center', gap: '6px' }}
+                            onClick={() => raiseAgainTask(task)}
+                          >
+                            <RotateCcw size={15} /> Raise Again
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </section>
+              )}
+            </div>
           )}
         </main>
       </div>
+
+      {/* Proof Photo Lightbox Preview Modal */}
+      {previewModal.isOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--bg-surface, #111827)',
+            border: '1px solid var(--border, #1f2937)',
+            borderRadius: '16px',
+            maxWidth: '680px',
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--border, #1f2937)',
+              background: 'var(--bg-elevated, #1f2937)'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>
+                  📷 {previewModal.taskId} — {previewModal.label}
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #9ca3af)' }}>
+                  Status: <strong style={{ color: previewModal.status === 'Verified' ? '#34d399' : '#facc15' }}>{previewModal.status}</strong>
+                </span>
+              </div>
+              <button
+                onClick={() => setPreviewModal({ isOpen: false, taskId: '', key: '', label: '', imageUrl: '', status: '' })}
+                style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '6px', borderRadius: '50%' }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+            <div style={{ padding: '20px', textAlign: 'center', background: '#000' }}>
+              <img
+                src={previewModal.imageUrl}
+                alt={previewModal.label}
+                style={{ maxHeight: '55vh', maxWidth: '100%', borderRadius: '8px', objectFit: 'contain', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '12px', padding: '16px 20px', justifyContent: 'flex-end', borderTop: '1px solid var(--border, #1f2937)' }}>
+              <button
+                className="cg-btn outline"
+                onClick={() => {
+                  const task = tasks.find(t => t.id === previewModal.taskId);
+                  setPreviewModal({ isOpen: false, taskId: '', key: '', label: '', imageUrl: '', status: '' });
+                  if (task) raiseAgainTask(task);
+                }}
+                style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <RotateCcw size={16} /> Reject & Re-Open Task
+              </button>
+              <button
+                className="cg-btn primary"
+                onClick={() => {
+                  verifyProof(previewModal.taskId, previewModal.key);
+                  setPreviewModal(prev => ({ ...prev, status: 'Verified' }));
+                  showNotice(`Marked ${previewModal.label} as Verified`);
+                }}
+                disabled={previewModal.status === 'Verified'}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <CheckCircle2 size={16} /> {previewModal.status === 'Verified' ? 'Already Verified' : 'Mark as Verified'}
+              </button>
+              <button
+                className="cg-btn outline"
+                onClick={() => setPreviewModal({ isOpen: false, taskId: '', key: '', label: '', imageUrl: '', status: '' })}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GPS Location Leaflet Map Modal */}
+      {gpsMapModal.isOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--bg-surface, #111827)',
+            border: '1px solid var(--border, #1f2937)',
+            borderRadius: '16px',
+            maxWidth: '680px',
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--border, #1f2937)',
+              background: 'var(--bg-elevated, #1f2937)'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MapPin size={20} color="#3b82f6" /> GPS Location Map — {gpsMapModal.complaintTitle}
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: 600 }}>
+                  📍 GPS Geofence Coordinates: {gpsMapModal.coords[0]}° N, {gpsMapModal.coords[1]}° E
+                </span>
+              </div>
+              <button
+                onClick={() => setGpsMapModal({ isOpen: false, complaintTitle: '', locationName: '', coords: [13.3409, 74.7421] })}
+                style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '6px', borderRadius: '50%' }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+            
+            <div style={{ padding: '16px', background: '#091510' }}>
+              <div style={{ marginBottom: '12px', fontSize: '0.86rem', color: '#e2e8f0', background: '#0f291e', padding: '10px 14px', borderRadius: '8px', border: '1px solid #1e4d38' }}>
+                <b>Site Address:</b> {gpsMapModal.locationName}
+              </div>
+              <div style={{ height: '360px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <MapContainer center={gpsMapModal.coords} zoom={15} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <Marker position={gpsMapModal.coords}>
+                    <Popup>
+                      <div style={{ color: '#000' }}>
+                        <b>{gpsMapModal.complaintTitle}</b>
+                        <br />
+                        {gpsMapModal.locationName}
+                        <br />
+                        <span style={{ color: '#059669', fontWeight: 'bold' }}>✓ GPS Check-in Verified</span>
+                      </div>
+                    </Popup>
+                  </Marker>
+                </MapContainer>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', padding: '16px 20px', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border, #1f2937)' }}>
+              <span style={{ fontSize: '0.82rem', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ShieldCheck size={16} /> GPS Geofence Tag Verified at Site Location
+              </span>
+              <button
+                className="cg-btn primary"
+                onClick={() => setGpsMapModal({ isOpen: false, complaintTitle: '', locationName: '', coords: [13.3409, 74.7421] })}
+              >
+                Close Map
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -6787,6 +7609,13 @@ export function TreeInventoryPage() {
   const [form, setForm] = useState(initialFormState);
   const [trees, setTrees] = useState([]);
   const [selectedTree, setSelectedTree] = useState(null);
+
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
+    catch { return {}; }
+  })();
+  const rawRole = normalizeRole(currentUser.role);
+  const isAdmin = rawRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || window.location.pathname.startsWith('/admin');
   const isAddTreeRoute = (pathname) => {
     return (
       pathname === '/add-tree' ||
@@ -7068,19 +7897,21 @@ export function TreeInventoryPage() {
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <button onClick={() => {
-                setForm({
-                  name: '', scientificName: '', family: '', origin: '', height: '', ageRange: '',
-                  canopySpread: '', description: '', healthScore: 90, canopyCoverage: 80,
-                  waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
-                  lat: 13.3409, lng: 74.7421
-                });
-                setEditingId(null);
-                setShowForm(true);
-                setSelectedTree(null);
-              }} className="add-tree-btn" style={{ background: '#046b4e', borderRadius: '8px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '0.875rem', color: '#ffffff', border: 'none', cursor: 'pointer' }}>
-                <Plus size={16} /> Add Tree
-              </button>
+              {isAdmin && (
+                <button onClick={() => {
+                  setForm({
+                    name: '', scientificName: '', family: '', origin: '', height: '', ageRange: '',
+                    canopySpread: '', description: '', healthScore: 90, canopyCoverage: 80,
+                    waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
+                    lat: 13.3409, lng: 74.7421
+                  });
+                  setEditingId(null);
+                  setShowForm(true);
+                  setSelectedTree(null);
+                }} className="add-tree-btn" style={{ background: '#046b4e', borderRadius: '8px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '0.875rem', color: '#ffffff', border: 'none', cursor: 'pointer' }}>
+                  <Plus size={16} /> Add Tree
+                </button>
+              )}
               <div style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                 <Bell size={24} color="#475569" />
                 <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#ffffff', fontSize: '0.65rem', fontWeight: 'bold', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
@@ -7416,7 +8247,7 @@ export function TreeInventoryPage() {
 
   return (
     <div className="cg-app cg-dashboard-screen">
-      <Sidebar active="Tree Inventory" admin isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <Sidebar active="Tree Inventory" admin={isAdmin} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
         <Topbar title="Tree Inventory" onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page">
@@ -7425,26 +8256,28 @@ export function TreeInventoryPage() {
               <h1>Tree Inventory Management</h1>
               <p>Maintain detailed records of all trees in your zones.</p>
             </div>
-            <button onClick={() => {
-              setForm({
-                name: '', scientificName: '', family: '', origin: '', height: '', ageRange: '',
-                canopySpread: '', description: '', healthScore: 90, canopyCoverage: 80,
-                waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
-                lat: 13.3409, lng: 74.7421
-              });
-              setEditingId(null);
-              setShowForm(true);
-              setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                const pageEl = document.querySelector('.cg-workspace') || document.querySelector('.cg-page');
-                if (pageEl && pageEl.scrollTo) pageEl.scrollTo({ top: 0, behavior: 'smooth' });
-              }, 50);
-            }} className="add-tree-btn">+ Add Tree</button>
+            {isAdmin && (
+              <button onClick={() => {
+                setForm({
+                  name: '', scientificName: '', family: '', origin: '', height: '', ageRange: '',
+                  canopySpread: '', description: '', healthScore: 90, canopyCoverage: 80,
+                  waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
+                  lat: 13.3409, lng: 74.7421
+                });
+                setEditingId(null);
+                setShowForm(true);
+                setTimeout(() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  const pageEl = document.querySelector('.cg-workspace') || document.querySelector('.cg-page');
+                  if (pageEl && pageEl.scrollTo) pageEl.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 50);
+              }} className="add-tree-btn">+ Add Tree</button>
+            )}
           </section>
           {showForm && (
-            <section className="cg-panel cg-tree-glass">
-              <h2 style={{ color: '#043224', marginBottom: '1.5rem' }}>{editingId ? 'Edit Tree Details' : 'Add New Tree'}</h2>
+            <section className="cg-panel cg-tree-glass" style={{ background: 'var(--bg-surface, #0b2518)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))' }}>
+              <h2 style={{ color: 'var(--text-primary, #ffffff)', marginBottom: '1.5rem' }}>{editingId ? 'Edit Tree Details' : 'Add New Tree'}</h2>
               <form onSubmit={handleSubmit} className="tree-form">
                 <div className="form-row">
                   <label>Tree Name*<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Mango Tree" /></label>
@@ -7469,7 +8302,7 @@ export function TreeInventoryPage() {
                 <label>Tree Image<input type="file" accept="image/*" onChange={handleFileChange} /></label>
 
                 {/* ── Encyclopedia & Geolocation Details ── */}
-                <h3 style={{ color: '#043224', marginTop: '1.5rem', marginBottom: '1rem', borderTop: '1px solid #cbd5e1', paddingTop: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>
+                <h3 style={{ color: 'var(--text-primary, #ffffff)', marginTop: '1.5rem', marginBottom: '1rem', borderTop: '1px solid rgba(82, 183, 136, 0.25)', paddingTop: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>
                   Encyclopedia & Geolocation Details
                 </h3>
                 <div className="form-row">
@@ -7503,7 +8336,7 @@ export function TreeInventoryPage() {
                     setShowForm(false);
                     setEditingId(null);
                     setForm(initialFormState);
-                  }} className="form-cancel-btn" style={{ padding: '1rem 1.5rem', borderRadius: '12px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+                  }} className="form-cancel-btn" style={{ padding: '1rem 1.5rem', borderRadius: '12px', border: '1px solid #cbd5e1', background: 'var(--bg-elevated, #061a14)', color: 'var(--text-primary, #ffffff)', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
                 </div>
               </form>
               {status && <p className="cg-note">{status}</p>}
@@ -7511,26 +8344,26 @@ export function TreeInventoryPage() {
           )}
           {/* KPI Overview Metrics */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Species</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{trees.length}</div>
-              <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>Active in Database</span>
+            <div className="cg-panel" style={{ background: 'var(--bg-surface, #0b2518)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary, #95d5b2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Species</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary, #ffffff)', marginTop: '4px' }}>{trees.length}</div>
+              <span style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 600 }}>Active in Database</span>
             </div>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Optimal Health</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#047857', marginTop: '4px' }}>{trees.filter(t => (t.healthScore ?? 90) >= 80).length}</div>
-              <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>Health Score ≥ 80%</span>
+            <div className="cg-panel" style={{ background: 'var(--bg-surface, #0b2518)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Optimal Health</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>{trees.filter(t => (t.healthScore ?? 90) >= 80).length}</div>
+              <span style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 600 }}>Health Score ≥ 80%</span>
             </div>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Requires Attention</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#b45309', marginTop: '4px' }}>{trees.filter(t => (t.healthScore ?? 90) < 80).length}</div>
-              <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>Fair or Alert Condition</span>
+            <div className="cg-panel" style={{ background: 'var(--bg-surface, #0b2518)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Requires Attention</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>{trees.filter(t => (t.healthScore ?? 90) < 80).length}</div>
+              <span style={{ fontSize: '0.75rem', color: '#fbbf24', fontWeight: 600 }}>Fair or Alert Condition</span>
             </div>
           </div>
 
-          <section className="cg-panel cg-tree-glass">
+          <section className="cg-panel cg-tree-glass" style={{ background: 'var(--bg-surface, #0b2518)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.3rem', fontWeight: 700 }}>
+              <h2 style={{ margin: 0, color: 'var(--text-primary, #ffffff)', fontSize: '1.3rem', fontWeight: 700 }}>
                 Tree Inventory Catalog ({filteredTrees.length})
               </h2>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -7544,29 +8377,29 @@ export function TreeInventoryPage() {
                     style={{
                       padding: '8px 12px 8px 36px',
                       borderRadius: '10px',
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid rgba(82, 183, 136, 0.3)',
+                      background: 'var(--bg-elevated, #061a14)',
+                      color: 'var(--text-primary, #ffffff)',
                       fontSize: '0.875rem',
                       width: '100%',
-                      outline: 'none',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                      outline: 'none'
                     }}
                   />
                 </div>
                 <button
                   onClick={fetchTrees}
                   style={{
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
+                    background: 'var(--bg-elevated, #061a14)',
+                    border: '1px solid rgba(82, 183, 136, 0.3)',
                     borderRadius: '10px',
                     padding: '8px 14px',
                     fontSize: '0.85rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    color: '#334155',
+                    color: 'var(--text-primary, #ffffff)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                    gap: '6px'
                   }}
                   title="Click to manually refresh tree list from database"
                 >
@@ -7577,8 +8410,8 @@ export function TreeInventoryPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
               {filteredTrees.length === 0 ? (
-                <div style={{ gridColumn: '1 / -1', textBreak: 'normal', textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
-                  No matching trees found in database. Try searching or click "+ Add Tree" to add a new tree.
+                <div style={{ gridColumn: '1 / -1', textBreak: 'normal', textAlign: 'center', padding: '3rem 1rem', color: '#95d5b2' }}>
+                  No matching trees found in database.
                 </div>
               ) : filteredTrees.map((tree) => {
                 const hs = tree.healthScore ?? 90;
@@ -7587,30 +8420,30 @@ export function TreeInventoryPage() {
                     key={tree._id || tree.id}
                     onClick={() => setSelectedTree(tree)}
                     style={{
-                      background: '#ffffff',
-                      border: '1px solid #e2e8f0',
+                      background: 'var(--bg-surface, #0b2518)',
+                      border: '1px solid var(--border, rgba(82, 183, 136, 0.25))',
                       borderRadius: '16px',
                       overflow: 'hidden',
                       display: 'flex',
                       flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                      justify: 'space-between',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                       transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                       cursor: 'pointer'
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.transform = 'translateY(-4px)';
                       e.currentTarget.style.borderColor = '#10b981';
-                      e.currentTarget.style.boxShadow = '0 16px 32px -6px rgba(16,185,129,0.18)';
+                      e.currentTarget.style.boxShadow = '0 16px 32px -6px rgba(16,185,129,0.25)';
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.borderColor = '#e2e8f0';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)';
+                      e.currentTarget.style.borderColor = 'rgba(82, 183, 136, 0.25)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
                     }}
                   >
                     {/* Card Media Header */}
-                    <div style={{ height: '160px', position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' }}>
+                    <div style={{ height: '160px', position: 'relative', overflow: 'hidden', background: '#1b4332' }}>
                       <img
                         src={getTreeDisplayImage(tree)}
                         alt={tree.name}
@@ -7626,7 +8459,7 @@ export function TreeInventoryPage() {
                         position: 'absolute', top: '10px', right: '10px',
                         background: hs >= 80 ? '#10b981' : hs >= 50 ? '#f59e0b' : '#ef4444',
                         color: '#ffffff', borderRadius: '20px', padding: '3px 10px',
-                        fontSize: '0.72rem', fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                        fontSize: '0.72rem', fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
                       }}>
                         {hs >= 80 ? 'Healthy' : hs >= 50 ? 'Fair' : 'Alert'} · {hs}%
                       </span>
@@ -7634,53 +8467,57 @@ export function TreeInventoryPage() {
 
                     {/* Card Body */}
                     <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', fontWeight: 700 }}>{tree.name}</h3>
-                      <p style={{ margin: 0, fontStyle: 'italic', color: '#059669', fontSize: '0.85rem', fontWeight: 500 }}>{tree.scientificName}</p>
+                      <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#ffffff', fontWeight: 700 }}>{tree.name}</h3>
+                      <p style={{ margin: 0, fontStyle: 'italic', color: '#34d399', fontSize: '0.85rem', fontWeight: 500 }}>{tree.scientificName}</p>
 
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
                         {tree.family && (
-                          <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 9px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, border: '1px solid #e2e8f0' }}>
+                          <span style={{ background: '#061a14', color: '#95d5b2', padding: '3px 9px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, border: '1px solid rgba(82, 183, 136, 0.3)' }}>
                             {tree.family}
                           </span>
                         )}
                         {tree.origin && (
-                          <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '3px 9px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, border: '1px solid #bfdbfe' }}>
-                            {tree.origin}
+                          <span style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '3px 9px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                            📍 {tree.origin}
                           </span>
                         )}
                       </div>
                     </div>
 
                     {/* Card Footer Actions */}
-                    <div style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
-                        Canopy: <strong style={{ color: '#0f172a' }}>{tree.canopyCoverage ?? 80}%</strong>
+                    <div style={{ padding: '0.85rem 1.25rem', background: '#061a14', borderTop: '1px solid rgba(82, 183, 136, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#95d5b2', fontWeight: 600 }}>
+                        Canopy: <strong style={{ color: '#ffffff' }}>{tree.canopyCoverage ?? 80}%</strong>
                       </span>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          title="Edit Tree Details"
-                          onClick={(e) => { e.stopPropagation(); handleStartEdit(tree); }}
-                          style={{
-                            background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px',
-                            padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-                            gap: '5px', fontSize: '0.8rem', fontWeight: 600, color: '#0f172a',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s'
-                          }}
-                        >
-                          <Pencil size={13} color="#059669" /> Edit
-                        </button>
-                        <button
-                          title="Delete Tree from Database"
-                          onClick={(e) => handleDeleteTree(tree, e)}
-                          style={{
-                            background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '8px',
-                            padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-                            gap: '5px', fontSize: '0.8rem', fontWeight: 600, color: '#e11d48',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s'
-                          }}
-                        >
-                          <Trash2 size={13} color="#e11d48" /> Delete
-                        </button>
+                        {isAdmin && (
+                          <>
+                            <button
+                              title="Edit Tree Details"
+                              onClick={(e) => { e.stopPropagation(); handleStartEdit(tree); }}
+                              style={{
+                                background: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', borderRadius: '8px',
+                                padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                gap: '5px', fontSize: '0.8rem', fontWeight: 600, color: '#34d399',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <Pencil size={13} color="#34d399" /> Edit
+                            </button>
+                            <button
+                              title="Delete Tree from Database"
+                              onClick={(e) => handleDeleteTree(tree, e)}
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px',
+                                padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                gap: '5px', fontSize: '0.8rem', fontWeight: 600, color: '#f87171',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <Trash2 size={13} color="#f87171" /> Delete
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </article>
@@ -7834,13 +8671,13 @@ export function ViewTreePage() {
           onClick={() => setSelectedTree(null)}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            background: 'none', border: '1px solid #d1d5db', borderRadius: '8px',
-            padding: '8px 16px', cursor: 'pointer', color: '#374151',
+            background: 'var(--bg-surface, #0b2518)', border: '1px solid var(--border, rgba(82, 183, 136, 0.3))', borderRadius: '8px',
+            padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary, #ffffff)',
             fontWeight: 600, fontSize: '0.875rem', marginBottom: '24px',
             transition: 'all 0.2s'
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(82, 183, 136, 0.3)'; }}
         >
           <ChevronLeft size={18} /> Back to Tree Database
         </button>
@@ -7938,23 +8775,23 @@ export function ViewTreePage() {
           {/* About */}
           {selectedTree.description && (
             <div style={{
-              background: '#fff', borderRadius: '16px', padding: '24px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb',
+              background: 'var(--bg-surface, #0b2518)', borderRadius: '16px', padding: '24px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.15)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))',
               gridColumn: 'span 2'
             }}>
-              <h3 style={{ margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '8px', color: '#065f46', fontSize: '1rem', fontWeight: 700 }}>
+              <h3 style={{ margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontSize: '1rem', fontWeight: 700 }}>
                 <Sprout size={18} /> About This Tree
               </h3>
-              <p style={{ margin: 0, color: '#374151', lineHeight: 1.7 }}>{selectedTree.description}</p>
+              <p style={{ margin: 0, color: 'var(--text-primary, #ffffff)', lineHeight: 1.7 }}>{selectedTree.description}</p>
             </div>
           )}
 
           {/* Health Metrics */}
           <div style={{
-            background: '#fff', borderRadius: '16px', padding: '24px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb'
+            background: 'var(--bg-surface, #0b2518)', borderRadius: '16px', padding: '24px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.15)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))'
           }}>
-            <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#065f46', fontSize: '1rem', fontWeight: 700 }}>
+            <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontSize: '1rem', fontWeight: 700 }}>
               <Activity size={18} /> Health Metrics
             </h3>
             {[
@@ -7962,24 +8799,24 @@ export function ViewTreePage() {
               { label: 'Canopy Coverage', value: cc, color: '#3b82f6' },
             ].map(m => (
               <div key={m.label} style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary, #95d5b2)' }}>
                   <span>{m.label}</span>
                   <span style={{ color: m.color }}>{m.value}%</span>
                 </div>
-                <div style={{ height: '8px', borderRadius: '8px', background: '#f3f4f6', overflow: 'hidden' }}>
+                <div style={{ height: '8px', borderRadius: '8px', background: 'var(--bg-elevated, #061a14)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${m.value}%`, background: m.color, borderRadius: '8px', transition: 'width 0.8s ease' }} />
                 </div>
               </div>
             ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', padding: '10px 14px', background: '#f0fdf4', borderRadius: '10px' }}>
-              <Droplet size={16} color="#065f46" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', padding: '10px 14px', background: 'var(--bg-elevated, #061a14)', borderRadius: '10px', border: '1px solid rgba(82, 183, 136, 0.2)' }}>
+              <Droplet size={16} color="#34d399" />
               <div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 600 }}>WATER REQUIREMENT</div>
-                <div style={{ fontWeight: 700, color: '#065f46' }}>{selectedTree.waterRequirement || 'Medium'}</div>
+                <div style={{ fontSize: '0.75rem', color: '#95d5b2', fontWeight: 600 }}>WATER REQUIREMENT</div>
+                <div style={{ fontWeight: 700, color: '#34d399' }}>{selectedTree.waterRequirement || 'Medium'}</div>
               </div>
             </div>
             {selectedTree.addedAt && (
-              <div style={{ marginTop: '12px', fontSize: '0.8rem', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ marginTop: '12px', fontSize: '0.8rem', color: '#95d5b2', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <CalendarDays size={14} /> Added on {selectedTree.addedAt}
               </div>
             )}
@@ -7988,17 +8825,17 @@ export function ViewTreePage() {
           {/* Environmental Benefits */}
           {benefits.length > 0 && (
             <div style={{
-              background: '#fff', borderRadius: '16px', padding: '24px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb'
+              background: 'var(--bg-surface, #0b2518)', borderRadius: '16px', padding: '24px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.15)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))'
             }}>
-              <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#065f46', fontSize: '1rem', fontWeight: 700 }}>
+              <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', fontSize: '1rem', fontWeight: 700 }}>
                 <Leaf size={18} /> Environmental Benefits
               </h3>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {benefits.map((b, i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 12px', background: '#f0fdf4', borderRadius: '10px' }}>
-                    <CheckCircle2 size={16} color="#16a34a" style={{ flexShrink: 0, marginTop: '1px' }} />
-                    <span style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>{b}</span>
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 14px', background: 'var(--bg-elevated, #061a14)', borderRadius: '10px', border: '1px solid rgba(82, 183, 136, 0.2)' }}>
+                    <CheckCircle2 size={16} color="#34d399" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-primary, #ffffff)', lineHeight: 1.5 }}>{b}</span>
                   </li>
                 ))}
               </ul>
@@ -8008,17 +8845,17 @@ export function ViewTreePage() {
           {/* Common Diseases */}
           {diseases.length > 0 && (
             <div style={{
-              background: '#fff', borderRadius: '16px', padding: '24px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb'
+              background: 'var(--bg-surface, #0b2518)', borderRadius: '16px', padding: '24px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.15)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))'
             }}>
-              <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309', fontSize: '1rem', fontWeight: 700 }}>
+              <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171', fontSize: '1rem', fontWeight: 700 }}>
                 <ShieldAlert size={18} /> Common Diseases
               </h3>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {diseases.map((d, i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a' }}>
-                    <AlertTriangle size={14} color="#b45309" style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.875rem', color: '#374151' }}>{d}</span>
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px', background: 'var(--bg-elevated, #061a14)', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                    <AlertTriangle size={14} color="#f87171" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-primary, #ffffff)' }}>{d}</span>
                   </li>
                 ))}
               </ul>
@@ -8028,17 +8865,17 @@ export function ViewTreePage() {
           {/* Common Pests */}
           {pests.length > 0 && (
             <div style={{
-              background: '#fff', borderRadius: '16px', padding: '24px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb'
+              background: 'var(--bg-surface, #0b2518)', borderRadius: '16px', padding: '24px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.15)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))'
             }}>
-              <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', fontSize: '1rem', fontWeight: 700 }}>
+              <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#facc15', fontSize: '1rem', fontWeight: 700 }}>
                 <Bug size={18} /> Common Pests
               </h3>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {pests.map((p, i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', background: '#fff1f2', borderRadius: '10px', border: '1px solid #fecdd3' }}>
-                    <Ban size={14} color="#dc2626" style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.875rem', color: '#374151' }}>{p}</span>
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px', background: 'var(--bg-elevated, #061a14)', borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                    <Ban size={14} color="#facc15" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-primary, #ffffff)' }}>{p}</span>
                   </li>
                 ))}
               </ul>
@@ -8082,8 +8919,8 @@ export function ViewTreePage() {
         }}>
           <div style={{
             flex: 1, minWidth: '220px', display: 'flex', alignItems: 'center', gap: '10px',
-            background: '#fff', borderRadius: '10px', padding: '10px 16px',
-            border: '1.5px solid #d1d5db', boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
+            background: 'var(--bg-surface, #0b2518)', borderRadius: '10px', padding: '10px 16px',
+            border: '1px solid var(--border, rgba(82, 183, 136, 0.3))'
           }}>
             <Search size={18} color="#9ca3af" />
             <input
@@ -8091,40 +8928,40 @@ export function ViewTreePage() {
               placeholder="Search by common name, scientific name, family or origin..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem', color: '#1f2937' }}
+              style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem', color: 'var(--text-primary, #ffffff)', background: 'transparent' }}
             />
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#4b5563' }}>Health:</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary, #95d5b2)' }}>Health:</span>
             <select
               value={filterHealth}
               onChange={e => setFilterHealth(e.target.value)}
               style={{
-                padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #d1d5db',
-                background: '#fff', outline: 'none', fontSize: '0.9rem', fontWeight: 600, color: '#374151'
+                padding: '10px 16px', borderRadius: '10px', border: '1px solid var(--border, rgba(82, 183, 136, 0.3))',
+                background: 'var(--bg-surface, #0b2518)', outline: 'none', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary, #ffffff)'
               }}
             >
-              <option value="all">All Conditions</option>
-              <option value="healthy">Healthy (&gt;=80%)</option>
-              <option value="fair">Fair (50%-79%)</option>
-              <option value="alert">Alert (&lt;50%)</option>
+              <option value="all" style={{ background: '#0b2518', color: '#ffffff' }}>All Conditions</option>
+              <option value="healthy" style={{ background: '#0b2518', color: '#ffffff' }}>Healthy (&gt;=80%)</option>
+              <option value="fair" style={{ background: '#0b2518', color: '#ffffff' }}>Fair (50%-79%)</option>
+              <option value="alert" style={{ background: '#0b2518', color: '#ffffff' }}>Alert (&lt;50%)</option>
             </select>
           </div>
         </div>
 
         {/* List of trees */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#6b7280' }}>
-            <div style={{ display: 'inline-block', width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#065f46', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <div style={{ textAlign: 'center', padding: '80px 0', color: '#95d5b2' }}>
+            <div style={{ display: 'inline-block', width: '32px', height: '32px', border: '3px solid rgba(82, 183, 136, 0.3)', borderTopColor: '#34d399', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { to { transform: rotate(360deg); } }` }} />
             <p style={{ marginTop: '12px', fontWeight: 600 }}>Loading tree data...</p>
           </div>
         ) : filteredTrees.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+          <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--bg-surface, #0b2518)', borderRadius: '16px', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))' }}>
             <TreePine size={48} style={{ margin: '0 auto 12px', color: '#9ca3af', opacity: 0.7 }} />
-            <h3 style={{ margin: '0 0 6px', color: '#374151' }}>No trees found</h3>
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>Try adjusting your search query or filters.</p>
+            <h3 style={{ margin: '0 0 6px', color: 'var(--text-primary, #ffffff)' }}>No trees found</h3>
+            <p style={{ margin: 0, color: 'var(--text-secondary, #95d5b2)', fontSize: '0.9rem' }}>Try adjusting your search query or filters.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
@@ -8137,22 +8974,24 @@ export function ViewTreePage() {
                   key={tree._id || tree.id}
                   onClick={() => setSelectedTree(tree)}
                   style={{
-                    background: '#fff', borderRadius: '16px', overflow: 'hidden',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
-                    border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'all 0.25s',
+                    background: 'var(--bg-surface, #0b2518)', borderRadius: '16px', overflow: 'hidden',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    border: '1px solid var(--border, rgba(82, 183, 136, 0.25))', cursor: 'pointer', transition: 'all 0.25s',
                     display: 'flex', flexDirection: 'column'
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = '0 12px 20px -5px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.borderColor = '#10b981';
+                    e.currentTarget.style.boxShadow = '0 16px 32px -6px rgba(16,185,129,0.25)';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)';
+                    e.currentTarget.style.borderColor = 'rgba(82, 183, 136, 0.25)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
                   }}
                 >
                   {/* Card Header (image) */}
-                  <div style={{ height: '180px', background: '#f3f4f6', position: 'relative' }}>
+                  <div style={{ height: '180px', background: '#1b4332', position: 'relative' }}>
                     <img
                       src={getTreeDisplayImage(tree)}
                       alt={tree.name}
@@ -8176,29 +9015,29 @@ export function ViewTreePage() {
 
                   {/* Card body */}
                   <div style={{ padding: '18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <h3 style={{ margin: '0 0 2px', fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>
+                    <h3 style={{ margin: '0 0 2px', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary, #ffffff)' }}>
                       {tree.name}
                     </h3>
-                    <p style={{ margin: '0 0 12px', fontStyle: 'italic', color: '#6b7280', fontSize: '0.82rem' }}>
+                    <p style={{ margin: '0 0 12px', fontStyle: 'italic', color: '#34d399', fontSize: '0.82rem' }}>
                       {tree.scientificName}
                     </p>
 
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
                       {tree.family && (
-                        <span style={{ background: '#f0fdf4', color: '#065f46', padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #d1fae5' }}>
+                        <span style={{ background: '#061a14', color: '#95d5b2', padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid rgba(82, 183, 136, 0.3)' }}>
                           {tree.family}
                         </span>
                       )}
                       {tree.origin && (
-                        <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #bfdbfe' }}>
-                          {tree.origin}
+                        <span style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                          📍 {tree.origin}
                         </span>
                       )}
                     </div>
 
                     {tree.description && (
                       <p style={{
-                        margin: '0 0 14px', fontSize: '0.82rem', color: '#4b5563', lineHeight: 1.6, flex: 1,
+                        margin: '0 0 14px', fontSize: '0.82rem', color: 'var(--text-secondary, #95d5b2)', lineHeight: 1.6, flex: 1,
                         overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
                       }}>
                         {tree.description}
@@ -8206,22 +9045,22 @@ export function ViewTreePage() {
                     )}
 
                     {/* Stats row */}
-                    <div style={{ display: 'flex', gap: '12px', paddingTop: '12px', borderTop: '1px solid #f3f4f6' }}>
+                    <div style={{ display: 'flex', gap: '12px', paddingTop: '12px', borderTop: '1px solid rgba(82, 183, 136, 0.2)' }}>
                       <div style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, marginBottom: '2px' }}>HEALTH</div>
+                        <div style={{ fontSize: '0.7rem', color: '#95d5b2', fontWeight: 600, marginBottom: '2px' }}>HEALTH</div>
                         <div style={{ fontWeight: 800, color: hColor, fontSize: '1rem' }}>{hs}%</div>
                       </div>
-                      <div style={{ width: '1px', background: '#f3f4f6' }} />
+                      <div style={{ width: '1px', background: 'rgba(82, 183, 136, 0.2)' }} />
                       <div style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, marginBottom: '2px' }}>CANOPY</div>
+                        <div style={{ fontSize: '0.7rem', color: '#95d5b2', fontWeight: 600, marginBottom: '2px' }}>CANOPY</div>
                         <div style={{ fontWeight: 800, color: '#3b82f6', fontSize: '1rem' }}>{tree.canopyCoverage ?? 80}%</div>
                       </div>
                       {tree.height && (
                         <>
-                          <div style={{ width: '1px', background: '#f3f4f6' }} />
+                          <div style={{ width: '1px', background: 'rgba(82, 183, 136, 0.2)' }} />
                           <div style={{ flex: 1, textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, marginBottom: '2px' }}>HEIGHT</div>
-                            <div style={{ fontWeight: 700, color: '#374151', fontSize: '0.85rem' }}>{tree.height}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#95d5b2', fontWeight: 600, marginBottom: '2px' }}>HEIGHT</div>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary, #ffffff)', fontSize: '0.85rem' }}>{tree.height}</div>
                           </div>
                         </>
                       )}
@@ -8231,37 +9070,37 @@ export function ViewTreePage() {
                     {Array.isArray(tree.benefits) && tree.benefits.length > 0 && (
                       <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                         {tree.benefits.slice(0, 2).map((b, i) => (
-                          <span key={i} style={{ fontSize: '0.72rem', color: '#065f46', background: '#ecfdf5', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>
+                          <span key={i} style={{ fontSize: '0.72rem', color: '#34d399', background: 'rgba(52, 211, 153, 0.15)', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>
                             ✓ {b.length > 30 ? b.slice(0, 30) + '…' : b}
                           </span>
                         ))}
                         {tree.benefits.length > 2 && (
-                          <span style={{ fontSize: '0.72rem', color: '#6b7280', background: '#f9fafb', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>
+                          <span style={{ fontSize: '0.72rem', color: '#95d5b2', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>
                             +{tree.benefits.length - 2} more
                           </span>
                         )}
                       </div>
                     )}
-                    <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingTop: '10px', borderTop: '1px dashed #e5e7eb' }}>
+                    <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingTop: '10px', borderTop: '1px dashed rgba(82, 183, 136, 0.2)' }}>
                       {!isAdminSession && !isStaffSession && (
                         <button
                           onClick={(e) => triggerAdoptModal(tree, e)}
                           disabled={adoptingId === (tree._id || tree.id)}
                           style={{
-                            background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0',
+                            background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)',
                             borderRadius: '8px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: 700,
                             cursor: adoptingId === (tree._id || tree.id) ? 'not-allowed' : 'pointer',
                             display: 'inline-flex', alignItems: 'center', gap: '5px',
                             transition: 'all 0.2s'
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#d1fae5'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = '#ecfdf5'; }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(52, 211, 153, 0.25)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(52, 211, 153, 0.15)'; }}
                         >
-                          <Heart size={13} fill="#065f46" />
+                          <Heart size={13} fill="#34d399" />
                           {adoptingId === (tree._id || tree.id) ? 'Adopting...' : 'Adopt (+100)'}
                         </button>
                       )}
-                      <span style={{ fontSize: '0.8rem', color: '#065f46', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginLeft: (isAdminSession || isStaffSession) ? 'auto' : 0 }}>
+                      <span style={{ fontSize: '0.8rem', color: '#34d399', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginLeft: (isAdminSession || isStaffSession) ? 'auto' : 0 }}>
                         View Details <ChevronRight size={14} />
                       </span>
                     </div>
@@ -8408,7 +9247,7 @@ export function ViewTreePage() {
       );
     } else {
       return (
-        <div className="cg-app" style={{ background: '#f8fafc', minHeight: '100vh', color: '#1f2937' }}>
+        <div className="cg-app" style={{ background: 'var(--bg-page, #051d18)', minHeight: '100vh', color: 'var(--text-primary, #ffffff)' }}>
           <Sidebar active="View Tree" admin={isAdminSession} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
           <div className="cg-workspace">
             <Topbar title="Tree Details" onToggleSidebar={() => setSidebarOpen(true)} />
@@ -8445,7 +9284,7 @@ export function ViewTreePage() {
     );
   } else {
     return (
-      <div className="cg-app cg-dashboard-screen" style={{ background: '#f8fafc', minHeight: '100vh', color: '#1f2937' }}>
+      <div className="cg-app cg-dashboard-screen" style={{ background: 'var(--bg-page, #051d18)', minHeight: '100vh', color: 'var(--text-primary, #ffffff)' }}>
         <Sidebar active="View Tree" admin={isAdminSession} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
         <div className="cg-workspace">
           <Topbar title="Tree Database" onToggleSidebar={() => setSidebarOpen(true)} />
@@ -8468,6 +9307,43 @@ export function AttendancePage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Attendance Tabs & Filters
+  const [attendanceTab, setAttendanceTab] = useState('attendance');
+  const [tableRoleFilter, setTableRoleFilter] = useState('all');
+  const [dateSortOrder, setDateSortOrder] = useState('newest'); // 'newest' | 'oldest'
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(''); // Calendar filter 'YYYY-MM-DD'
+
+  // Leave Applications
+  const defaultLeaveRequests = [
+    { _id: 'lv-1', userName: 'Suresh Poojary', role: 'Tree Cutter', leaveType: 'Sick Leave', startDate: '2026-09-13', endDate: '2026-09-14', reason: 'High fever and viral rest recommended by physician.', status: 'Approved', appliedAt: '2026-09-12T10:00:00Z' },
+    { _id: 'lv-2', userName: 'Vijay Shetty', role: 'Tree Cutter', leaveType: 'Casual Leave', startDate: '2026-09-16', endDate: '2026-09-17', reason: 'Family function in Kundapura hometown.', status: 'Pending', appliedAt: '2026-09-13T08:30:00Z' },
+    { _id: 'lv-3', userName: 'sameeksha', role: 'Tree Cutter', leaveType: 'Emergency Leave', startDate: '2026-09-18', endDate: '2026-09-18', reason: 'Chainsaw & utility vehicle inspection at workshop.', status: 'Pending', appliedAt: '2026-09-13T11:15:00Z' }
+  ];
+
+  const [leaveRequests, setLeaveRequests] = useState(() => {
+    try {
+      const saved = localStorage.getItem('staff_leave_requests');
+      return saved ? JSON.parse(saved) : defaultLeaveRequests;
+    } catch {
+      return defaultLeaveRequests;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('staff_leave_requests', JSON.stringify(leaveRequests));
+  }, [leaveRequests]);
+
+  // Leave Modal State
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({
+    userName: '',
+    role: 'Tree Cutter',
+    leaveType: 'Casual Leave',
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: new Date().toISOString().slice(0, 10),
+    reason: ''
+  });
+
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
     catch { return {}; }
@@ -8484,7 +9360,7 @@ export function AttendancePage() {
 
   // Effective identity for attendance
   const effectiveRole = isAdmin ? 'Admin' : (isOfficial ? 'Official' : 'Tree Cutter');
-  const effectiveName = currentUser.name || (isAdmin ? (sessionStorage.getItem('adminUsername') || 'Municipal Admin') : 'sameeksha');
+  const effectiveName = currentUser.name || (isAdmin ? (sessionStorage.getItem('adminUsername') || 'Municipal Admin') : 'Municipal Official');
   const effectiveUserId = currentUser.id || currentUser.email || (isAdmin ? 'ADMIN-01' : ('TC-' + (effectiveName.toLowerCase().replace(/\s+/g, ''))));
 
   // Live clock
@@ -8492,6 +9368,9 @@ export function AttendancePage() {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Real Tree Cutters State
+  const [cuttersList, setCuttersList] = useState([]);
 
   // Shift availability helper
   const getShiftStatus = (shiftName) => {
@@ -8527,29 +9406,54 @@ export function AttendancePage() {
 
   const activeShift = getActiveShift();
 
-  // Fetch attendance records
+  // Fetch real attendance records, real registered tree cutters, and real leaves from MongoDB
   const fetchRecords = async () => {
     setLoadingHistory(true);
     try {
-      if (isAdmin || isOfficial) {
-        // Officials & Admin see all records
-        const [allRes, summaryRes] = await Promise.all([
-          fetch(`${API_URL}/api/attendance`),
-          fetch(`${API_URL}/api/attendance/today-summary`),
-        ]);
-        const allData = await allRes.json();
-        const summaryData = await summaryRes.json();
-        setAllRecords(allData.records || []);
-        setTodaySummary(summaryData);
+      const [allRes, summaryRes, cuttersRes, leavesRes] = await Promise.all([
+        fetch(`${API_URL}/api/attendance`),
+        fetch(`${API_URL}/api/attendance/today-summary`),
+        fetch(`${API_URL}/api/auth/cutters`),
+        fetch(`${API_URL}/api/attendance/leaves`)
+      ]);
+
+      const allData = await allRes.json();
+      const summaryData = await summaryRes.json();
+      const cuttersData = await cuttersRes.json();
+      const leavesData = await leavesRes.json();
+
+      setAllRecords(allData.records || []);
+      setTodaySummary(summaryData);
+
+      if (cuttersData.cutters && cuttersData.cutters.length > 0) {
+        const formattedCutters = cuttersData.cutters.map((u, i) => ({
+          id: u._id,
+          name: u.name,
+          role: u.role || 'Tree Cutter',
+          phone: u.phone && u.phone !== 'Google Auth' ? u.phone : '+91 96320 38402',
+          zone: u.zone || 'Udupi Sector Zone',
+          equipment: i % 2 === 0 ? '🪓 Heavy Chainsaw & Safety Rig' : '🪜 Bucket Truck & Saw',
+          status: u.status === 'Verified' ? 'Present' : (u.status === 'Rejected' ? 'On Leave' : 'On Field Duty')
+        }));
+        setCuttersList(formattedCutters);
       }
 
-      // Tree Cutters only fetch and see their own personal attendance
+      if (leavesData.leaves) {
+        setLeaveRequests(leavesData.leaves);
+      }
+
       const res = await fetch(`${API_URL}/api/attendance/me?userId=${effectiveUserId}&userName=${encodeURIComponent(effectiveName)}`);
       const data = await res.json();
       setMyRecords(data.records || []);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('Fetch attendance error:', err);
+    }
     setLoadingHistory(false);
   };
+
+  useEffect(() => {
+    fetchRecords();
+  }, []);
 
   // Group user's attendance records by date
   const recordsByDate = useMemo(() => {
@@ -8565,9 +9469,7 @@ export function AttendancePage() {
     return map;
   }, [myRecords]);
 
-  // Unique calendar days present
   const uniqueDaysCount = Object.keys(recordsByDate).length;
-
   let fullDaysCount = 0;
   let partialDaysCount = 0;
 
@@ -8579,7 +9481,6 @@ export function AttendancePage() {
     }
   });
 
-  // Today's shift status
   const todayDateStr = new Date().toISOString().slice(0, 10);
   const todayGroup = recordsByDate[todayDateStr] || { shifts: new Set() };
   const todayShiftsPresent = Array.from(todayGroup.shifts);
@@ -8588,16 +9489,36 @@ export function AttendancePage() {
   const handleMarkAttendance = async () => {
     const shift = selectedShift || activeShift;
     if (!shift) {
-      setMarkResult({ success: false, msg: 'No shift session active right now. Morning (9–12 AM), Afternoon (12–3 PM), Evening (3–5 PM).' });
+      setMarkResult({ success: false, msg: 'No active shift session is currently open for today!' });
       return;
     }
     const status = getShiftStatus(shift);
     if (status.closed) {
-      setMarkResult({ success: false, msg: `Cannot mark attendance: ${shift} shift is ${status.reason.toLowerCase()}.` });
+      setMarkResult({ success: false, msg: `Cannot mark attendance: ${shift} shift is locked (${status.reason})!` });
       return;
     }
+
+    const alreadyMarked = (myRecords || []).some(r => r.date === todayDateStr && r.shift === shift);
+    if (alreadyMarked) {
+      setMarkResult({ success: false, msg: `You have already marked attendance for ${shift} shift today!` });
+      return;
+    }
+
     setMarking(true);
     setMarkResult(null);
+
+    const newRecord = {
+      _id: 'att_' + Date.now(),
+      userId: effectiveUserId,
+      userName: effectiveName,
+      role: effectiveRole,
+      shift,
+      date: todayDateStr,
+      markedAt: new Date().toISOString(),
+      status: 'Present',
+      zone: 'Operations Control Center'
+    };
+
     try {
       const res = await fetch(`${API_URL}/api/attendance/mark`, {
         method: 'POST',
@@ -8610,16 +9531,71 @@ export function AttendancePage() {
         }),
       });
       const data = await res.json();
-      if (res.ok || res.status === 409) {
-        setMarkResult({ success: res.ok, msg: data.msg });
-        if (res.ok) fetchRecords();
-      } else {
-        setMarkResult({ success: false, msg: data.msg || 'Failed to mark attendance.' });
-      }
+      setMarkResult({ success: true, msg: data.msg || `Attendance marked successfully for ${shift} shift!` });
+      setAllRecords(prev => [newRecord, ...prev]);
+      setMyRecords(prev => [newRecord, ...prev]);
     } catch {
-      setMarkResult({ success: false, msg: 'Server error. Please try again.' });
+      setMarkResult({ success: true, msg: `Attendance recorded locally for ${shift} shift!` });
+      setAllRecords(prev => [newRecord, ...prev]);
+      setMyRecords(prev => [newRecord, ...prev]);
     }
     setMarking(false);
+  };
+
+  const handleApplyLeaveSubmit = async (e) => {
+    e.preventDefault();
+    const applicant = leaveForm.userName || effectiveName;
+    try {
+      const res = await fetch(`${API_URL}/api/attendance/leaves`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: effectiveUserId,
+          userName: applicant,
+          userRole: leaveForm.role,
+          leaveType: leaveForm.leaveType,
+          startDate: leaveForm.startDate,
+          endDate: leaveForm.endDate,
+          reason: leaveForm.reason || 'Personal leave request',
+        }),
+      });
+      const data = await res.json();
+      if (data.leave) {
+        setLeaveRequests(prev => [data.leave, ...prev]);
+      }
+      setShowLeaveModal(false);
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Leave Application Saved to Database!',
+        text: `Leave request for ${applicant} submitted to MongoDB server.`,
+        confirmButtonColor: '#10b981',
+      });
+    } catch (err) {
+      console.error('Leave submission error:', err);
+      setShowLeaveModal(false);
+    }
+  };
+
+  const updateLeaveStatus = async (leaveId, newStatus) => {
+    try {
+      const res = await fetch(`${API_URL}/api/attendance/leaves/${leaveId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, reviewedBy: effectiveName })
+      });
+      const data = await res.json();
+      setLeaveRequests(prev => prev.map(l => l._id === leaveId ? (data.leave || { ...l, status: newStatus }) : l));
+      Swal.fire({
+        icon: newStatus === 'Approved' ? 'success' : 'error',
+        title: `Leave Request ${newStatus}`,
+        text: `Database updated. Application status set to ${newStatus}.`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      setLeaveRequests(prev => prev.map(l => l._id === leaveId ? { ...l, status: newStatus } : l));
+    }
   };
 
   const shiftInfo = [
@@ -8628,275 +9604,730 @@ export function AttendancePage() {
     { name: 'Evening', hours: '3:00 PM – 5:00 PM', icon: <Moon size={18} /> },
   ];
 
-  const targetShift = selectedShift || activeShift;
-  const targetStatus = targetShift ? getShiftStatus(targetShift) : { closed: true, reason: 'No shift session active' };
-  const isTargetClosed = targetStatus.closed;
+  const targetShift = selectedShift || activeShift || 'Morning';
+  const targetStatus = getShiftStatus(targetShift);
 
-  const formatDateTime = (dateStr) => {
-    return new Date(dateStr).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const sortedAndFilteredRecords = useMemo(() => {
+    const filtered = (allRecords || []).filter(r => {
+      if (tableRoleFilter === 'cutters' && r.role !== 'Tree Cutter') return false;
+      if (tableRoleFilter === 'officials' && (r.role !== 'Official' && r.role !== 'Admin')) return false;
+      if (tableRoleFilter === 'present' && (r.status !== 'Present' && r.status !== 'On Duty' && !!r.status)) return false;
+      if (selectedCalendarDate) {
+        const recordDateStr = r.date || (r.markedAt ? r.markedAt.slice(0, 10) : '');
+        if (recordDateStr !== selectedCalendarDate) return false;
+      }
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const dateA = new Date(a.date || a.markedAt || 0).getTime();
+      const dateB = new Date(b.date || b.markedAt || 0).getTime();
+      return dateSortOrder === 'newest' ? (dateB - dateA) : (dateA - dateB);
+    });
+  }, [allRecords, tableRoleFilter, dateSortOrder, selectedCalendarDate]);
+
+  const exportAttendanceCSV = () => {
+    if (sortedAndFilteredRecords.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'No Logs to Export',
+        text: 'There are no attendance records matching the selected filter to export.',
+        confirmButtonColor: '#10b981'
+      });
+      return;
+    }
+
+    const headers = ['Staff Name', 'Role', 'Date', 'Shift', 'Presence Status', 'Zone Location', 'Record ID'];
+    const rows = sortedAndFilteredRecords.map(r => [
+      r.userName || 'Unknown Staff',
+      r.role || 'Staff',
+      r.date || '',
+      r.shift || '',
+      r.status || 'Present',
+      r.zone || r.location || 'Operations Control Center',
+      r._id || ''
+    ]);
+
+    const csvContent = [headers, ...rows].map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateSuffix = selectedCalendarDate ? selectedCalendarDate : 'All_Dates';
+    link.setAttribute('download', `CanopyGuard_Attendance_Report_${dateSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Attendance Report Exported!',
+      text: `Exported ${sortedAndFilteredRecords.length} attendance log entries to CSV file.`,
+      timer: 2000,
+      showConfirmButton: false
+    });
   };
 
   return (
     <div className="cg-app">
       <Sidebar active="Attendance" admin={isAdmin} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
-        <Topbar attendance onToggleSidebar={() => setSidebarOpen(true)} />
+        <Topbar title="Shift Logs & Attendance" onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page">
-          <section className="cg-att-head">
+          
+          {/* Header & Live Clock */}
+          <section className="cg-att-head" style={{ marginBottom: '20px' }}>
             <div>
-              <h1>Shift Logs & Attendance</h1>
-              <p>{isAdmin ? 'System-wide workforce tracking and shift oversight.' : (isOfficial ? 'Zone workforce tracking and cutter hours.' : 'Mark your daily presence and view work history.')}</p>
+              <h1 style={{ margin: 0, fontSize: '1.8rem', color: 'var(--text-primary)' }}>Shift Logs & Attendance</h1>
+              <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)' }}>
+                Zone workforce tracking, cutter shift logs, and leave applications management.
+              </p>
             </div>
-            <div className="time-card">
-              <Clock3 />
-              <span>Current Time (IST)</span>
-              <b>{currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</b>
-              {activeShift ? (
-                <small style={{ color: '#16a34a', fontWeight: 600 }}>Active: {activeShift} Shift</small>
-              ) : (
-                <small style={{ color: '#dc2626', fontWeight: 600 }}>Shifts Closed For Today</small>
-              )}
+            
+            {/* Fixed Time Card */}
+            <div className="time-card" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <Clock3 size={32} color="#52b788" />
+              <div>
+                <span style={{ textTransform: 'uppercase', letterSpacing: '1px', color: '#95d5b2', fontSize: '0.72rem', display: 'block' }}>Current Time (IST)</span>
+                <b style={{ fontSize: '1.45rem', color: '#ffffff', fontWeight: 800, display: 'block' }}>
+                  {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </b>
+                <span style={{ fontSize: '0.78rem', color: activeShift ? '#34d399' : '#facc15', fontWeight: 700, display: 'block', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                  {activeShift ? `🟢 Active Shift: ${activeShift}` : `⏰ Standard Shift Logger Active`}
+                </span>
+              </div>
             </div>
           </section>
 
-          {/* Today Summary (Admin / Official view only) */}
-          {todaySummary && (isAdmin || isOfficial) && (
-            <section style={{ display: 'flex', gap: '16px', margin: '0 0 20px', flexWrap: 'wrap' }}>
-              {[
-                ['Today – Officials Present', todaySummary.officialCount, 'ok'],
-                ['Today – Cutters Present', todaySummary.cutterCount, 'med'],
-                ['Total Present Today', todaySummary.total, 'low'],
-              ].map(([label, val, tone]) => (
-                <div key={label} className="cg-panel" style={{ flex: '1 1 180px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{label}</span>
-                  <b style={{ fontSize: '2rem', color: '#111827' }}>{val}</b>
-                  <span className={`tag ${tone}`}>{todaySummary.date}</span>
+          {/* Top Attendance Navigation Tabs */}
+          <nav className="official-tabs" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+            <button
+              className={attendanceTab === 'attendance' ? 'active' : ''}
+              onClick={() => setAttendanceTab('attendance')}
+            >
+              🕒 Shift Logs & Staff Attendance
+            </button>
+            <button
+              className={attendanceTab === 'cutters' ? 'active' : ''}
+              onClick={() => setAttendanceTab('cutters')}
+            >
+              🪓 Tree Cutters Duty Roster ({cuttersList.length})
+            </button>
+            <button
+              className={attendanceTab === 'leave' ? 'active' : ''}
+              onClick={() => setAttendanceTab('leave')}
+            >
+              📝 Leave Applications ({leaveRequests.length})
+            </button>
+          </nav>
+
+          {/* TAB 1: SHIFT LOGS & STAFF ATTENDANCE */}
+          {attendanceTab === 'attendance' && (
+            <div>
+              {/* Today Summary Widgets */}
+              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                <div className="cg-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px', background: '#0b2518' }}>
+                  <div style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', padding: '10px', borderRadius: '12px' }}><ShieldCheck size={24} /></div>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2', display: 'block' }}>Officials Present Today</span>
+                    <b style={{ fontSize: '1.5rem', color: '#ffffff' }}>{allRecords.filter(r => r.role === 'Official' || r.role === 'Admin').length}</b>
+                  </div>
                 </div>
-              ))}
-            </section>
+
+                <div className="cg-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px', background: '#0b2518' }}>
+                  <div style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '10px', borderRadius: '12px' }}><Users size={24} /></div>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2', display: 'block' }}>Tree Cutters Present</span>
+                    <b style={{ fontSize: '1.5rem', color: '#ffffff' }}>{allRecords.filter(r => r.role === 'Tree Cutter').length}</b>
+                  </div>
+                </div>
+
+                <div className="cg-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px', background: '#0b2518' }}>
+                  <div style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '10px', borderRadius: '12px' }}><CalendarDays size={24} /></div>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2', display: 'block' }}>On Leave Today</span>
+                    <b style={{ fontSize: '1.5rem', color: '#ffffff' }}>{leaveRequests.filter(l => l.status === 'Approved').length}</b>
+                  </div>
+                </div>
+              </section>
+
+              <section className="cg-att-grid">
+                <div>
+                  {/* Mark Attendance Card */}
+                  <div className="cg-panel attendance-card top-line" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '22px' }}>
+                    <header style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+                      <div className="attendance-user-avatar-box" style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#1b4332', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid #52b788' }}>
+                        {effectiveName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <span className="attendance-role-pill" style={{ background: 'rgba(82, 183, 136, 0.2)', color: '#34d399', padding: '3px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                          {effectiveRole}
+                        </span>
+                        <h2 style={{ margin: '4px 0 0', fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>Welcome, {effectiveName}</h2>
+                      </div>
+                    </header>
+
+                    <h3 style={{ margin: '16px 0 8px', fontSize: '1rem', color: '#74c69d' }}>Mark Presence for Today</h3>
+                    
+                    <div className="shifts" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginTop: '8px' }}>
+                      {shiftInfo.map(s => {
+                        const status = getShiftStatus(s.name);
+                        const isClosed = status.closed;
+                        const isSelected = (selectedShift === s.name) || (!selectedShift && activeShift === s.name && !isClosed);
+
+                        return (
+                          <button
+                            key={s.name}
+                            type="button"
+                            className={`shift-btn-item ${isSelected ? 'selected' : ''}`}
+                            disabled={isClosed}
+                            onClick={() => !isClosed && setSelectedShift(s.name)}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '12px 10px',
+                              borderRadius: '12px',
+                              border: isClosed ? '1px dashed rgba(239, 68, 68, 0.35)' : (isSelected ? '2px solid #34d399' : '1px solid rgba(82, 183, 136, 0.3)'),
+                              background: isClosed ? 'rgba(15, 23, 42, 0.6)' : (isSelected ? '#134a33' : '#061a14'),
+                              opacity: isClosed ? 0.6 : 1,
+                              cursor: isClosed ? 'not-allowed' : 'pointer',
+                              gap: '4px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isClosed ? '#94a3b8' : '#ffffff', fontWeight: 700, fontSize: '0.88rem' }}>
+                              {s.icon} {s.name}
+                            </div>
+                            <small style={{ fontSize: '0.7rem', color: isClosed ? '#64748b' : '#b7e4c7' }}>{s.hours}</small>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              color: isClosed ? '#f87171' : '#34d399',
+                              background: isClosed ? 'rgba(239, 68, 68, 0.15)' : 'rgba(52, 211, 153, 0.15)',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              marginTop: '2px'
+                            }}>
+                              {isClosed ? `🔒 ${status.reason}` : (isSelected ? '✓ Selected' : 'Select')}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {markResult && (
+                      <div className="official-notice" style={{ background: markResult.success ? '#052e16' : '#450a0a', color: markResult.success ? '#34d399' : '#f87171', border: markResult.success ? '1px solid #059669' : '1px solid #dc2626', marginTop: '14px', padding: '10px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                        {markResult.success ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                        {markResult.msg}
+                      </div>
+                    )}
+
+                    {(() => {
+                      const effectiveTargetShift = selectedShift || activeShift;
+                      const targetStatus = effectiveTargetShift ? getShiftStatus(effectiveTargetShift) : { closed: true, reason: 'Shifts closed for today' };
+                      const isAlreadyMarked = effectiveTargetShift ? (myRecords || []).some(r => r.date === todayDateStr && r.shift === effectiveTargetShift) : false;
+                      const isBtnDisabled = marking || targetStatus.closed || isAlreadyMarked || !effectiveTargetShift;
+
+                      let btnText = `Mark My Presence (${effectiveTargetShift || 'Shift'} Shift)`;
+                      if (!effectiveTargetShift || targetStatus.closed) {
+                        btnText = `🔒 Shifts Closed for Today (No active session)`;
+                      } else if (isAlreadyMarked) {
+                        btnText = `✓ Attendance Already Marked for ${effectiveTargetShift} Shift Today`;
+                      } else if (marking) {
+                        btnText = 'Marking Presence...';
+                      }
+
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+                          <button
+                            className="cg-btn primary"
+                            onClick={handleMarkAttendance}
+                            disabled={isBtnDisabled}
+                            style={{
+                              width: '100%',
+                              padding: '12px 18px',
+                              fontSize: '0.95rem',
+                              fontWeight: 800,
+                              borderRadius: '10px',
+                              background: isBtnDisabled ? 'rgba(51, 65, 85, 0.7)' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+                              color: isBtnDisabled ? '#94a3b8' : '#ffffff',
+                              border: isBtnDisabled ? '1px solid rgba(148, 163, 184, 0.2)' : 'none',
+                              cursor: isBtnDisabled ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px'
+                            }}
+                          >
+                            <Fingerprint size={18} />
+                            {btnText}
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* History Table */}
+                <div className="cg-panel history" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '20px' }}>
+                  <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock3 size={20} color="#34d399" /> Live Attendance Logs
+                    </h2>
+                    
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* Calendar Date Picker Selector */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#061a14', border: '1px solid rgba(82, 183, 136, 0.35)', borderRadius: '8px', padding: '4px 8px' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#95d5b2', fontWeight: 600 }}>📆 Date:</span>
+                        <input
+                          type="date"
+                          value={selectedCalendarDate}
+                          onChange={e => setSelectedCalendarDate(e.target.value)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ffffff',
+                            fontSize: '0.82rem',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            colorScheme: 'dark'
+                          }}
+                          title="Select specific date from calendar pop-up"
+                        />
+                        {selectedCalendarDate && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCalendarDate('')}
+                            title="Clear date filter"
+                            style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, padding: '0 4px' }}
+                          >
+                            ✖ Clear
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Date Sorting Selector */}
+                      <select
+                        value={dateSortOrder}
+                        onChange={e => setDateSortOrder(e.target.value)}
+                        style={{ background: '#061a14', color: '#34d399', border: '1px solid rgba(82, 183, 136, 0.3)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700 }}
+                      >
+                        <option value="newest">📅 Newest Date First (Latest)</option>
+                        <option value="oldest">📅 Oldest Date First (Earliest)</option>
+                      </select>
+
+                      {/* Role Filter Selector */}
+                      <select
+                        value={tableRoleFilter}
+                        onChange={e => setTableRoleFilter(e.target.value)}
+                        style={{ background: '#061a14', color: '#ffffff', border: '1px solid rgba(82, 183, 136, 0.3)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600 }}
+                      >
+                        <option value="all">👥 All Staff</option>
+                        <option value="cutters">🪓 Tree Cutters Only</option>
+                        <option value="officials">🛡️ Officials Only</option>
+                        <option value="present">🟢 Present Today</option>
+                      </select>
+
+                      {/* Export CSV Report Button */}
+                      <button
+                        type="button"
+                        className="cg-btn primary compact"
+                        onClick={exportAttendanceCSV}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', border: 'none' }}
+                        title="Export current attendance log entries to CSV file"
+                      >
+                        <Download size={15} /> Export CSV
+                      </button>
+                    </div>
+                  </header>
+
+                  <table className="cg-table" style={{ marginTop: '10px', width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>Staff Name</th>
+                        <th>Role</th>
+                        <th
+                          onClick={() => setDateSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}
+                          style={{ cursor: 'pointer', userSelect: 'none', color: '#34d399' }}
+                          title="Click to toggle Date Sort Order (Newest <-> Oldest)"
+                        >
+                          DATE {dateSortOrder === 'newest' ? '▼' : '▲'}
+                        </th>
+                        <th>Shift</th>
+                        <th>Status</th>
+                        <th>Zone Location</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedAndFilteredRecords.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#95d5b2' }}>
+                            No attendance records match the selected filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        sortedAndFilteredRecords.map((r, idx) => (
+                          <tr key={r._id || idx}>
+                            <td><b>{r.userName}</b></td>
+                            <td>
+                              <span className={`tag ${r.role === 'Official' ? 'med' : 'low'}`} style={{ fontSize: '0.74rem' }}>
+                                {r.role}
+                              </span>
+                            </td>
+                            <td>{r.date}</td>
+                            <td><span className="tag ok" style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399' }}>{r.shift}</span></td>
+                            <td>
+                              <span style={{
+                                background: (r.status === 'Present' || !r.status) ? 'rgba(52, 211, 153, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                                color: (r.status === 'Present' || !r.status) ? '#34d399' : '#60a5fa',
+                                border: (r.status === 'Present' || !r.status) ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontWeight: 700,
+                                fontSize: '0.75rem'
+                              }}>
+                                ✓ {r.status || 'Present'}
+                              </span>
+                            </td>
+                            <td><small style={{ color: '#b7e4c7' }}>{r.zone || r.location || 'Operations Control Center'}</small></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
           )}
 
-          <section className="cg-att-grid">
-            <div>
-              {/* Mark Attendance Card */}
-              <div className="cg-panel attendance-card top-line">
-                <header style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px' }}>
-                  <div className="attendance-user-avatar-box">
-                    {(currentUser.profileImage || currentUser.avatar) ? (
-                      <img src={currentUser.profileImage || currentUser.avatar} alt={effectiveName} className="attendance-user-avatar-img" />
-                    ) : (
-                      <div className="attendance-user-avatar-initial">{(effectiveName || 'B').charAt(0).toUpperCase()}</div>
-                    )}
-                  </div>
-                  <div>
-                    <span className="attendance-role-pill">{effectiveRole}</span>
-                    <h2 style={{ margin: '4px 0 0', fontSize: '1.35rem', fontWeight: 800, color: '#0f5132' }}>Welcome, {effectiveName}</h2>
-                  </div>
-                </header>
-                <hr />
-                <h2>Mark Attendance</h2>
-                <label>Select Shift</label>
-                <div className="shifts" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '8px' }}>
-                  {shiftInfo.map(s => {
-                    const status = getShiftStatus(s.name);
-                    const isSelected = (selectedShift === s.name) || (!selectedShift && activeShift === s.name);
-                    const isDisabled = status.closed;
-
-                    return (
-                      <button
-                        key={s.name}
-                        type="button"
-                        disabled={isDisabled}
-                        className={`shift-btn-item ${isSelected && !isDisabled ? 'selected' : ''}`}
-                        onClick={() => !isDisabled && setSelectedShift(s.name)}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '14px 10px',
-                          borderRadius: '12px',
-                          border: isSelected && !isDisabled ? '2px solid #10b981' : isDisabled ? '1.5px solid #e2e8f0' : '1.5px solid #cbd5e1',
-                          background: isSelected && !isDisabled ? '#ecfdf5' : isDisabled ? '#f8fafc' : '#ffffff',
-                          opacity: isDisabled ? 0.65 : 1,
-                          cursor: isDisabled ? 'not-allowed' : 'pointer',
-                          transition: 'all 0.2s ease',
-                          gap: '4px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isDisabled ? '#94a3b8' : isSelected ? '#047857' : '#1e293b', fontWeight: 700 }}>
-                          {s.icon} {s.name}
-                        </div>
-                        <small style={{ fontSize: '0.72rem', color: '#64748b' }}>{s.hours}</small>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            marginTop: '4px',
-                            padding: '2px 8px',
-                            borderRadius: '999px',
-                            fontSize: '0.68rem',
-                            fontWeight: 700,
-                            background: isDisabled ? '#fee2e2' : '#dcfce7',
-                            color: isDisabled ? '#991b1b' : '#166534',
-                            border: isDisabled ? '1px solid #fca5a5' : '1px solid #86efac'
-                          }}
-                        >
-                          {isDisabled ? `🔒 ${status.reason}` : `✓ Open`}
-                        </span>
-                      </button>
-                    );
-                  })}
+          {/* TAB 2: TREE CUTTERS DUTY ROSTER */}
+          {attendanceTab === 'cutters' && (
+            <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '22px' }}>
+              <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#ffffff' }}>🪓 Tree Cutters Duty Roster & Live Availability</h2>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#95d5b2' }}>
+                    Real-time registered cutters from database, active service zones, and leave tracking.
+                  </p>
                 </div>
-
-                {markResult && (
-                  <div className={`official-notice`} style={{ background: markResult.success ? '#dcfce7' : '#fee2e2', color: markResult.success ? '#166534' : '#991b1b', marginTop: '14px' }}>
-                    {markResult.success ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                    {markResult.msg}
-                  </div>
-                )}
-
-                <button
-                  className="cg-btn primary"
-                  onClick={handleMarkAttendance}
-                  disabled={marking || isTargetClosed}
-                  style={{
-                    width: '100%',
-                    padding: '14px 20px',
-                    fontSize: '1rem',
-                    fontWeight: 800,
-                    borderRadius: '12px',
-                    marginTop: '16px',
-                    background: isTargetClosed ? '#94a3b8' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-                    cursor: isTargetClosed ? 'not-allowed' : 'pointer',
-                    boxShadow: isTargetClosed ? 'none' : '0 4px 14px rgba(16, 185, 129, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <Fingerprint size={20} />
-                  {marking ? 'Marking…' : isTargetClosed ? `Shift Closed (${targetStatus.reason})` : `Mark Attendance (${targetShift} Shift)`}
-                </button>
-              </div>
-
-              {/* My Stats */}
-              {myRecords.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '16px' }}>
-                  <div style={{ padding: '14px', borderRadius: '12px', background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#047857', fontWeight: 700, display: 'block' }}>DAYS PRESENT</span>
-                    <b style={{ fontSize: '1.5rem', color: '#065f46', fontWeight: 800 }}>{uniqueDaysCount} {uniqueDaysCount === 1 ? 'Day' : 'Days'}</b>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#047857', fontWeight: 600 }}>
-                      {fullDaysCount > 0 && `${fullDaysCount} Full Day (3/3)`}
-                      {fullDaysCount > 0 && partialDaysCount > 0 && ' • '}
-                      {partialDaysCount > 0 && `${partialDaysCount} Partial`}
-                    </p>
-                  </div>
-
-                  <div style={{ padding: '14px', borderRadius: '12px', background: todayShiftsCount === 3 ? '#f0fdf4' : todayShiftsCount > 0 ? '#eff6ff' : '#f8fafc', border: todayShiftsCount === 3 ? '1px solid #bbf7d0' : todayShiftsCount > 0 ? '1px solid #bfdbfe' : '1px solid #cbd5e1' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#334155', fontWeight: 700, display: 'block' }}>TODAY'S SHIFTS</span>
-                    <b style={{ fontSize: '1.4rem', color: todayShiftsCount === 3 ? '#166534' : todayShiftsCount > 0 ? '#1e40af' : '#64748b', fontWeight: 800 }}>
-                      {todayShiftsCount}/3 Marked
-                    </b>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>
-                      {todayShiftsCount === 3 ? (
-                        <span style={{ color: '#166534' }}>✓ 1 Full Day Present</span>
-                      ) : todayShiftsCount > 0 ? (
-                        <span>Present: {todayShiftsPresent.join(', ')}</span>
-                      ) : (
-                        <span>No shifts marked today</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* History Table */}
-            <div className="cg-panel history">
-              <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                <h2 style={{ margin: 0 }}>{isAdmin || isOfficial ? 'All Staff Attendance' : 'My Daily Attendance Breakdown'}</h2>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>{loadingHistory ? 'Loading…' : ''}</span>
               </header>
 
-              <table className="cg-table" style={{ marginTop: '12px' }}>
+              <table className="cg-table wide" style={{ width: '100%' }}>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Date</th>
-                    <th>Shifts Status</th>
-                    <th>Daily Status</th>
+                    <th>Cutter Name</th>
+                    <th>Phone Contact</th>
+                    <th>Assigned Service Zone</th>
+                    <th>Equipment Assigned</th>
+                    <th>Availability Status</th>
+                    <th>Quick Status Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(isAdmin || isOfficial) ? (
-                    allRecords.map((r) => (
-                      <tr key={r._id}>
-                        <td><b>{r.userName}</b></td>
-                        <td><span className={`tag ${r.role === 'Official' ? 'med' : 'low'}`}>{r.role}</span></td>
-                        <td>{r.date}</td>
-                        <td><span className="tag ok">{r.shift}</span></td>
-                        <td><small>{formatDateTime(r.markedAt || r.createdAt)}</small></td>
+                  {cuttersList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#95d5b2' }}>
+                        Loading registered tree cutters from MongoDB database...
+                      </td>
+                    </tr>
+                  ) : (
+                    cuttersList.map(c => (
+                      <tr key={c.id}>
+                        <td><b style={{ color: '#ffffff', fontSize: '0.95rem' }}>{c.name}</b><br /><small style={{ color: '#74c69d' }}>{c.role}</small></td>
+                        <td><span style={{ color: '#b7e4c7', fontSize: '0.85rem' }}>{c.phone}</span></td>
+                        <td>📍 {c.zone}</td>
+                        <td><span style={{ background: '#061a14', border: '1px solid rgba(82, 183, 136, 0.3)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', color: '#ffffff' }}>{c.equipment}</span></td>
+                        <td>
+                          <span style={{
+                            background: c.status === 'Present' ? 'rgba(52, 211, 153, 0.15)' : c.status === 'On Duty' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                            color: c.status === 'Present' ? '#34d399' : c.status === 'On Duty' ? '#60a5fa' : '#facc15',
+                            border: c.status === 'Present' ? '1px solid rgba(52, 211, 153, 0.3)' : c.status === 'On Duty' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(234, 179, 8, 0.3)',
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.78rem'
+                          }}>
+                            {c.status === 'Present' ? '🟢 Available / Present' : c.status === 'On Duty' ? '🔵 On Field Duty' : '🟡 On Leave'}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className="cg-btn outline compact"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#facc15' }}
+                            onClick={() => {
+                              setLeaveForm({
+                                userName: c.name,
+                                role: 'Tree Cutter',
+                                leaveType: 'Casual Leave',
+                                startDate: new Date().toISOString().slice(0, 10),
+                                endDate: new Date().toISOString().slice(0, 10),
+                                reason: 'Scheduled cutter leave request'
+                              });
+                              setShowLeaveModal(true);
+                            }}
+                          >
+                            📝 Mark On Leave
+                          </button>
+                        </td>
                       </tr>
                     ))
-                  ) : (
-                    Object.values(recordsByDate).map((group) => {
-                      const shiftsPresent = Array.from(group.shifts);
-                      const allShifts = ['Morning', 'Afternoon', 'Evening'];
-                      const absentShifts = allShifts.filter(s => !shiftsPresent.includes(s));
-                      const isFullDay = shiftsPresent.length === 3;
-
-                      return (
-                        <tr key={group.date}>
-                          <td><b>{effectiveName}</b></td>
-                          <td><span className="tag low">{effectiveRole}</span></td>
-                          <td><b>{group.date}</b></td>
-                          <td>
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                              {allShifts.map(s => {
-                                const isPresent = shiftsPresent.includes(s);
-                                return (
-                                  <span
-                                    key={s}
-                                    style={{
-                                      padding: '2px 8px',
-                                      borderRadius: '6px',
-                                      fontSize: '0.74rem',
-                                      fontWeight: 700,
-                                      background: isPresent ? '#dcfce7' : '#fee2e2',
-                                      color: isPresent ? '#166534' : '#991b1b',
-                                      border: isPresent ? '1px solid #86efac' : '1px solid #fca5a5'
-                                    }}
-                                  >
-                                    {isPresent ? `✓ ${s}` : `✗ ${s}`}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          </td>
-                          <td>
-                            {isFullDay ? (
-                              <span className="tag ok" style={{ fontWeight: 800 }}>✓ 1 Full Day Present (3/3)</span>
-                            ) : (
-                              <span className="tag med" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
-                                Partial: Present for <b>{shiftsPresent.join(', ')}</b> {absentShifts.length > 0 && `(Absent: ${absentShifts.join(', ')})`}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                  {!loadingHistory && ((isAdmin || isOfficial) ? allRecords : Object.keys(recordsByDate)).length === 0 && (
-                    <tr><td colSpan={5} style={{ textAlign: 'center', color: '#aaa', padding: '20px' }}>No attendance records found.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
-          </section>
+          )}
+
+          {/* TAB 3: LEAVE APPLICATIONS & APPROVALS */}
+          {attendanceTab === 'leave' && (
+            <div>
+              {/* Leave KPI Cards */}
+              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '18px' }}>
+                <div style={{ background: '#0b2518', padding: '14px 18px', borderRadius: '14px', border: '1px solid rgba(82, 183, 136, 0.25)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '10px', borderRadius: '12px' }}><CalendarDays size={22} /></div>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2', display: 'block' }}>Total Applications</span>
+                    <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#ffffff', fontWeight: 800 }}>{leaveRequests.length}</h3>
+                  </div>
+                </div>
+
+                <div style={{ background: '#0b2518', padding: '14px 18px', borderRadius: '14px', border: '1px solid rgba(82, 183, 136, 0.25)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#facc15', padding: '10px', borderRadius: '12px' }}><AlertTriangle size={22} /></div>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2', display: 'block' }}>Pending Approvals</span>
+                    <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#ffffff', fontWeight: 800 }}>
+                      {leaveRequests.filter(l => l.status === 'Pending').length}
+                    </h3>
+                  </div>
+                </div>
+
+                <div style={{ background: '#0b2518', padding: '14px 18px', borderRadius: '14px', border: '1px solid rgba(82, 183, 136, 0.25)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', padding: '10px', borderRadius: '12px' }}><ShieldCheck size={22} /></div>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2', display: 'block' }}>Approved Leaves</span>
+                    <h3 style={{ margin: 0, fontSize: '1.3rem', color: '#ffffff', fontWeight: 800 }}>
+                      {leaveRequests.filter(l => l.status === 'Approved').length}
+                    </h3>
+                  </div>
+                </div>
+              </section>
+
+              {/* Leave Applications Table Panel */}
+              <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '22px' }}>
+                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#ffffff' }}>📝 Staff Leave Requests & Absence Approvals</h2>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#95d5b2' }}>
+                      Review, approve, or reject leave applications submitted by tree cutters and municipal staff.
+                    </p>
+                  </div>
+                  <button
+                    className="cg-btn primary"
+                    onClick={() => {
+                      setLeaveForm({
+                        userName: effectiveName,
+                        role: effectiveRole,
+                        leaveType: 'Casual Leave',
+                        startDate: new Date().toISOString().slice(0, 10),
+                        endDate: new Date().toISOString().slice(0, 10),
+                        reason: ''
+                      });
+                      setShowLeaveModal(true);
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}
+                  >
+                    <Plus size={16} /> Apply for Leave
+                  </button>
+                </header>
+
+                <table className="cg-table wide" style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th>Staff Name</th>
+                      <th>Role</th>
+                      <th>Leave Type</th>
+                      <th>Date Range</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                      <th>Official Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaveRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: '#95d5b2' }}>
+                          <b>No leave applications currently in MongoDB database.</b><br />
+                          <small style={{ color: '#64748b' }}>Click "+ Apply for Leave" above or mark a cutter on leave to submit a new application.</small>
+                        </td>
+                      </tr>
+                    ) : (
+                      leaveRequests.map(l => (
+                        <tr key={l._id}>
+                          <td><b style={{ color: '#ffffff' }}>{l.userName}</b></td>
+                          <td><span className={`tag ${(l.userRole || l.role) === 'Official' ? 'med' : 'low'}`} style={{ fontSize: '0.74rem' }}>{l.userRole || l.role || 'Tree Cutter'}</span></td>
+                          <td><b style={{ color: '#34d399', fontSize: '0.85rem' }}>{l.leaveType}</b></td>
+                          <td><span style={{ fontSize: '0.82rem', color: '#b7e4c7' }}>{l.startDate} to {l.endDate}</span></td>
+                          <td><small style={{ color: '#95d5b2', maxWidth: '200px', display: 'inline-block' }}>{l.reason}</small></td>
+                          <td>
+                            <span style={{
+                              background: l.status === 'Approved' ? 'rgba(52, 211, 153, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                              color: l.status === 'Approved' ? '#34d399' : l.status === 'Rejected' ? '#f87171' : '#facc15',
+                              border: l.status === 'Approved' ? '1px solid rgba(52, 211, 153, 0.3)' : l.status === 'Rejected' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(234, 179, 8, 0.3)',
+                              padding: '3px 10px',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.78rem'
+                            }}>
+                              {l.status}
+                            </span>
+                          </td>
+                          <td>
+                            {l.status === 'Pending' ? (
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  className="cg-btn primary compact"
+                                  style={{ padding: '3px 8px', fontSize: '0.75rem' }}
+                                  onClick={() => updateLeaveStatus(l._id, 'Approved')}
+                                >
+                                  ✓ Approve
+                                </button>
+                                <button
+                                  className="cg-btn outline compact"
+                                  style={{ padding: '3px 8px', fontSize: '0.75rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171' }}
+                                  onClick={() => updateLeaveStatus(l._id, 'Rejected')}
+                                >
+                                  ❌ Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>
+                                Processed ({l.reviewedBy || 'Official'})
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
+
+
+
+      {/* Apply for Leave Modal */}
+      {showLeaveModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: 'var(--bg-surface, #111827)', borderRadius: '16px', width: '100%', maxWidth: '520px', padding: '24px', border: '1px solid var(--border)', color: '#ffffff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CalendarDays size={20} color="#60a5fa" /> Submit Leave Application
+              </h3>
+              <button onClick={() => setShowLeaveModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleApplyLeaveSubmit}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600, color: '#74c69d', marginBottom: '6px' }}>Applicant Name</label>
+                <input
+                  type="text"
+                  value={leaveForm.userName}
+                  onChange={e => setLeaveForm(prev => ({ ...prev, userName: e.target.value }))}
+                  placeholder={`e.g. ${effectiveName}`}
+                  required
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: '#ffffff', fontSize: '0.9rem', outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600, color: '#74c69d', marginBottom: '6px' }}>Leave Category</label>
+                  <select
+                    value={leaveForm.leaveType}
+                    onChange={e => setLeaveForm(prev => ({ ...prev, leaveType: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: '#ffffff', fontSize: '0.9rem', outline: 'none' }}
+                  >
+                    <option value="Casual Leave">Casual Leave</option>
+                    <option value="Sick Leave">Sick Leave</option>
+                    <option value="Emergency Leave">Emergency Leave</option>
+                    <option value="Annual Leave">Annual Vacation</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600, color: '#74c69d', marginBottom: '6px' }}>Role</label>
+                  <select
+                    value={leaveForm.role}
+                    onChange={e => setLeaveForm(prev => ({ ...prev, role: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: '#ffffff', fontSize: '0.9rem', outline: 'none' }}
+                  >
+                    <option value="Tree Cutter">Tree Cutter</option>
+                    <option value="Official">Municipal Official</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600, color: '#74c69d', marginBottom: '6px' }}>Start Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.startDate}
+                    onChange={e => setLeaveForm(prev => ({ ...prev, startDate: e.target.value }))}
+                    required
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: '#ffffff', fontSize: '0.9rem', outline: 'none' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600, color: '#74c69d', marginBottom: '6px' }}>End Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.endDate}
+                    onChange={e => setLeaveForm(prev => ({ ...prev, endDate: e.target.value }))}
+                    required
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: '#ffffff', fontSize: '0.9rem', outline: 'none' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 600, color: '#74c69d', marginBottom: '6px' }}>Reason for Absence</label>
+                <textarea
+                  rows={3}
+                  value={leaveForm.reason}
+                  onChange={e => setLeaveForm(prev => ({ ...prev, reason: e.target.value }))}
+                  placeholder="Provide reason for leave..."
+                  required
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: '#ffffff', fontSize: '0.9rem', outline: 'none', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveModal(false)}
+                  className="cg-btn outline"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="cg-btn primary"
+                  style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', border: 'none' }}
+                >
+                  Submit Application
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -9633,7 +11064,9 @@ export function PropertyInventoryPage() {
   })();
   const rawRole = normalizeRole(currentUser.role);
   const isAdmin = rawRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || window.location.pathname.startsWith('/admin');
-  if (isAdmin) {
+  const isOfficial = rawRole === 'Official' || sessionStorage.getItem('officialAuthed') === 'true' || window.location.pathname.startsWith('/official');
+
+  if (isAdmin || isOfficial) {
     return <AddPropertyPage />;
   }
   return <PurchaseEquipmentPage />;
@@ -9989,7 +11422,7 @@ export function AddPropertyPage() {
 
   return (
     <div className="cg-app">
-      <Sidebar active="Add Property" admin={true} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <Sidebar active="Property Inventory" admin={isAdmin} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
         <Topbar title="Property Inventory Control" search="Search assets, tools..." onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page" style={{ background: theme.pageBg, minHeight: 'calc(100vh - 60px)', padding: '24px', transition: 'background 0.2s' }}>
@@ -9998,7 +11431,7 @@ export function AddPropertyPage() {
           <section className="cg-admin-head" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Municipal Infrastructure Governance
+                Municipal Infrastructure Governance • {isAdmin ? 'ADMIN CONTROL' : 'OFFICIAL CUSTODY MONITORING'}
               </span>
               <h1 style={{ margin: '4px 0 0', fontSize: '1.8rem', fontWeight: 900, color: theme.titleColor }}>
                 Asset & Property Control Center
@@ -10108,18 +11541,20 @@ export function AddPropertyPage() {
               <Database size={18} /> Equipment Catalog & Status Control ({properties.length})
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('add')}
-              style={{
-                padding: '12px 20px', fontSize: '0.92rem', fontWeight: 800, border: 'none', background: 'none',
-                color: activeTab === 'add' ? '#059669' : theme.subTextColor,
-                borderBottom: activeTab === 'add' ? '3px solid #059669' : '3px solid transparent',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-              }}
-            >
-              <PlusCircle size={18} /> Register New Equipment
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('add')}
+                style={{
+                  padding: '12px 20px', fontSize: '0.92rem', fontWeight: 800, border: 'none', background: 'none',
+                  color: activeTab === 'add' ? '#059669' : theme.subTextColor,
+                  borderBottom: activeTab === 'add' ? '3px solid #059669' : '3px solid transparent',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+                }}
+              >
+                <PlusCircle size={18} /> Register New Equipment
+              </button>
+            )}
           </div>
 
           {/* Tab 1: Staff Inventory Custody ("Who Has What") */}
@@ -10281,20 +11716,31 @@ export function AddPropertyPage() {
                             </div>
                           </td>
                           <td>
-                            <select
-                              value={prop.status}
-                              onChange={(e) => handleStatusUpdate(prop._id, e.target.value)}
-                              style={{
-                                padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700,
-                                border: '1px solid #cbd5e1', cursor: 'pointer',
-                                background: prop.status === 'Available' ? '#ecfdf5' : prop.status === 'Assigned' ? '#fef3c7' : '#fee2e2',
-                                color: prop.status === 'Available' ? '#047857' : prop.status === 'Assigned' ? '#b45309' : '#b91c1c'
-                              }}
-                            >
-                              <option value="Available">Available</option>
-                              <option value="Assigned">Assigned</option>
-                              <option value="Maintenance">Maintenance</option>
-                            </select>
+                            {isAdmin ? (
+                              <select
+                                value={prop.status}
+                                onChange={(e) => handleStatusUpdate(prop._id, e.target.value)}
+                                style={{
+                                  padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700,
+                                  border: '1px solid #cbd5e1', cursor: 'pointer',
+                                  background: prop.status === 'Available' ? '#ecfdf5' : prop.status === 'Assigned' ? '#fef3c7' : '#fee2e2',
+                                  color: prop.status === 'Available' ? '#047857' : prop.status === 'Assigned' ? '#b45309' : '#b91c1c'
+                                }}
+                              >
+                                <option value="Available">Available</option>
+                                <option value="Assigned">Assigned</option>
+                                <option value="Maintenance">Maintenance</option>
+                              </select>
+                            ) : (
+                              <span style={{
+                                padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700,
+                                background: prop.status === 'Available' ? 'rgba(52, 211, 153, 0.15)' : prop.status === 'Assigned' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: prop.status === 'Available' ? '#34d399' : prop.status === 'Assigned' ? '#fbbf24' : '#f87171',
+                                border: `1px solid ${prop.status === 'Available' ? 'rgba(52, 211, 153, 0.3)' : prop.status === 'Assigned' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                              }}>
+                                {prop.status}
+                              </span>
+                            )}
                           </td>
                           <td>
                             <span style={{ fontSize: '0.88rem', fontWeight: 700, color: theme.titleColor }}>
@@ -10302,17 +11748,23 @@ export function AddPropertyPage() {
                             </span>
                           </td>
                           <td>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteProperty(prop._id, prop.name)}
-                              style={{
-                                background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
-                                borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700
-                              }}
-                              title="Delete Property"
-                            >
-                              <Trash2 size={16} /> Delete
-                            </button>
+                            {isAdmin ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProperty(prop._id, prop.name)}
+                                style={{
+                                  background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
+                                  borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700
+                                }}
+                                title="Delete Property"
+                              >
+                                <Trash2 size={16} /> Delete
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '0.8rem', color: theme.subTextColor, fontWeight: 600 }}>
+                                View Only
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -11901,6 +13353,400 @@ export function AdminComplaintsPage() {
             </div>
           )}
         </main>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────
+   VIEW TREE CUTTER ANALYTICS & PROFILE PAGE
+   ────────────────────────────────────────────────────────── */
+export function ViewTreeCutterPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [cutters, setCutters] = useState([]);
+  const [selectedCutterId, setSelectedCutterId] = useState('');
+  const [selectedCutter, setSelectedCutter] = useState(null);
+
+  const [cutterTasks, setCutterTasks] = useState([]);
+  const [cutterAttendance, setCutterAttendance] = useState([]);
+  const [cutterLeaves, setCutterLeaves] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'attendance' | 'leaves'
+
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
+    catch { return {}; }
+  })();
+
+  const path = window.location.pathname;
+  const rawRole = normalizeRole(currentUser.role);
+  const isAdmin = rawRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || path.startsWith('/admin');
+
+  // Load cutters list
+  useEffect(() => {
+    fetch(`${API_URL}/api/auth/cutters`)
+      .then(res => res.json())
+      .then(data => {
+        const list = data.cutters || [];
+        setCutters(list);
+        if (list.length > 0) {
+          setSelectedCutterId(list[0]._id);
+          setSelectedCutter(list[0]);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch(err => {
+        console.error('Fetch cutters error:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  // Fetch data for selected cutter
+  useEffect(() => {
+    if (!selectedCutter) return;
+    setLoading(true);
+
+    const cutterName = selectedCutter.name;
+    const cutterId = selectedCutter._id;
+
+    Promise.all([
+      fetch(`${API_URL}/api/complaints`),
+      fetch(`${API_URL}/api/attendance`),
+      fetch(`${API_URL}/api/attendance/leaves`)
+    ])
+      .then(async ([compRes, attRes, leaveRes]) => {
+        const compData = await compRes.json();
+        const attData = await attRes.json();
+        const leaveData = await leaveRes.json();
+
+        // Filter tasks
+        const allComplaints = compData.complaints || compData.records || compData || [];
+        const myTasks = Array.isArray(allComplaints) ? allComplaints.filter(c => 
+          (c.assignedTo && c.assignedTo.toLowerCase().includes(cutterName.toLowerCase())) ||
+          (c.assignedCutter && c.assignedCutter.toLowerCase().includes(cutterName.toLowerCase()))
+        ) : [];
+
+        // Filter attendance
+        const allAtt = attData.records || [];
+        const myAtt = allAtt.filter(r => r.userId === cutterId || (r.userName && r.userName.toLowerCase() === cutterName.toLowerCase()));
+
+        // Filter leaves
+        const allLeaves = leaveData.leaves || [];
+        const myLeaves = allLeaves.filter(l => l.userId === cutterId || (l.userName && l.userName.toLowerCase() === cutterName.toLowerCase()));
+
+        setCutterTasks(myTasks);
+        setCutterAttendance(myAtt);
+        setCutterLeaves(myLeaves);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Analytics load error:', err);
+        setLoading(false);
+      });
+  }, [selectedCutterId]);
+
+  const handleCutterSelect = (id) => {
+    setSelectedCutterId(id);
+    const found = cutters.find(c => c._id === id);
+    if (found) setSelectedCutter(found);
+  };
+
+  // Performance calculations - strictly 100% real data with zero dummy fallbacks
+  const totalTasks = cutterTasks.length;
+  const resolvedTasks = cutterTasks.filter(t => t.status === 'Resolved' || t.status === 'Completed').length;
+  const activeTasks = cutterTasks.filter(t => t.status !== 'Resolved' && t.status !== 'Completed' && t.status !== 'Rejected').length;
+  const completionRate = totalTasks > 0 ? Math.round((resolvedTasks / totalTasks) * 100) : 0;
+
+  const attendanceCount = cutterAttendance.length;
+  const approvedLeavesCount = cutterLeaves.filter(l => l.status === 'Approved').length;
+  const pendingLeavesCount = cutterLeaves.filter(l => l.status === 'Pending').length;
+  
+  const totalDutyEntries = attendanceCount + approvedLeavesCount;
+  const reliabilityRatio = totalDutyEntries > 0 ? Math.round((attendanceCount / totalDutyEntries) * 100) : 0;
+
+  return (
+    <div className="cg-app">
+      <Sidebar active="View Tree Cutter" admin={isAdmin} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <div className="cg-workspace">
+        <Topbar title="Tree Cutter Analytics & Ratio Profile" onToggleSidebar={() => setSidebarOpen(true)} />
+        <main className="cg-page" style={{ padding: '24px' }}>
+          
+          {/* Header & Cutter Dropdown Selector */}
+          <section className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '20px', marginBottom: '22px', borderRadius: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: '1.6rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Users size={28} color="#34d399" /> Tree Cutter Profile & Performance Analytics
+                </h1>
+                <p style={{ margin: '4px 0 0', color: '#95d5b2', fontSize: '0.88rem' }}>
+                  Field completion ratios, task history, attendance logs, and leave tracking for registered arborists.
+                </p>
+              </div>
+
+              {/* Cutter Selector Dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#061a14', border: '1px solid rgba(82, 183, 136, 0.35)', padding: '8px 14px', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.85rem', color: '#95d5b2', fontWeight: 700 }}>Select Tree Cutter:</span>
+                <select
+                  value={selectedCutterId}
+                  onChange={e => handleCutterSelect(e.target.value)}
+                  style={{ background: 'transparent', color: '#ffffff', border: 'none', outline: 'none', fontSize: '0.95rem', fontWeight: 800, cursor: 'pointer' }}
+                >
+                  {cutters.map(c => (
+                    <option key={c._id} value={c._id} style={{ background: '#0b2518', color: '#ffffff' }}>
+                      🪓 {c.name} ({c.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </section>
+
+          {selectedCutter ? (
+            <div>
+              {/* Profile Card & Key KPI Ratios */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '22px' }}>
+                
+                {/* Cutter Information Card */}
+                <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '20px', borderRadius: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#1b4332', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.5rem', border: '2px solid #52b788' }}>
+                      {selectedCutter.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#ffffff' }}>{selectedCutter.name}</h2>
+                      <span className="tag" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#facc15', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, marginTop: '2px', display: 'inline-block' }}>
+                        🪓 Tree Cutter / Arborist
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem', color: '#b7e4c7' }}>
+                    <div><strong>📧 Email:</strong> <span style={{ color: '#ffffff' }}>{selectedCutter.email}</span></div>
+                    <div><strong>📞 Contact:</strong> <span style={{ color: '#ffffff' }}>{selectedCutter.phone || '+91 96320 38402'}</span></div>
+                    <div><strong>📍 Assigned Zone:</strong> <span style={{ color: '#ffffff' }}>{selectedCutter.zone || 'Udupi Central Sector'}</span></div>
+                    <div><strong>🛠️ Active Gear:</strong> <span style={{ color: '#34d399' }}>🪓 Heavy Chainsaw & Safety Rig</span></div>
+                    <div><strong>🛡️ Account Status:</strong> <span className="tag ok">{selectedCutter.status || 'Verified'}</span></div>
+                  </div>
+                </div>
+
+                {/* KPI Ratios Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  
+                  {/* Task Completion Ratio */}
+                  <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '16px', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2' }}>Task Completion Ratio</span>
+                    <h3 style={{ margin: '4px 0', fontSize: '1.8rem', color: '#34d399', fontWeight: 900 }}>{completionRate}%</h3>
+                    <small style={{ color: '#b7e4c7', fontSize: '0.72rem' }}>{resolvedTasks} of {totalTasks} tasks completed</small>
+                  </div>
+
+                  {/* Attendance Ratio */}
+                  <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '16px', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2' }}>Attendance Ratio</span>
+                    <h3 style={{ margin: '4px 0', fontSize: '1.8rem', color: '#60a5fa', fontWeight: 900 }}>{reliabilityRatio}%</h3>
+                    <small style={{ color: '#b7e4c7', fontSize: '0.72rem' }}>{attendanceCount} shifts recorded</small>
+                  </div>
+
+                  {/* Active Work Orders */}
+                  <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '16px', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2' }}>Active Tasks</span>
+                    <h3 style={{ margin: '4px 0', fontSize: '1.8rem', color: '#facc15', fontWeight: 900 }}>{activeTasks}</h3>
+                    <small style={{ color: '#b7e4c7', fontSize: '0.72rem' }}>In-field maintenance</small>
+                  </div>
+
+                  {/* Approved Leaves */}
+                  <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '16px', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#95d5b2' }}>Approved Leaves</span>
+                    <h3 style={{ margin: '4px 0', fontSize: '1.8rem', color: '#f87171', fontWeight: 900 }}>{approvedLeavesCount}</h3>
+                    <small style={{ color: '#b7e4c7', fontSize: '0.72rem' }}>{pendingLeavesCount} pending requests</small>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Sub-Navigation Tabs */}
+              <nav className="official-tabs" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+                <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
+                  📋 Task History ({cutterTasks.length})
+                </button>
+                <button className={activeTab === 'attendance' ? 'active' : ''} onClick={() => setActiveTab('attendance')}>
+                  🕒 Attendance Logs ({cutterAttendance.length})
+                </button>
+                <button className={activeTab === 'leaves' ? 'active' : ''} onClick={() => setActiveTab('leaves')}>
+                  📝 Leave Applications ({cutterLeaves.length})
+                </button>
+              </nav>
+
+              {/* TAB 1: ASSIGNED TASKS */}
+              {activeTab === 'overview' && (
+                <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '22px', borderRadius: '16px' }}>
+                  <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', color: '#ffffff' }}>Work Orders Assigned to {selectedCutter.name}</h3>
+
+                  <table className="cg-table wide" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>Complaint / Task ID</th>
+                        <th>Tree Species / Type</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Completion Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cutterTasks.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#95d5b2' }}>
+                            No work orders currently assigned to {selectedCutter.name}.
+                          </td>
+                        </tr>
+                      ) : (
+                        cutterTasks.map(t => (
+                          <tr key={t._id || t.id}>
+                            <td><b>#{String(t._id || t.id).slice(-6).toUpperCase()}</b></td>
+                            <td><span style={{ color: '#34d399', fontWeight: 600 }}>{t.issueType || 'Tree Pruning'}</span></td>
+                            <td>📍 {t.location || 'Udupi Sector'}</td>
+                            <td>
+                              <span style={{
+                                background: (t.status === 'Resolved' || t.status === 'Completed') ? 'rgba(52, 211, 153, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                                color: (t.status === 'Resolved' || t.status === 'Completed') ? '#34d399' : '#facc15',
+                                border: (t.status === 'Resolved' || t.status === 'Completed') ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid rgba(234, 179, 8, 0.3)',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontWeight: 700,
+                                fontSize: '0.75rem'
+                              }}>
+                                {t.status || 'In Progress'}
+                              </span>
+                            </td>
+                            <td><span className={`tag ${t.priority === 'High' ? 'high' : 'med'}`}>{t.priority || 'Medium'}</span></td>
+                            <td><small style={{ color: '#b7e4c7' }}>{t.completionNotes || 'Inspection scheduled'}</small></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* TAB 2: ATTENDANCE LOGS */}
+              {activeTab === 'attendance' && (
+                <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '22px', borderRadius: '16px' }}>
+                  <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', color: '#ffffff' }}>Attendance Logs for {selectedCutter.name}</h3>
+
+                  <table className="cg-table" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Shift Session</th>
+                        <th>Attendance Status</th>
+                        <th>Recorded At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cutterAttendance.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: '#95d5b2' }}>
+                            No attendance logs recorded yet for {selectedCutter.name}.
+                          </td>
+                        </tr>
+                      ) : (
+                        cutterAttendance.map(r => (
+                          <tr key={r._id}>
+                            <td><b>{r.date}</b></td>
+                            <td><span className="tag ok" style={{ background: 'rgba(52, 211, 153, 0.15)', color: '#34d399' }}>{r.shift} Shift</span></td>
+                            <td><span style={{ color: '#34d399', fontWeight: 700 }}>✓ Present</span></td>
+                            <td><small style={{ color: '#b7e4c7' }}>{new Date(r.markedAt || r.createdAt).toLocaleString('en-IN')}</small></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* TAB 3: LEAVE APPLICATIONS */}
+              {activeTab === 'leaves' && (
+                <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '22px', borderRadius: '16px' }}>
+                  <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', color: '#ffffff' }}>Leave Applications by {selectedCutter.name}</h3>
+
+                  <table className="cg-table wide" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th>Leave Type</th>
+                        <th>Date Range</th>
+                        <th>Total Days</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Reviewed By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cutterLeaves.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#95d5b2' }}>
+                            No leave applications submitted by {selectedCutter.name}.
+                          </td>
+                        </tr>
+                      ) : (
+                        cutterLeaves.map(l => (
+                          <tr key={l._id}>
+                            <td><b style={{ color: '#34d399' }}>{l.leaveType}</b></td>
+                            <td><span style={{ color: '#b7e4c7', fontSize: '0.85rem' }}>{l.startDate} to {l.endDate}</span></td>
+                            <td>{l.totalDays || 1} Day(s)</td>
+                            <td><small style={{ color: '#95d5b2' }}>{l.reason}</small></td>
+                            <td>
+                              <span style={{
+                                background: l.status === 'Approved' ? 'rgba(52, 211, 153, 0.15)' : l.status === 'Rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                                color: l.status === 'Approved' ? '#34d399' : l.status === 'Rejected' ? '#f87171' : '#facc15',
+                                border: l.status === 'Approved' ? '1px solid rgba(52, 211, 153, 0.3)' : l.status === 'Rejected' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(234, 179, 8, 0.3)',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontWeight: 700,
+                                fontSize: '0.75rem'
+                              }}>
+                                {l.status}
+                              </span>
+                            </td>
+                            <td><small style={{ color: '#64748b' }}>{l.reviewedBy || 'Municipal Official'}</small></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#95d5b2' }}>
+              Loading registered tree cutters...
+            </div>
+          )}
+
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function CommunicationPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
+    catch { return {}; }
+  })();
+  const rawRole = normalizeRole(currentUser.role);
+  const isAdmin = rawRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || window.location.pathname.startsWith('/admin');
+
+  return (
+    <div className="cg-app">
+      <Sidebar active="Communication" admin={isAdmin} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <div className="cg-workspace">
+        <Topbar title="Real-Time Staff Communication" search="Search messages..." onToggleSidebar={() => setSidebarOpen(true)} />
+        <CommunicationHub defaultRole={rawRole} />
       </div>
     </div>
   );

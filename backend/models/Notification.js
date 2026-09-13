@@ -30,6 +30,7 @@ const notificationSchema = new mongoose.Schema(
         'redemption_rejected',
         'goal_completed',
         'equipment_reminder',
+        'chat_message',
       ],
       required: true,
     },
