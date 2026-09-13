@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Property = require('../models/Property');
+const Notification = require('../models/Notification');
 
 // @route   GET /api/properties
 // @desc    Get all property inventory items
@@ -170,6 +171,78 @@ router.delete('/:id', async (req, res) => {
     res.json({ msg: 'Property deleted successfully' });
   } catch (err) {
     res.status(500).json({ msg: 'Server error deleting property' });
+  }
+});
+
+// @route   PATCH /api/properties/:id/status
+// @desc    Admin update property status or quantity
+// @access  Admin
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status, quantity } = req.body;
+    const property = await Property.findById(req.params.id);
+    if (!property) {
+      return res.status(404).json({ msg: 'Property not found' });
+    }
+    if (status) property.status = status;
+    if (quantity !== undefined) property.quantity = Number(quantity) || 0;
+    await property.save();
+    res.json({ msg: 'Property status updated successfully', property });
+  } catch (err) {
+    res.status(500).json({ msg: 'Server error updating status', error: err.message });
+  }
+});
+
+// @route   POST /api/properties/remind-overdue
+// @desc    Send late submit / return reminder to staff holding equipment
+// @access  Admin
+router.post('/remind-overdue', async (req, res) => {
+  try {
+    const { userId, userName, propertyId, propertyName } = req.body;
+    if (!userName || !propertyName) {
+      return res.status(400).json({ msg: 'userName and propertyName are required' });
+    }
+
+    const notification = await Notification.create({
+      targetUserId: userId || null,
+      targetRole: 'Tree Cutter',
+      type: 'equipment_reminder',
+      title: '⚠️ Action Required: Equipment Return Reminder',
+      message: `Dear ${userName}, Municipal Admin reminds you to submit/return "${propertyName}" to the central property inventory. Please check in your equipment session.`,
+      relatedId: propertyId || null,
+    });
+
+    res.json({ msg: `Late submission reminder sent to ${userName} successfully.`, notification });
+  } catch (err) {
+    res.status(500).json({ msg: 'Failed to send reminder', error: err.message });
+  }
+});
+
+// @route   POST /api/properties/remind-all-overdue
+// @desc    Send late submit reminder to all staff holding assigned equipment
+// @access  Admin
+router.post('/remind-all-overdue', async (req, res) => {
+  try {
+    const properties = await Property.find({ 'purchaseRequests.0': { $exists: true } });
+    let count = 0;
+
+    for (const prop of properties) {
+      for (const reqItem of (prop.purchaseRequests || [])) {
+        await Notification.create({
+          targetUserId: reqItem.userId || null,
+          targetRole: 'Tree Cutter',
+          type: 'equipment_reminder',
+          title: '⚠️ Urgent: Overdue Equipment Return Reminder',
+          message: `Dear ${reqItem.userName}, you currently hold "${prop.name}". Please return/submit this equipment to the municipal property inventory as soon as possible.`,
+          relatedId: prop._id.toString(),
+        });
+        count++;
+      }
+    }
+
+    res.json({ msg: `Sent ${count} late return reminders to staff members holding equipment.` });
+  } catch (err) {
+    res.status(500).json({ msg: 'Failed to send bulk reminders', error: err.message });
   }
 });
 

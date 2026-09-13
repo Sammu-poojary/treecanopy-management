@@ -181,4 +181,123 @@ router.get('/today-summary', async (req, res) => {
   }
 });
 
+// @route   POST /api/attendance/admin-override
+// @desc    Admin manual attendance marking override
+// @access  Admin
+router.post('/admin-override', async (req, res) => {
+  try {
+    const { userId, userName, role, shift, date, location, notes } = req.body;
+    if (!userId || !userName || !shift) {
+      return res.status(400).json({ msg: 'userId, userName, and shift are required for attendance override' });
+    }
+    const recordDate = date || getTodayIST();
+    const userRole = role || 'Tree Cutter';
+
+    // Remove existing if any for same shift & date to allow override
+    await Attendance.deleteMany({ userId, date: recordDate, shift });
+
+    const attendance = await Attendance.create({
+      userId,
+      userName,
+      role: userRole,
+      date: recordDate,
+      shift,
+      location: location || 'Administrative Override',
+    });
+
+    res.status(201).json({
+      msg: `Attendance override recorded for ${userName} (${shift} shift, ${recordDate}).`,
+      attendance
+    });
+  } catch (error) {
+    res.status(500).json({ msg: 'Admin attendance override failed', error: error.message });
+  }
+});
+
+// Leave Management Endpoints
+const Leave = require('../models/Leave');
+
+// @route   GET /api/attendance/leaves
+// @desc    Get staff leave applications
+router.get('/leaves', async (req, res) => {
+  try {
+    const { status, userId, role } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (userId) filter.userId = userId;
+    if (role) filter.userRole = role;
+
+    const leaves = await Leave.find(filter).sort({ createdAt: -1 });
+    res.json({ leaves });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to fetch leave applications', error: error.message });
+  }
+});
+
+// @route   POST /api/attendance/leaves
+// @desc    Submit a staff leave application
+router.post('/leaves', async (req, res) => {
+  try {
+    const { userId, userName, userRole, leaveType, startDate, endDate, totalDays, reason } = req.body;
+    if (!userId || !userName || !startDate || !endDate) {
+      return res.status(400).json({ msg: 'userId, userName, startDate, and endDate are required' });
+    }
+
+    const leave = await Leave.create({
+      userId,
+      userName,
+      userRole: userRole || 'Tree Cutter',
+      leaveType: leaveType || 'Casual Leave',
+      startDate,
+      endDate,
+      totalDays: Number(totalDays) || 1,
+      reason: reason || '',
+      status: 'Pending',
+    });
+
+    await Notification.create({
+      targetRole: 'Admin',
+      type: 'leave_requested',
+      title: 'Staff Leave Requested',
+      message: `${userName} (${leave.userRole}) has applied for ${leave.leaveType} (${startDate} to ${endDate}).`,
+      relatedId: leave._id.toString(),
+    });
+
+    res.status(201).json({ msg: 'Leave application submitted successfully.', leave });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to submit leave application', error: error.message });
+  }
+});
+
+// @route   PATCH /api/attendance/leaves/:id/status
+// @desc    Approve or Reject leave application
+router.patch('/leaves/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminRemarks, reviewedBy } = req.body;
+    if (!['Approved', 'Rejected'].includes(status)) {
+      return res.status(400).json({ msg: 'Status must be Approved or Rejected' });
+    }
+
+    const leave = await Leave.findByIdAndUpdate(
+      id,
+      {
+        status,
+        adminRemarks: adminRemarks || '',
+        reviewedBy: reviewedBy || 'Municipal Admin',
+        reviewedAt: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!leave) {
+      return res.status(404).json({ msg: 'Leave application not found' });
+    }
+
+    res.json({ msg: `Leave application ${status.toLowerCase()} successfully.`, leave });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to update leave status', error: error.message });
+  }
+});
+
 module.exports = router;

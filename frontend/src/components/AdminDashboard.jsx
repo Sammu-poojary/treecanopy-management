@@ -476,44 +476,44 @@ const AdminDashboard = ({ user, activeTab }) => {
             style={{
               marginTop: '1.5rem',
               marginBottom: '1.5rem',
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: '16px',
               padding: '24px',
               boxShadow: '0 10px 25px rgba(0,0,0,0.06)',
-              border: '1px solid #e2e8f0',
-              color: '#0f172a'
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)'
             }}
           >
             <div className="table-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h2 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   🌳 Citizen Tree Registration Proposals ({proposals.filter(p => p.status === 'Pending').length} Pending)
                 </h2>
-                <p className="table-subtitle" style={{ margin: 0, color: '#64748b', fontSize: '0.88rem' }}>
+                <p className="table-subtitle" style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
                   Citizens scan &amp; submit new trees with photo, species name, and live GPS coordinates for Admin verification.
                 </p>
               </div>
               <button
                 className="btn-secondary"
                 onClick={fetchProposals}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}
               >
                 <RefreshCw size={14} /> Refresh Requests
               </button>
             </div>
 
             {loadingProposals ? (
-              <p style={{ textAlign: 'center', color: '#64748b', padding: '24px' }}>Loading tree registration proposals…</p>
-            ) : proposals.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px', color: '#64748b', background: '#f8fafc', borderRadius: '12px' }}>
+              <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px' }}>Loading tree registration proposals…</p>
+            ) : proposals.filter(p => p.status === 'Pending').length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', borderRadius: '12px' }}>
                 <Trees size={36} color="#94a3b8" style={{ marginBottom: '8px' }} />
-                <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem' }}>No tree registration proposals submitted yet.</p>
+                <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem' }}>No pending tree registration proposals to review.</p>
               </div>
             ) : (
               <div className="table-responsive" style={{ overflowX: 'auto' }}>
                 <table className="custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', color: '#475569' }}>
+                    <tr style={{ background: 'var(--bg-subtle)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
                       <th style={{ padding: '10px 12px', textAlign: 'left', borderRadius: '8px 0 0 8px' }}>Tree Photo</th>
                       <th style={{ padding: '10px 12px', textAlign: 'left' }}>Species Name</th>
                       <th style={{ padding: '10px 12px', textAlign: 'left' }}>GPS Coordinates</th>
@@ -525,50 +525,50 @@ const AdminDashboard = ({ user, activeTab }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {proposals.map(p => {
+                    {proposals.filter(p => p.status === 'Pending').map(p => {
                       const isPending = p.status === 'Pending';
-                      const statusColor = p.status === 'Approved' ? '#16a34a' : p.status === 'Pending' ? '#d97706' : '#dc2626';
-                      const statusBg = p.status === 'Approved' ? '#f0fdf4' : p.status === 'Pending' ? '#fffbeb' : '#fef2f2';
+                      const statusColor = p.status === 'Approved' ? '#10b981' : p.status === 'Pending' ? '#f59e0b' : '#f87171';
+                      const statusBg = p.status === 'Approved' ? 'rgba(16, 185, 129, 0.15)' : p.status === 'Pending' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)';
 
                       const displayLoc = (p.locationText && !p.locationText.includes('Live GPS') && !p.locationText.includes('° N'))
                         ? p.locationText
                         : `${p.lat ? p.lat.toFixed(4) : ''}°N, ${p.lng ? p.lng.toFixed(4) : ''}°E (Udupi Zone)`;
 
                       return (
-                        <tr key={p._id} style={{ background: '#ffffff', borderBottom: '1px solid #f1f5f9' }}>
+                        <tr key={p._id} style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '10px 12px' }}>
                             {p.image ? (
                               <img
                                 src={p.image}
                                 alt={p.name}
-                                style={{ width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1px solid #cbd5e1', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}
+                                style={{ width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--border)', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}
                                 onClick={() => setSelectedImagePreview(p.image)}
                                 title="Click to enlarge tree photo"
                               />
                             ) : (
-                              <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>No Photo</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>No Photo</span>
                             )}
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <strong style={{ fontSize: '0.95rem', color: '#0f172a', display: 'block' }}>{p.name}</strong>
-                            <span style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>{p.scientificName}</span>
+                            <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)', display: 'block' }}>{p.name}</strong>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>{p.scientificName}</span>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <code style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', fontSize: '0.82rem', color: '#0f172a', fontWeight: 600 }}>
+                            <code style={{ background: 'var(--bg-subtle)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                               {p.lat ? p.lat.toFixed(4) : 'N/A'}° N, {p.lng ? p.lng.toFixed(4) : 'N/A'}° E
                             </code>
                           </td>
                           <td style={{ padding: '10px 12px', maxWidth: '200px' }}>
-                            <span style={{ fontSize: '0.85rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
                               📍 {displayLoc}
                             </span>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <strong style={{ fontSize: '0.88rem', color: '#0f172a', display: 'block' }}>{p.submittedBy}</strong>
-                            {p.submittedByEmail && <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{p.submittedByEmail}</span>}
+                            <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)', display: 'block' }}>{p.submittedBy}</strong>
+                            {p.submittedByEmail && <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{p.submittedByEmail}</span>}
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                               {new Date(p.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </span>
                           </td>
@@ -669,20 +669,20 @@ const AdminDashboard = ({ user, activeTab }) => {
             style={{
               marginTop: '1.5rem',
               marginBottom: '1.5rem',
-              background: '#ffffff',
+              background: 'var(--bg-surface)',
               borderRadius: '16px',
               padding: '24px',
               boxShadow: '0 10px 25px rgba(0,0,0,0.06)',
-              border: '1px solid #e2e8f0',
-              color: '#0f172a'
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)'
             }}
           >
             <div className="table-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h2 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Gift size={22} color="#16a34a" /> 🎁 Eco Rewards &amp; Citizen Redemptions ({redemptionMetrics.pendingCount} Pending)
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Gift size={22} color="#10b981" /> 🎁 Eco Rewards &amp; Citizen Redemptions ({redemptionMetrics.pendingCount} Pending)
                 </h2>
-                <p className="table-subtitle" style={{ margin: 0, color: '#64748b', fontSize: '0.88rem' }}>
+                <p className="table-subtitle" style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
                   Manage citizen reward redemptions, update voucher status, and configure the municipal rewards catalogue.
                 </p>
               </div>
@@ -696,7 +696,7 @@ const AdminDashboard = ({ user, activeTab }) => {
                 <button
                   className="btn-secondary"
                   onClick={() => { fetchAdminRedemptions(); fetchCatalogueRewards(); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}
                 >
                   <RefreshCw size={14} /> Refresh
                 </button>
@@ -705,30 +705,30 @@ const AdminDashboard = ({ user, activeTab }) => {
 
             {/* Metrics Mini-Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-              <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Total Redemptions</span>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>{redemptionMetrics.totalRedemptions}</div>
+              <div style={{ background: 'var(--bg-elevated)', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Total Redemptions</span>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{redemptionMetrics.totalRedemptions}</div>
               </div>
-              <div style={{ background: '#fffbeb', padding: '12px 16px', borderRadius: '10px', border: '1px solid #fef3c7' }}>
-                <span style={{ fontSize: '0.78rem', color: '#b45309', fontWeight: 600 }}>Pending Approval</span>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#d97706' }}>{redemptionMetrics.pendingCount}</div>
+              <div style={{ background: 'rgba(245, 158, 11, 0.12)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                <span style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: 600 }}>Pending Approval</span>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b' }}>{redemptionMetrics.pendingCount}</div>
               </div>
-              <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '10px', border: '1px solid #dcfce7' }}>
-                <span style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: 600 }}>Approved / Ready</span>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#16a34a' }}>{redemptionMetrics.approvedCount}</div>
+              <div style={{ background: 'rgba(16, 185, 129, 0.12)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 600 }}>Approved / Ready</span>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981' }}>{redemptionMetrics.approvedCount}</div>
               </div>
-              <div style={{ background: '#eff6ff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #dbeafe' }}>
-                <span style={{ fontSize: '0.78rem', color: '#1d4ed8', fontWeight: 600 }}>Total Points Redeemed</span>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2563eb' }}>{redemptionMetrics.totalPointsRedeemed.toLocaleString()} Pts</div>
+              <div style={{ background: 'rgba(59, 130, 246, 0.12)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+                <span style={{ fontSize: '0.78rem', color: '#3b82f6', fontWeight: 600 }}>Total Points Redeemed</span>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#3b82f6' }}>{redemptionMetrics.totalPointsRedeemed.toLocaleString()} Pts</div>
               </div>
             </div>
 
             {/* Redemptions Table */}
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', marginBottom: '12px' }}>Citizen Redemption Requests</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>Citizen Redemption Requests</h3>
             {loadingRedemptions ? (
-              <p style={{ textAlign: 'center', color: '#64748b', padding: '20px' }}>Loading redemption records…</p>
+              <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>Loading redemption records…</p>
             ) : adminRedemptions.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', background: '#f8fafc', borderRadius: '12px' }}>
+              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', borderRadius: '12px' }}>
                 <Gift size={32} color="#94a3b8" style={{ marginBottom: '6px' }} />
                 <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>No redemption requests recorded yet.</p>
               </div>
@@ -736,7 +736,7 @@ const AdminDashboard = ({ user, activeTab }) => {
               <div className="table-responsive" style={{ overflowX: 'auto' }}>
                 <table className="custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', color: '#475569' }}>
+                    <tr style={{ background: 'var(--bg-subtle)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
                       <th style={{ padding: '10px 12px', textAlign: 'left', borderRadius: '8px 0 0 8px' }}>Voucher Code</th>
                       <th style={{ padding: '10px 12px', textAlign: 'left' }}>Citizen</th>
                       <th style={{ padding: '10px 12px', textAlign: 'left' }}>Reward Requested</th>
@@ -755,34 +755,34 @@ const AdminDashboard = ({ user, activeTab }) => {
                       const isCompleted = r.status === 'Completed' || r.status === 'Collected';
                       const isRejected = r.status === 'Rejected';
 
-                      let badgeBg = '#fffbeb'; let badgeColor = '#b45309';
-                      if (isApproved || isReady) { badgeBg = '#f0fdf4'; badgeColor = '#16a34a'; }
-                      else if (isCompleted) { badgeBg = '#eff6ff'; badgeColor = '#2563eb'; }
-                      else if (isRejected) { badgeBg = '#fef2f2'; badgeColor = '#dc2626'; }
+                      let badgeBg = 'rgba(245, 158, 11, 0.15)'; let badgeColor = '#f59e0b';
+                      if (isApproved || isReady) { badgeBg = 'rgba(16, 185, 129, 0.15)'; badgeColor = '#10b981'; }
+                      else if (isCompleted) { badgeBg = 'rgba(59, 130, 246, 0.15)'; badgeColor = '#3b82f6'; }
+                      else if (isRejected) { badgeBg = 'rgba(239, 68, 68, 0.15)'; badgeColor = '#f87171'; }
 
                       return (
-                        <tr key={r._id} style={{ background: '#ffffff', borderBottom: '1px solid #f1f5f9' }}>
+                        <tr key={r._id} style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '10px 12px' }}>
-                            <code style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', fontSize: '0.82rem', color: '#0f172a', fontWeight: 700 }}>
+                            <code style={{ background: 'var(--bg-subtle)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 700 }}>
                               {r.redemptionCode}
                             </code>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <strong style={{ fontSize: '0.88rem', color: '#0f172a', display: 'block' }}>{r.userName || 'Citizen'}</strong>
-                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{r.userEmail}</span>
+                            <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)', display: 'block' }}>{r.userName || 'Citizen'}</strong>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{r.userEmail}</span>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <strong style={{ fontSize: '0.88rem', color: '#16a34a', display: 'block' }}>{r.rewardNameSnapshot}</strong>
-                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Type: {r.rewardTypeSnapshot}</span>
+                            <strong style={{ fontSize: '0.88rem', color: '#10b981', display: 'block' }}>{r.rewardNameSnapshot}</strong>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Type: {r.rewardTypeSnapshot}</span>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#dc2626' }}>-{r.pointsSpent} Pts</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f87171' }}>-{r.pointsSpent} Pts</span>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <span style={{ fontSize: '0.82rem', color: '#334155' }}>📍 {r.collectionMethodSnapshot || 'Nursery Pickup'}</span>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>📍 {r.collectionMethodSnapshot || 'Nursery Pickup'}</span>
                           </td>
                           <td style={{ padding: '10px 12px' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                               {new Date(r.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                             </span>
                           </td>
@@ -790,7 +790,7 @@ const AdminDashboard = ({ user, activeTab }) => {
                             <span style={{ background: badgeBg, color: badgeColor, padding: '4px 8px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, display: 'inline-block' }}>
                               {r.status}
                             </span>
-                            {r.notes && <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', fontStyle: 'italic' }}>Note: {r.notes}</div>}
+                            {r.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>Note: {r.notes}</div>}
                           </td>
                           <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -851,56 +851,56 @@ const AdminDashboard = ({ user, activeTab }) => {
                 padding: '20px'
               }}
             >
-              <div style={{ background: '#ffffff', padding: '24px', borderRadius: '16px', maxWidth: '560px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: '16px', maxWidth: '560px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Check size={20} color="#16a34a" /> Verify Tree &amp; Add to Inventory
                   </h3>
-                  <button onClick={() => setEditingProposal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                  <button onClick={() => setEditingProposal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                     <X size={20} />
                   </button>
                 </div>
 
                 {/* Proposal Summary Card */}
                 {editingProposal.image && (
-                  <div style={{ display: 'flex', gap: '14px', alignItems: 'center', background: '#f8fafc', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
-                    <img src={editingProposal.image} alt={editingProposal.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                  <div style={{ display: 'flex', gap: '14px', alignItems: 'center', background: 'var(--bg-elevated)', padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '16px' }}>
+                    <img src={editingProposal.image} alt={editingProposal.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} />
                     <div>
-                      <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{editingProposal.name}</strong>
-                      <div style={{ fontSize: '0.82rem', color: '#64748b', fontStyle: 'italic' }}>{editingProposal.scientificName}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#0284c7', fontWeight: 600, marginTop: '2px' }}>Reporter: {editingProposal.submittedBy}</div>
+                      <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{editingProposal.name}</strong>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>{editingProposal.scientificName}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 600, marginTop: '2px' }}>Reporter: {editingProposal.submittedBy}</div>
                     </div>
                   </div>
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Common Tree Name:</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Common Tree Name:</label>
                     <input
                       type="text"
                       value={editForm.name}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Scientific Name:</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Scientific Name:</label>
                     <input
                       type="text"
                       value={editForm.scientificName}
                       onChange={(e) => setEditForm({ ...editForm, scientificName: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                   </div>
 
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Location Zone / Place Name:</label>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Location Zone / Place Name:</label>
                       <button
                         type="button"
                         onClick={handleAutoFetchPlaceName}
-                        style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                        style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
                         title="Auto-detect place name from GPS coordinates"
                       >
                         📍 Auto-Detect Place Name
@@ -911,40 +911,40 @@ const AdminDashboard = ({ user, activeTab }) => {
                       value={editForm.locationText}
                       onChange={(e) => setEditForm({ ...editForm, locationText: e.target.value })}
                       placeholder="e.g. Kaup / Ajjarkadu Park, Udupi"
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Latitude (°N):</label>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Latitude (°N):</label>
                       <input
                         type="number"
                         step="0.0001"
                         value={editForm.lat}
                         onChange={(e) => setEditForm({ ...editForm, lat: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Longitude (°E):</label>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Longitude (°E):</label>
                       <input
                         type="number"
                         step="0.0001"
                         value={editForm.lng}
                         onChange={(e) => setEditForm({ ...editForm, lng: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Notes / Inventory Details:</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Notes / Inventory Details:</label>
                     <textarea
                       rows="2"
                       value={editForm.notes}
                       onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                   </div>
                 </div>
@@ -952,7 +952,7 @@ const AdminDashboard = ({ user, activeTab }) => {
                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => setEditingProposal(null)}
-                    style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                    style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
                   >
                     Cancel
                   </button>
@@ -986,59 +986,59 @@ const AdminDashboard = ({ user, activeTab }) => {
                 padding: '20px'
               }}
             >
-              <div style={{ background: '#ffffff', padding: '24px', borderRadius: '16px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: 'var(--bg-surface)', padding: '24px', borderRadius: '16px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Gift size={20} color="#16a34a" /> Add New Reward to Catalogue
                   </h3>
-                  <button onClick={() => setShowAddRewardModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                  <button onClick={() => setShowAddRewardModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                     <X size={20} />
                   </button>
                 </div>
 
                 <form onSubmit={handleCreateReward} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Reward Title / Name *</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Reward Title / Name *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Solar Garden Light"
                       value={newRewardForm.name}
                       onChange={(e) => setNewRewardForm({ ...newRewardForm, name: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Description *</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description *</label>
                     <textarea
                       required
                       rows="2"
                       placeholder="Brief details about what the citizen receives upon redeeming points..."
                       value={newRewardForm.description}
                       onChange={(e) => setNewRewardForm({ ...newRewardForm, description: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Eco-Points Required *</label>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Eco-Points Required *</label>
                       <input
                         type="number"
                         min="10"
                         required
                         value={newRewardForm.pointsRequired}
                         onChange={(e) => setNewRewardForm({ ...newRewardForm, pointsRequired: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Category / Type</label>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Category / Type</label>
                       <select
                         value={newRewardForm.rewardType}
                         onChange={(e) => setNewRewardForm({ ...newRewardForm, rewardType: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#fff' }}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                       >
                         <option value="Native Sapling">Native Sapling</option>
                         <option value="Native Seed Kit">Native Seed Kit</option>
@@ -1054,46 +1054,46 @@ const AdminDashboard = ({ user, activeTab }) => {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Stock Available (Optional)</label>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Stock Available (Optional)</label>
                       <input
                         type="number"
                         placeholder="e.g. 50"
                         value={newRewardForm.quantityAvailable || ''}
                         onChange={(e) => setNewRewardForm({ ...newRewardForm, quantityAvailable: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Collection Method</label>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Collection Method</label>
                       <input
                         type="text"
                         placeholder="e.g. Nursery Pickup"
                         value={newRewardForm.collectionMethod}
                         onChange={(e) => setNewRewardForm({ ...newRewardForm, collectionMethod: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Image URL (Optional)</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Image URL (Optional)</label>
                     <input
                       type="url"
                       placeholder="https://..."
                       value={newRewardForm.imageUrl}
                       onChange={(e) => setNewRewardForm({ ...newRewardForm, imageUrl: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Redemption Instructions</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Redemption Instructions</label>
                     <input
                       type="text"
                       placeholder="e.g. Present code at Municipal Forestry Office"
                       value={newRewardForm.redemptionInstructions}
                       onChange={(e) => setNewRewardForm({ ...newRewardForm, redemptionInstructions: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input, var(--bg-surface))', color: 'var(--text-primary)', fontSize: '0.9rem' }}
                     />
                   </div>
 
@@ -1101,7 +1101,7 @@ const AdminDashboard = ({ user, activeTab }) => {
                     <button
                       type="button"
                       onClick={() => setShowAddRewardModal(false)}
-                      style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                      style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
                     >
                       Cancel
                     </button>
@@ -1131,12 +1131,12 @@ const AdminDashboard = ({ user, activeTab }) => {
               }}
               onClick={() => setSelectedImagePreview(null)}
             >
-              <div style={{ background: '#fff', padding: '16px', borderRadius: '16px', maxWidth: '600px', width: '100%', textAlign: 'center' }}>
-                <h4 style={{ margin: '0 0 12px 0' }}>Citizen Submitted Tree Photo Preview</h4>
+              <div style={{ background: 'var(--bg-surface)', padding: '16px', borderRadius: '16px', maxWidth: '600px', width: '100%', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                <h4 style={{ margin: '0 0 12px 0', color: 'var(--text-primary)' }}>Citizen Submitted Tree Photo Preview</h4>
                 <img src={selectedImagePreview} alt="Enlarged" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
                 <button
                   onClick={() => setSelectedImagePreview(null)}
-                  style={{ marginTop: '14px', padding: '8px 16px', borderRadius: '8px', background: '#0f172a', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                  style={{ marginTop: '14px', padding: '8px 16px', borderRadius: '8px', background: 'var(--brand-deep)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
                 >
                   Close Preview
                 </button>
@@ -1147,25 +1147,91 @@ const AdminDashboard = ({ user, activeTab }) => {
 
           {/* Attendance Summary */}
           {attendanceSummary && (
-            <div className="info-section">
-              <div className="info-card">
-                <h2>Today's Attendance Summary — {attendanceSummary.date}</h2>
-                <div className="metrics-grid">
-                  <div className="metric-box">
-                    <span className="value">{attendanceSummary.officialCount}</span>
-                    <span className="label">Officials Present</span>
+            <div
+              style={{
+                marginTop: '1.5rem',
+                marginBottom: '1.5rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.06)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                    <Users size={22} />
                   </div>
-                  <div className="metric-box">
-                    <span className="value">{attendanceSummary.cutterCount}</span>
-                    <span className="label">Cutters Present</span>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      Today's Workforce &amp; Attendance Summary
+                    </h2>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      Date: {attendanceSummary.date}
+                    </span>
                   </div>
-                  <div className="metric-box">
-                    <span className="value">{attendanceSummary.total}</span>
-                    <span className="label">Total Present</span>
+                </div>
+                <span style={{ fontSize: '0.78rem', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '4px 12px', borderRadius: '99px', fontWeight: 700 }}>
+                  ● Live Sync
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <div style={{ background: 'var(--bg-elevated)', padding: '18px 20px', borderRadius: '14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <UserCog size={24} />
                   </div>
-                  <div className="metric-box text-success">
-                    <span className="value">{stats.resolved}</span>
-                    <span className="label">Resolved Complaints</span>
+                  <div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                      {attendanceSummary.officialCount}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      Officials Present
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--bg-elevated)', padding: '18px 20px', borderRadius: '14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Users size={24} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                      {attendanceSummary.cutterCount}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      Cutters Present
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--bg-elevated)', padding: '18px 20px', borderRadius: '14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(168, 85, 247, 0.12)', color: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckCircle size={24} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                      {attendanceSummary.total}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      Total Present
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--bg-elevated)', padding: '18px 20px', borderRadius: '14px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Activity size={24} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', lineHeight: 1.1 }}>
+                      {stats.resolved}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      Resolved Complaints
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1173,32 +1239,45 @@ const AdminDashboard = ({ user, activeTab }) => {
           )}
 
           {/* System Performance Info */}
-          <div className="info-section">
-            <div className="info-card">
-              <h2>Canopy Monitoring Coverage</h2>
-              <div className="canopy-target-wrapper">
-                <div className="progress-bar-container">
-                  <div className="progress-bar" style={{ width: '100%' }}>100% Area Monitored</div>
-                </div>
+          <div
+            style={{
+              marginTop: '1.5rem',
+              marginBottom: '1.5rem',
+              background: 'var(--bg-surface)',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.06)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <h2 style={{ margin: '0 0 12px 0', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+              Canopy Monitoring Coverage
+            </h2>
+            <div className="canopy-target-wrapper">
+              <div className="progress-bar-container">
+                <div className="progress-bar" style={{ width: '100%' }}>100% Area Monitored</div>
               </div>
-              <p style={{ marginTop: '1rem', color: '#4b5563', fontSize: '0.95rem' }}>All municipal sectors are covered by satellite analysis pipelines. Sensor health check reports green across 24 regional gateway beacons.</p>
             </div>
+            <p style={{ marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: 0 }}>
+              All municipal sectors are covered by satellite analysis pipelines. Sensor health check reports green across 24 regional gateway beacons.
+            </p>
           </div>
         </>
       )}
 
       {activeTab === 'users' && (
-        <div className="data-table-container">
+        <div className="data-table-container" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', color: 'var(--text-primary)' }}>
           <div className="table-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h2>User Account Directory</h2>
-              <p className="table-subtitle">Manage user roles, approve pending tree cutters, or remove accounts.</p>
+              <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0' }}>User Account Directory</h2>
+              <p className="table-subtitle" style={{ color: 'var(--text-secondary)', margin: 0 }}>Manage user roles, approve pending tree cutters, or remove accounts.</p>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn-secondary" onClick={fetchUsers} title="Refresh" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}>
+              <button className="btn-secondary" onClick={fetchUsers} title="Refresh" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.85rem' }}>
                 <RefreshCw size={15} /> Refresh
               </button>
-              <button className="btn-secondary" onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}>
+              <button className="btn-secondary" onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.85rem' }}>
                 <Download size={15} /> Export CSV
               </button>
             </div>

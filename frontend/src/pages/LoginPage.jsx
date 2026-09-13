@@ -16,11 +16,31 @@ const LoginPage = () => {
   const successMessage = location.state?.message;
 
   const appModule = import.meta.env.VITE_APP_MODULE; // 'cutter', 'citizen', or undefined
-  const initialTab = appModule === 'cutter' ? 'Tree Cutter' : 'Citizen';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const searchParams = new URLSearchParams(location.search);
+  const portalParam = (searchParams.get('portal') || searchParams.get('role') || '').toLowerCase();
+  
+  const getInitialTab = () => {
+    if (portalParam === 'official') return 'Official';
+    if (portalParam === 'admin') return 'Admin';
+    if (portalParam === 'cutter' || portalParam === 'tree cutter') return 'Tree Cutter';
+    if (portalParam === 'citizen') return 'Citizen';
+    return appModule === 'cutter' ? 'Tree Cutter' : 'Citizen';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(() => {
+    const tab = getInitialTab();
+    if (tab === 'Official') return OFFICIAL_EMAIL;
+    if (tab === 'Admin') return ADMIN_EMAIL;
+    return '';
+  });
+  const [password, setPassword] = useState(() => {
+    const tab = getInitialTab();
+    if (tab === 'Official') return OFFICIAL_PASSWORD;
+    if (tab === 'Admin') return ADMIN_PASSWORD;
+    return '';
+  });
   const [loginError, setLoginError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,10 +108,10 @@ const LoginPage = () => {
         localStorage.setItem('currentUser', JSON.stringify(officialUser));
         navigate('/official-management');
         return;
-      } else if (!isCutterOnly && normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      } else if (!isCutterOnly && (normalizedEmail === 'admin' || normalizedEmail === ADMIN_EMAIL) && (password === ADMIN_PASSWORD || password === 'admin@123')) {
         const adminUser = {
           id: 'admin-static',
-          name: 'Admin',
+          name: 'Municipal Admin',
           email: ADMIN_EMAIL,
           phone: '',
           role: 'Admin',
@@ -179,7 +199,11 @@ const LoginPage = () => {
               <button
                 key={tab}
                 className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setEmail('');
+                  setPassword('');
+                }}
                 type="button"
               >
                 {tab}

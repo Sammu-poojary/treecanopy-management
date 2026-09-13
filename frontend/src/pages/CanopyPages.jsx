@@ -39,6 +39,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleUserRound,
+  Clock,
   Clock3,
   Cloud,
   Crosshair,
@@ -64,13 +65,17 @@ import {
   MoreVertical,
   Moon,
   Navigation,
+  Package,
   Pencil,
   Phone,
   Plus,
+  PlusCircle,
   Play,
   Recycle,
+  RefreshCw,
   Scissors,
   Search,
+  Send,
   Settings,
   ShieldCheck,
   Sprout,
@@ -129,17 +134,18 @@ const ROLE_NAV = {
     {
       section: 'Work',
       items: [
-        { label: 'Dashboard',         href: '/dashboard',         Icon: Home,        desc: 'Monitoring overview' },
-        { label: 'Task Board',        href: '/task',              Icon: FileText,    desc: 'Assigned work orders' },
-        { label: 'Attendance',        href: '/attendance',        Icon: Fingerprint, desc: 'Clock in / out' },
+        { label: 'Dashboard',         href: '/treecutter/dashboard',         Icon: Home,        desc: 'Monitoring overview' },
+        { label: 'Task Board',        href: '/treecutter/task',              Icon: FileText,    desc: 'Assigned work orders' },
+        { label: 'Attendance',        href: '/treecutter/attendance',        Icon: Fingerprint, desc: 'Clock in / out' },
       ],
     },
     {
-      section: 'Trees',
+      section: 'Trees & Assets',
       items: [
-        { label: 'View Tree',         href: '/view-tree',         Icon: TreePine,    desc: 'Tree records' },
-        { label: 'Tree Inventory',    href: '/tree-inventory',    Icon: Layers,      desc: 'Full inventory' },
-        { label: 'Add Tree',          href: '/add-tree',          Icon: Plus,        desc: 'Register new tree' },
+        { label: 'View Tree',         href: '/treecutter/view-tree',         Icon: TreePine,    desc: 'Tree records' },
+        { label: 'Tree Inventory',    href: '/treecutter/tree-inventory',    Icon: Layers,      desc: 'Full inventory' },
+        { label: 'Add Tree',          href: '/treecutter/add-tree',          Icon: Plus,        desc: 'Register new tree' },
+        { label: 'Property Inventory',href: '/treecutter/property-inventory',Icon: Database,    desc: 'Equipment & tools' },
       ],
     },
   ],
@@ -148,21 +154,21 @@ const ROLE_NAV = {
     {
       section: 'Overview',
       items: [
-        { label: 'Dashboard',         href: '/dashboard',         Icon: Home,        desc: 'Zone monitoring' },
-        { label: 'Work Schedules',    href: '/scheduler',         Icon: Calendar,    desc: 'Plan & assign tasks' },
-        { label: 'Complaints',        href: '/official-management',Icon: AlertTriangle,desc: 'Manage field reports' },
-        { label: 'Attendance',        href: '/attendance',        Icon: Fingerprint, desc: 'Track cutter hours' },
+        { label: 'Dashboard',         href: '/official/dashboard',         Icon: Home,        desc: 'Zone monitoring' },
+        { label: 'Work Schedules',    href: '/official/scheduler',         Icon: Calendar,    desc: 'Plan & assign tasks' },
+        { label: 'Complaints',        href: '/official/complaints',        Icon: AlertTriangle,desc: 'Manage field reports' },
+        { label: 'Attendance',        href: '/official/attendance',        Icon: Fingerprint, desc: 'Track cutter hours' },
       ],
     },
     {
       section: 'Trees & Assets',
       items: [
-        { label: 'Tree Inventory',    href: '/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
-        { label: 'Add Tree',          href: '/add-tree',          Icon: Plus,        desc: 'Register new tree' },
-        { label: 'View Tree',         href: '/view-tree',         Icon: TreePine,    desc: 'Browse records' },
-        { label: 'Tree Encyclopedia', href: '/tree-encyclopedia',  Icon: BookOpen,    desc: 'Species library' },
-        { label: 'Add Property',      href: '/add-property',      Icon: Building2,   desc: 'Register property' },
-        { label: 'Property Inventory',href: '/property-inventory', Icon: Database,    desc: 'Asset records' },
+        { label: 'Tree Inventory',    href: '/official/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
+        { label: 'Add Tree',          href: '/official/add-tree',          Icon: Plus,        desc: 'Register new tree' },
+        { label: 'View Tree',         href: '/official/view-tree',         Icon: TreePine,    desc: 'Browse records' },
+        { label: 'Tree Encyclopedia', href: '/official/tree-encyclopedia', Icon: BookOpen,    desc: 'Species library' },
+        { label: 'Add Property',      href: '/official/add-property',      Icon: Building2,   desc: 'Register property' },
+        { label: 'Property Inventory',href: '/official/property-inventory',Icon: Database,    desc: 'Asset records' },
       ],
     },
   ],
@@ -171,29 +177,22 @@ const ROLE_NAV = {
     {
       section: 'Overview',
       items: [
-        { label: 'Dashboard',         href: '/dashboard',         Icon: Home,        desc: 'System-wide monitoring' },
-        { label: 'Admin Console',     href: '/admin',             Icon: ShieldCheck, desc: 'Users, settings, logs' },
-        { label: 'Work Schedules',    href: '/scheduler',         Icon: Calendar,    desc: 'Task scheduling' },
-        { label: 'Complaints',        href: '/official-management',Icon: AlertTriangle,desc: 'All complaints' },
-        { label: 'Attendance',        href: '/attendance',        Icon: Fingerprint, desc: 'Workforce tracking' },
+        { label: 'Dashboard',         href: '/admin/dashboard',         Icon: Home,        desc: 'System-wide monitoring' },
+        { label: 'Admin Console',     href: '/admin',                   Icon: ShieldCheck, desc: 'Users, settings, logs' },
+        { label: 'Work Schedules',    href: '/admin/scheduler',         Icon: Calendar,    desc: 'Task scheduling' },
+        { label: 'Complaints',        href: '/admin/complaints',        Icon: AlertTriangle,desc: 'Overlook & resolve complaints' },
+        { label: 'Attendance',        href: '/admin/attendance',        Icon: Fingerprint, desc: 'Workforce tracking' },
       ],
     },
     {
       section: 'Trees & Assets',
       items: [
-        { label: 'Tree Inventory',    href: '/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
-        { label: 'Add Tree',          href: '/add-tree',          Icon: Plus,        desc: 'Register new tree' },
-        { label: 'View Tree',         href: '/view-tree',         Icon: TreePine,    desc: 'Browse records' },
-        { label: 'Tree Encyclopedia', href: '/tree-encyclopedia',  Icon: BookOpen,    desc: 'Species library' },
-        { label: 'Add Property',      href: '/add-property',      Icon: Building2,   desc: 'Register property' },
-        { label: 'Property Inventory',href: '/property-inventory', Icon: Database,    desc: 'Asset records' },
-      ],
-    },
-    {
-      section: 'Intelligence',
-      items: [
-        { label: 'Analytics',         href: '/admin',             Icon: BarChart3,   desc: 'Reports & insights' },
-        { label: 'Settings',          href: '/admin',             Icon: Settings,    desc: 'System settings' },
+        { label: 'Tree Inventory',    href: '/admin/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
+        { label: 'Add Tree',          href: '/admin/add-tree',          Icon: Plus,        desc: 'Register new tree' },
+        { label: 'View Tree',         href: '/admin/view-tree',         Icon: TreePine,    desc: 'Browse records' },
+        { label: 'Tree Encyclopedia', href: '/admin/tree-encyclopedia', Icon: BookOpen,    desc: 'Species library' },
+        { label: 'Add Property',      href: '/admin/add-property',      Icon: Building2,   desc: 'Register property' },
+        { label: 'Property Inventory',href: '/admin/property-inventory',Icon: Database,    desc: 'Asset records' },
       ],
     },
   ],
@@ -358,20 +357,38 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
     catch { return {}; }
   })();
 
-  const currentUserRole = normalizeRole(currentUser.role ||
-    (sessionStorage.getItem('adminAuthed') === 'true' ? 'Admin' : '') ||
-    (sessionStorage.getItem('officialAuthed') === 'true' ? 'Official' : ''));
+  const path = window.location.pathname;
+  const isAdminSession = admin || sessionStorage.getItem('adminAuthed') === 'true' || path.startsWith('/admin') || normalizeRole(currentUser.role) === 'Admin';
+  const isOfficialSession = !isAdminSession && (sessionStorage.getItem('officialAuthed') === 'true' || path.startsWith('/official') || path.startsWith('/official-management') || normalizeRole(currentUser.role) === 'Official');
+  const isCutterSession = !isAdminSession && !isOfficialSession && (path.startsWith('/treecutter') || path.startsWith('/cutter') || normalizeRole(currentUser.role) === 'Tree Cutter');
 
-  // Derive display role for sidebar subtitle
-  const displayRole = currentUserRole || (admin ? 'Admin' : 'Official');
-  const userName = currentUser.name || currentUser.username || 'User';
-  const userInitials = userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
+  let displayRole = 'Citizen';
+  if (isAdminSession) {
+    displayRole = 'Admin';
+  } else if (isOfficialSession) {
+    displayRole = 'Official';
+  } else if (isCutterSession) {
+    displayRole = 'Tree Cutter';
+  } else if (currentUser.role) {
+    displayRole = normalizeRole(currentUser.role);
+  }
+
+  let userName = 'User';
+  if (displayRole === 'Admin') {
+    userName = (currentUser.role === 'Admin' && currentUser.name)
+      ? currentUser.name
+      : (sessionStorage.getItem('adminUsername') || 'Municipal Admin');
+  } else {
+    userName = currentUser.name || currentUser.username || 'User';
+  }
+
+  const userInitials = userName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || (displayRole === 'Admin' ? 'AD' : 'U');
 
   // Pick role color scheme
   const roleColor = ROLE_COLORS[displayRole] || ROLE_COLORS.Official;
 
   // Pick navigation groups
-  const effectiveRole = ROLE_NAV[displayRole] ? displayRole : 'Official';
+  const effectiveRole = ROLE_NAV[displayRole] ? displayRole : (displayRole === 'Admin' ? 'Admin' : 'Official');
   const navGroups = ROLE_NAV[effectiveRole];
 
   // Quick-action CTA by role
@@ -408,6 +425,7 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
     localStorage.removeItem('currentUser');
     sessionStorage.removeItem('officialAuthed');
     sessionStorage.removeItem('adminAuthed');
+    sessionStorage.removeItem('adminUsername');
     window.location.href = '/login';
   };
 
@@ -539,9 +557,32 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
     catch { return {}; }
   })();
-  const userName = currentUser.name || currentUser.username || 'User';
-  const userPhoto = currentUser.profileImage || currentUser.avatar || '';
-  const initial = userName.charAt(0).toUpperCase() || 'U';
+
+  const isAdminSession = title === 'Admin Console' || sessionStorage.getItem('adminAuthed') === 'true' || window.location.pathname.startsWith('/admin') || currentUser.role === 'Admin';
+  const isOfficialSession = sessionStorage.getItem('officialAuthed') === 'true' || currentUser.role === 'Official';
+
+  let displayRole = 'Citizen';
+  if (isAdminSession) {
+    displayRole = 'Admin';
+  } else if (isOfficialSession) {
+    displayRole = 'Official';
+  } else if (currentUser.role) {
+    displayRole = normalizeRole(currentUser.role);
+  }
+
+  let userName = 'User';
+  let userPhoto = '';
+  if (displayRole === 'Admin') {
+    userName = (currentUser.role === 'Admin' && currentUser.name)
+      ? currentUser.name
+      : (sessionStorage.getItem('adminUsername') || 'Municipal Admin');
+    userPhoto = currentUser.role === 'Admin' ? (currentUser.profileImage || currentUser.avatar || '') : '';
+  } else {
+    userName = currentUser.name || currentUser.username || 'User';
+    userPhoto = currentUser.profileImage || currentUser.avatar || '';
+  }
+
+  const initial = userName.charAt(0).toUpperCase() || (displayRole === 'Admin' ? 'A' : 'U');
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
@@ -581,7 +622,7 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
         </button>
 
         {/* CanopyGuard Branding Logo */}
-        <Link to="/home" className="cg-brand" title="CanopyGuard Home" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', marginLeft: '6px' }}>
+        <Link to={displayRole === 'Admin' ? '/admin' : '/home'} className="cg-brand" title={displayRole === 'Admin' ? 'CanopyGuard Admin' : 'CanopyGuard Home'} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none', marginLeft: '6px' }}>
           <TreePine size={22} color="#10b981" />
           <span style={{ fontWeight: 900, fontSize: '1.15rem', color: 'inherit', letterSpacing: '-0.02em' }}>CanopyGuard</span>
         </Link>
@@ -618,9 +659,11 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
         </nav>
       ) : attendance ? (
         <nav className="cg-tab-nav">
-          <Link to="/dashboard">Dashboard</Link>
-          <Link className="active" to="/attendance">Attendance</Link>
-          <Link to="/task">Task Board</Link>
+          <Link to={displayRole === 'Admin' ? '/admin/dashboard' : displayRole === 'Official' ? '/official/dashboard' : '/treecutter/dashboard'}>Dashboard</Link>
+          <Link className="active" to={displayRole === 'Admin' ? '/admin/attendance' : displayRole === 'Official' ? '/official/attendance' : '/attendance'}>Attendance</Link>
+          <Link to={displayRole === 'Admin' ? '/admin/scheduler' : displayRole === 'Official' ? '/official/scheduler' : '/treecutter/task'}>
+            {displayRole === 'Tree Cutter' ? 'Task Board' : 'Schedules'}
+          </Link>
         </nav>
       ) : (
         <h1 className="cg-topbar-title">{title}</h1>
@@ -648,10 +691,10 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
 
         {/* Topbar User Profile Badge */}
         {(() => {
-          const userRole = normalizeRole(currentUser.role);
-          const isCitizen = userRole === 'Citizen';
-          const profileLink = isCitizen ? '/citizen-dashboard?tab=profile' : '/task';
-          const profileTooltip = isCitizen ? 'View Citizen Profile' : 'Go to Task Board & Profile';
+          const isCitizen = displayRole === 'Citizen';
+          const isAdmin = displayRole === 'Admin';
+          const profileLink = isAdmin ? '/admin' : (isCitizen ? '/citizen-dashboard?tab=profile' : '/task');
+          const profileTooltip = isAdmin ? 'Admin Console & Settings' : (isCitizen ? 'View Citizen Profile' : 'Go to Task Board & Profile');
 
           const avatarContent = (
             <>
@@ -669,7 +712,7 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
               <button
                 onClick={onProfileClick}
                 className="cg-topbar-profile-trigger"
-                title={isCitizen ? 'View Citizen Profile' : 'View & edit Profile'}
+                title={profileTooltip}
                 type="button"
               >
                 {avatarContent}
@@ -3668,6 +3711,25 @@ export function SchedulerPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const presetLocations = [
+    'Ajjarkadu, Udupi (Central District)',
+    'Manipal Green Circle, Udupi',
+    'Santhekatte Market Zone, Udupi',
+    'Malpe Beach Road, Udupi',
+    'Korangrapady Green Belt, Udupi',
+    'Doddana Gudde Sector, Udupi',
+    'Parkala Highway Corridor, Udupi',
+    'Ambalpady Temple Zone, Udupi',
+    'Udupi Service Bus Stand Area'
+  ];
+
+  const existingLocations = useMemo(() => {
+    const fromComplaints = complaints
+      .map(c => c.location)
+      .filter(l => l && typeof l === 'string' && l.trim() !== '');
+    return Array.from(new Set([...presetLocations, ...fromComplaints]));
+  }, [complaints]);
+
   const year = currentMonthDate.getFullYear();
   const month = currentMonthDate.getMonth();
   const monthName = currentMonthDate.toLocaleString('default', { month: 'long' });
@@ -3752,13 +3814,16 @@ export function SchedulerPage() {
 
   const allFilteredComplaints = complaints.filter(c => {
     if (deletedIds.includes(c._id) || deletedIds.includes(c.id)) return false;
-    if (statusFilter === 'All') return true;
-    return c.status === statusFilter;
+    const cDate = getTaskDate(c);
+    const isSameMonth = cDate.getMonth() === month && cDate.getFullYear() === year;
+    if (statusFilter === 'All') return isSameMonth;
+    return isSameMonth && c.status === statusFilter;
   });
 
   const exportScheduleCSV = () => {
-    const headers = ['Issue Type', 'Location', 'Status', 'Assigned Cutter', 'Date Scheduled'];
+    const headers = ['Task ID', 'Work Type', 'Site Location', 'Status', 'Assigned Cutter', 'Scheduled Date'];
     const rows = allFilteredComplaints.map(c => [
+      c._id || c.id,
       issueLabels[c.issueType] || c.issueType,
       c.location || 'Municipal Sector',
       c.status || 'Pending',
@@ -3983,32 +4048,32 @@ export function SchedulerPage() {
 
           {/* Schedule Task Modal */}
           {showScheduleModal && (
-            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-              <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', width: '100%', maxWidth: '540px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid #f3f4f6', paddingBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <CalendarDays size={20} color="#16a34a" /> Prepare Work Schedule for Tree Cutter
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+              <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: '16px', width: '100%', maxWidth: '560px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+                    <CalendarDays size={20} color="#10b981" /> Prepare Work Schedule for Tree Cutter
                   </h3>
-                  <button onClick={() => setShowScheduleModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px' }}>
+                  <button onClick={() => setShowScheduleModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px', borderRadius: '6px' }}>
                     <X size={20} />
                   </button>
                 </div>
 
                 <form onSubmit={handleCreateSchedule}>
                   <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Select Tree Cutter</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>Select Tree Cutter</label>
                     <select
                       value={scheduleForm.assignedTo}
                       onChange={(e) => setScheduleForm(prev => ({ ...prev, assignedTo: e.target.value }))}
                       required
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
                     >
                       {cutters.length === 0 ? (
-                        <option value="">No registered Tree Cutters found</option>
+                        <option value="" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>No registered Tree Cutters found</option>
                       ) : (
                         cutters.map(c => {
                           const cutterName = typeof c === 'string' ? c : c.name || c.email;
-                          return <option key={c._id || cutterName} value={cutterName}>{cutterName}</option>;
+                          return <option key={c._id || cutterName} value={cutterName} style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>🪓 {cutterName}</option>;
                         })
                       )}
                     </select>
@@ -4016,62 +4081,130 @@ export function SchedulerPage() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Work Type</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>Work Type</label>
                       <select
                         value={scheduleForm.issueType}
                         onChange={(e) => setScheduleForm(prev => ({ ...prev, issueType: e.target.value }))}
-                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.9rem' }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
                       >
-                        <option value="routine">Monthly Routine</option>
-                        <option value="overhanging">Overhanging Branch</option>
-                        <option value="damaged">Damaged Tree</option>
-                        <option value="fallen">Fallen Limb</option>
-                        <option value="pest">Pest Inspection</option>
-                        <option value="dead">Dead Tree Removal</option>
-                        <option value="roots">Root Clearance</option>
-                        <option value="replant">🌱 Sapling Replantation</option>
+                        <option value="routine" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>Monthly Routine</option>
+                        <option value="overhanging" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>Overhanging Branch</option>
+                        <option value="damaged" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>Damaged Tree</option>
+                        <option value="fallen" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>Fallen Limb</option>
+                        <option value="pest" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>Pest Inspection</option>
+                        <option value="dead" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>Dead Tree Removal</option>
+                        <option value="roots" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>Root Clearance</option>
+                        <option value="replant" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>🌱 Sapling Replantation</option>
                       </select>
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Scheduled Date</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>Scheduled Date</label>
                       <input
                         type="date"
                         min={new Date().toISOString().slice(0, 10)}
                         value={scheduleForm.scheduledDate}
                         onChange={(e) => setScheduleForm(prev => ({ ...prev, scheduledDate: e.target.value }))}
                         required
-                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.9rem' }}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
                       />
                     </div>
                   </div>
 
+                  {/* Location Selector */}
                   <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Site Location / Address</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Site Location / Address</label>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Pick present location or type custom</span>
+                    </div>
+
+                    {/* Quick Location Select Dropdown */}
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setScheduleForm(prev => ({ ...prev, location: e.target.value }));
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-elevated)',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.84rem',
+                        marginBottom: '8px',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="" style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>-- Select from Present / Registered Locations --</option>
+                      {existingLocations.map((loc, idx) => (
+                        <option key={idx} value={loc} style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
+                          📍 {loc}
+                        </option>
+                      ))}
+                    </select>
+
                     <input
                       type="text"
+                      list="preset-locations-datalist"
                       placeholder="e.g. Central Park East, Ajjarkadu, Udupi"
                       value={scheduleForm.location}
                       onChange={(e) => setScheduleForm(prev => ({ ...prev, location: e.target.value }))}
                       required
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.9rem' }}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
                     />
+                    <datalist id="preset-locations-datalist">
+                      {existingLocations.map((loc, idx) => (
+                        <option key={idx} value={loc} />
+                      ))}
+                    </datalist>
                   </div>
 
                   <div style={{ marginBottom: '18px' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Work Instructions & Safety Notes</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>Work Instructions &amp; Safety Notes</label>
                     <textarea
                       placeholder="Enter specific instructions for the tree cutter..."
                       rows={3}
                       value={scheduleForm.description}
                       onChange={(e) => setScheduleForm(prev => ({ ...prev, description: e.target.value }))}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.9rem', resize: 'vertical' }}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.9rem', resize: 'vertical', outline: 'none' }}
                     />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={() => setShowScheduleModal(false)} className="cg-btn outline">Cancel</button>
-                    <button type="submit" className="btn-primary" style={{ marginTop: 0, width: 'auto', padding: '10px 20px' }} disabled={schedulingLoading}>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowScheduleModal(false)}
+                      style={{
+                        padding: '10px 18px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-elevated)',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: '0.88rem'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.88rem',
+                        boxShadow: '0 4px 12px rgba(16,185,129,0.3)'
+                      }}
+                      disabled={schedulingLoading}
+                    >
                       {schedulingLoading ? 'Scheduling...' : 'Assign Schedule'}
                     </button>
                   </div>
@@ -4084,16 +4217,17 @@ export function SchedulerPage() {
             <div className="cg-calendar">
               <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{monthName} {year}</h2>
-                  <div style={{ display: 'flex', gap: '4px' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{monthName} {year}</h2>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <button
                       onClick={prevMonth}
                       disabled={!isCurrentOrFutureMonth()}
                       style={{
-                        padding: '6px',
+                        padding: '6px 10px',
                         borderRadius: '6px',
-                        border: '1px solid #d1d5db',
-                        background: isCurrentOrFutureMonth() ? '#fff' : '#f3f4f6',
+                        border: '1px solid var(--border)',
+                        background: isCurrentOrFutureMonth() ? 'var(--bg-surface)' : 'var(--bg-subtle)',
+                        color: 'var(--text-primary)',
                         cursor: isCurrentOrFutureMonth() ? 'pointer' : 'not-allowed',
                         opacity: isCurrentOrFutureMonth() ? 1 : 0.4
                       }}
@@ -4101,12 +4235,16 @@ export function SchedulerPage() {
                     >
                       <ChevronLeft size={18} />
                     </button>
-                    <button onClick={nextMonth} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }} title="Next Month">
+                    <button
+                      onClick={nextMonth}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      title="Next Month"
+                    >
                       <ChevronRight size={18} />
                     </button>
                   </div>
                 </div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '600' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '600', padding: '6px 14px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px' }}>
                   {loading ? 'Syncing...' : `${allFilteredComplaints.length} Work Order${allFilteredComplaints.length !== 1 ? 's' : ''}`}
                 </span>
               </header>
@@ -4130,7 +4268,7 @@ export function SchedulerPage() {
                       style={{
                         cursor: isPast ? 'not-allowed' : cell.isCurrentMonth ? 'pointer' : 'default',
                         opacity: isPast ? 0.4 : cell.isCurrentMonth ? 1 : 0.6,
-                        background: isPast ? '#f9fafb' : undefined,
+                        background: isPast ? 'var(--bg-subtle)' : undefined,
                         minHeight: '82px'
                       }}
                       title={isPast ? "Past dates locked" : `Select ${monthName} ${cell.day}`}
@@ -4154,40 +4292,40 @@ export function SchedulerPage() {
               <h2>{monthName} {selectedDay} Activities <span>{selectedDayComplaints.length} Tasks</span></h2>
 
               {selectedDayComplaints.length === 0 ? (
-                <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '24px', textAlign: 'center', border: '1px border-dashed #d1d5db', color: '#6b7280' }}>
-                  <p style={{ margin: '0 0 8px 0', fontWeight: 600 }}>No scheduled maintenance for {monthName} {selectedDay}.</p>
-                  <small>Select another date on the calendar or click "+ Schedule for Tree Cutter".</small>
+                <div style={{ background: 'var(--bg-surface)', borderRadius: '10px', padding: '24px', textAlign: 'center', border: '1px dashed var(--border)', color: 'var(--text-secondary)' }}>
+                  <p style={{ margin: '0 0 8px 0', fontWeight: 600, color: 'var(--text-primary)' }}>No scheduled maintenance for {monthName} {selectedDay}.</p>
+                  <small style={{ color: 'var(--text-muted)' }}>Select another date on the calendar or click "+ Schedule for Tree Cutter".</small>
                 </div>
               ) : (
                 selectedDayComplaints.map(c => (
                   <article key={c._id || c.id} style={{ borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
                     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <b style={{ color: c.issueType === 'routine' ? '#16a34a' : c.status === 'Pending' ? '#dc2626' : '#2563eb' }}>
+                      <b style={{ color: c.issueType === 'routine' ? '#4ade80' : c.status === 'Pending' ? '#f87171' : '#60a5fa' }}>
                         {issueLabels[c.issueType] || c.issueType}
                       </b>
-                      <time>{getTaskDate(c).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</time>
+                      <time style={{ color: 'var(--text-secondary)' }}>{getTaskDate(c).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</time>
                     </header>
-                    <h3>{c.location || 'Municipal Canopy Sector'}</h3>
-                    <p>{c.description || 'Routine tree care, pruning, and safety inspection.'}</p>
+                    <h3 style={{ color: 'var(--text-primary)', margin: '12px 0 6px 0', fontSize: '1rem', fontWeight: '600' }}>{c.location || 'Municipal Canopy Sector'}</h3>
+                    <p style={{ color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>{c.description || 'Routine tree care, pruning, and safety inspection.'}</p>
                     <footer style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
-                      <span><UserRound size={16} /> Cutter: <strong style={{ color: c.assignedTo && c.assignedTo !== 'Unassigned' ? '#15803d' : '#dc2626' }}>{c.assignedTo || 'Unassigned'}</strong></span>
+                      <span style={{ color: 'var(--text-primary)' }}><UserRound size={16} /> Cutter: <strong style={{ color: c.assignedTo && c.assignedTo !== 'Unassigned' ? 'var(--brand-accent, #10b981)' : '#ef4444' }}>{c.assignedTo || 'Unassigned'}</strong></span>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         {(!c.assignedTo || c.assignedTo === 'Unassigned') && (
                           <select
                             onChange={(e) => handleAssignCutterToComplaint(c._id, e.target.value)}
                             defaultValue=""
-                            style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid #16a34a', background: '#f0fdf4', color: '#166534', fontWeight: 600, cursor: 'pointer' }}
+                            style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid var(--brand-accent)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}
                           >
-                            <option value="" disabled>+ Assign Cutter...</option>
+                            <option value="" disabled style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>+ Assign Cutter...</option>
                             {cutters.map(ct => {
                               const cName = typeof ct === 'string' ? ct : ct.name || ct.email;
-                              return <option key={ct._id || cName} value={cName}>{cName}</option>;
+                              return <option key={ct._id || cName} value={cName} style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>{cName}</option>;
                             })}
                           </select>
                         )}
                         <button
                           onClick={() => handleDeleteComplaint(c._id || c.id, c)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
                           title="Delete Work Schedule"
                         >
                           <Trash2 size={14} /> Delete
@@ -4761,20 +4899,32 @@ export function OfficialManagementPage() {
     );
   }
 
+  const isAdmin = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('currentUser')) || {};
+      if (u.role === 'Admin') return true;
+    } catch {}
+    return sessionStorage.getItem('adminAuthed') === 'true';
+  })();
+
   return (
     <div className="cg-app">
       <Sidebar active="Complaints" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
-        <Topbar title="Official Management" showSearch={false} onToggleSidebar={() => setSidebarOpen(true)} />
+        <Topbar title={isAdmin ? "Complaints Management" : "Official Management"} showSearch={false} onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page official-management">
           <section className="cg-admin-head official-head">
             <div>
-              <span>Operations Control</span>
-              <h1>Official Management Module</h1>
+              <span>{isAdmin ? "Admin Complaints Control" : "Operations Control"}</span>
+              <h1>{isAdmin ? "Complaints & Operations Management" : "Official Management Module"}</h1>
               <p>Verify public complaints, assign cutters, monitor site visits, review proof, and close completed complaints.</p>
             </div>
             <div className="official-head-actions">
-              <Link className="cg-btn outline" to="/home"><Home size={18} /> Return Home</Link>
+              {isAdmin ? (
+                <Link className="cg-btn outline" to="/admin"><ShieldCheck size={18} /> Admin Console</Link>
+              ) : (
+                <Link className="cg-btn outline" to="/home"><Home size={18} /> Return Home</Link>
+              )}
               <button className="official-live"><span className="pulse-indicator"></span> Live status sync</button>
             </div>
           </section>
@@ -4811,44 +4961,34 @@ export function OfficialManagementPage() {
                     key={complaint._id}
                     className={`official-complaint-card ${selectedComplaint?._id === complaint._id ? 'selected' : ''}`}
                     onClick={() => setSelectedComplaintId(complaint._id)}
-                    style={{ 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      alignItems: 'stretch',
-                      padding: '16px 20px',
-                      width: 'auto',
-                      margin: '0 24px 12px'
-                    }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                      <b style={{ fontSize: '1rem', color: '#ffffff', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
+                      <b style={{ fontSize: '1rem', color: '#ffffff', fontWeight: 700, margin: 0 }}>
                         {issueLabels[complaint.issueType] || complaint.issueType}
                       </b>
-                      <i className={`tag ${complaintTag(complaint.status)}`} style={{ fontStyle: 'normal', whiteSpace: 'nowrap', gridRow: 'auto', gridColumn: 'auto', alignSelf: 'flex-start' }}>
+                      <i className={`tag ${complaintTag(complaint.status)}`} style={{ fontStyle: 'normal', whiteSpace: 'nowrap', flexShrink: 0 }}>
                         {complaint.status}
                       </i>
                     </div>
                     
-                    <span style={{ fontSize: '0.85rem', color: '#b7e4c7', lineHeight: '1.4' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#b7e4c7', lineHeight: '1.4', wordBreak: 'break-word', width: '100%' }}>
                       📍 {complaint.location || 'No location provided'}
-                    </span>
+                    </div>
                     
-                    <small style={{ color: '#74c69d', fontSize: '0.78rem', marginTop: '2px' }}>
-                      📅 {new Date(complaint.createdAt).toLocaleString('en-IN')}
-                    </small>
+                    <div style={{ fontSize: '0.78rem', color: '#74c69d', marginTop: '2px', width: '100%' }}>
+                      📅 {new Date(complaint.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
 
                     {complaint.requiresReplantation && (
-                      <span style={{ fontSize: '0.76rem', background: '#0b2518', color: '#34d399', border: '1px solid #2d6a4f', padding: '3px 10px', borderRadius: '12px', display: 'inline-block', width: 'fit-content', fontWeight: 700 }}>
+                      <span style={{ fontSize: '0.76rem', background: '#0b2518', color: '#34d399', border: '1px solid #2d6a4f', padding: '3px 10px', borderRadius: '12px', display: 'inline-block', width: 'fit-content', fontWeight: 700, marginTop: '2px' }}>
                         🌱 Replantation: {complaint.replantationStatus}
                       </span>
                     )}
 
                     {complaint.assignedTo && (
-                      <small style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#52b788', fontWeight: 600, marginTop: '2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#52b788', fontSize: '0.78rem', fontWeight: 600, marginTop: '2px' }}>
                         <Users size={12} /> Assigned to: {complaint.assignedTo}
-                      </small>
+                      </div>
                     )}
 
                     {/* Inline assignment panel when this complaint is selected */}
@@ -5040,9 +5180,16 @@ export function AdminConsolePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [complaints, setComplaints] = useState([]);
   const [complaintsLoading, setComplaintsLoading] = useState(true);
+  const [selectedComplaintImage, setSelectedComplaintImage] = useState(null);
 
   // Admin gate
-  const [adminAuthed, setAdminAuthed] = useState(() => sessionStorage.getItem('adminAuthed') === 'true');
+  const [adminAuthed, setAdminAuthed] = useState(() => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {};
+      if (normalizeRole(currentUser.role) === 'Admin') return true;
+    } catch {}
+    return sessionStorage.getItem('adminAuthed') === 'true';
+  });
   const [adminUser, setAdminUser] = useState('');
   const [adminPass, setAdminPass] = useState('');
   const [adminError, setAdminError] = useState('');
@@ -5051,12 +5198,16 @@ export function AdminConsolePage() {
 
   const handleAdminLogin = (e) => {
     e.preventDefault();
-    if (adminUser === 'admin' && adminPass === 'admin@123') {
+    const u = adminUser.toLowerCase().trim();
+    const p = adminPass.trim();
+    if ((u === 'admin' || u === 'admin@example.com') && (p === 'admin123' || p === 'admin@123')) {
       sessionStorage.setItem('adminAuthed', 'true');
+      const adminObj = { id: 'admin-static', name: 'Municipal Admin', email: 'admin@example.com', role: 'Admin' };
+      localStorage.setItem('currentUser', JSON.stringify(adminObj));
       setAdminAuthed(true);
       setAdminError('');
     } else {
-      setAdminError('Invalid username or password.');
+      setAdminError('Invalid credentials. Use admin / admin123');
       setAdminShake(true);
       setTimeout(() => setAdminShake(false), 600);
     }
@@ -5675,8 +5826,8 @@ export function AdminConsolePage() {
               <h1>System Oversight & Governance</h1>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <Link className="cg-btn outline" to="/home">
-                <Home size={18} /> Return Home
+              <Link className="cg-btn outline" to="/dashboard">
+                <BarChart3 size={18} /> System Dashboard
               </Link>
               <Link className="cg-btn outline" to="/add-property" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Plus size={18} /> Add Property
@@ -5693,59 +5844,189 @@ export function AdminConsolePage() {
           </div>
 
           {/* Live Complaints Inbox */}
-          <section className="cg-panel complaints-inbox">
-            <header>
+          <div
+            className="data-table-container"
+            style={{
+              marginTop: '1.5rem',
+              marginBottom: '1.5rem',
+              background: 'var(--bg-surface)',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.06)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <div className="table-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h2><AlertTriangle size={20} /> Citizen Complaints Inbox</h2>
-                <p>All reported issues — visible to Admin &amp; Officials.</p>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={22} color="#f59e0b" /> Citizen Complaints Inbox
+                </h2>
+                <p className="table-subtitle" style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                  All reported field issues &amp; complaints — visible to Admin &amp; Officials.
+                </p>
               </div>
-              <span className="complaints-count">{complaints.length} Total</span>
-            </header>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <Link to="/admin-complaints" style={{ fontSize: '0.82rem', fontWeight: 700, padding: '6px 14px', borderRadius: '8px', background: 'var(--brand)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+                  <AlertTriangle size={16} /> Open Admin Complaints Action Center
+                </Link>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, padding: '4px 12px', borderRadius: '99px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                  {complaints.length} Total Complaints
+                </span>
+              </div>
+            </div>
+
             {complaintsLoading ? (
-              <p className="complaints-loading">Loading complaints…</p>
+              <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px' }}>Loading complaints…</p>
             ) : complaints.length === 0 ? (
-              <p className="complaints-empty">No complaints submitted yet.</p>
+              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', borderRadius: '12px' }}>
+                <AlertTriangle size={36} color="#94a3b8" style={{ marginBottom: '8px' }} />
+                <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem' }}>No complaints submitted yet.</p>
+              </div>
             ) : (
-              <table className="cg-table wide">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Issue Type</th>
-                    <th>Description</th>
-                    <th>Location</th>
-                    <th>Submitted By</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Update</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {complaints.map((c, i) => (
-                    <tr key={c._id}>
-                      <td><small>{i + 1}</small></td>
-                      <td><b>{issueLabels[c.issueType] || c.issueType}</b></td>
-                      <td>{c.description || <i style={{ color: '#aaa' }}>—</i>}</td>
-                      <td>{c.location || <i style={{ color: '#aaa' }}>—</i>}</td>
-                      <td>{c.submittedBy}</td>
-                      <td><small>{new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</small></td>
-                      <td><span className={`tag ${statusTag(c.status)}`}>{c.status}</span></td>
-                      <td>
-                        <select
-                          className="complaint-status-select"
-                          value={c.status}
-                          onChange={e => updateStatus(c._id, e.target.value)}
-                        >
-                          {['Pending', 'In Review', 'Scheduled', 'Resolved'].map(s => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </td>
+              <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                <table className="custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-subtle)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', borderRadius: '8px 0 0 8px' }}>#</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Photo</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Issue Type</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Description</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Location</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Submitted By</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Date</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>Status</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', borderRadius: '0 8px 8px 0' }}>Update Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {complaints.map((c, i) => {
+                      let rawImg = c.photoUrl || c.image || c.photo || c.beforeImageUrl || '';
+                      let photo = '';
+                      if (rawImg && typeof rawImg === 'string' && rawImg.trim() !== '') {
+                        photo = rawImg.trim();
+                        if (photo.startsWith('/uploads/')) {
+                          photo = `${API_URL}${photo}`;
+                        }
+                      }
+
+                      let badgeBg = 'rgba(245, 158, 11, 0.15)';
+                      let badgeColor = '#f59e0b';
+                      if (c.status === 'Resolved') { badgeBg = 'rgba(16, 185, 129, 0.15)'; badgeColor = '#10b981'; }
+                      else if (c.status === 'In Review') { badgeBg = 'rgba(168, 85, 247, 0.15)'; badgeColor = '#c4b5fd'; }
+                      else if (c.status === 'Scheduled' || c.status === 'In Progress') { badgeBg = 'rgba(59, 130, 246, 0.15)'; badgeColor = '#93c5fd'; }
+
+                      return (
+                        <tr key={c._id} style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                            {i + 1}
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <div
+                              style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                border: '1px solid var(--border)',
+                                background: 'var(--bg-subtle)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                position: 'relative',
+                                cursor: photo ? 'pointer' : 'default',
+                                flexShrink: 0
+                              }}
+                              onClick={() => photo && setSelectedComplaintImage(photo)}
+                              title={photo ? 'Click to view full photo' : 'No photo submitted'}
+                            >
+                              {photo ? (
+                                <img
+                                  src={photo}
+                                  alt={c.issueType}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0, zIndex: 1 }}
+                                  onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                                />
+                              ) : null}
+                              <Camera size={18} color="var(--text-muted)" opacity={0.6} />
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)', display: 'block' }}>
+                              {issueLabels[c.issueType] || c.issueType}
+                            </strong>
+                          </td>
+                          <td style={{ padding: '10px 12px', maxWidth: '220px' }}>
+                            <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                              {c.description || '—'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px', maxWidth: '200px' }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                              📍 {c.location || 'N/A'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <strong style={{ fontSize: '0.86rem', color: 'var(--text-primary)', display: 'block' }}>{c.submittedBy}</strong>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                              {new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{
+                              backgroundColor: badgeBg,
+                              color: badgeColor,
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontWeight: '700',
+                              fontSize: '0.8rem',
+                              border: `1px solid ${badgeColor}40`,
+                              display: 'inline-block'
+                            }}>
+                              {c.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                            <select
+                              value={c.status}
+                              onChange={e => updateStatus(c._id, e.target.value)}
+                              style={{
+                                background: 'var(--bg-elevated)',
+                                color: 'var(--text-primary)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '8px',
+                                padding: '6px 10px',
+                                fontSize: '0.83rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                outline: 'none'
+                              }}
+                            >
+                              {['Pending', 'In Review', 'Scheduled', 'Resolved'].map(s => (
+                                <option key={s} value={s} style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>{s}</option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
-          </section>
+          </div>
+
+          {/* Full Complaint Image Zoom Modal */}
+          {selectedComplaintImage && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setSelectedComplaintImage(null)}>
+              <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh', background: 'var(--bg-surface)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+                <button onClick={() => setSelectedComplaintImage(null)} style={{ position: 'absolute', top: '-12px', right: '-12px', width: '32px', height: '32px', borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>✕</button>
+                <img src={selectedComplaintImage} alt="Complaint Attachment" style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: '10px', objectFit: 'contain' }} />
+              </div>
+            </div>
+          )}
 
           <section className="cg-admin-grid">
             <div className="cg-panel performance">
@@ -6506,13 +6787,23 @@ export function TreeInventoryPage() {
   const [form, setForm] = useState(initialFormState);
   const [trees, setTrees] = useState([]);
   const [selectedTree, setSelectedTree] = useState(null);
-  const [status, setStatus] = useState('');
+  const isAddTreeRoute = (pathname) => {
+    return (
+      pathname === '/add-tree' ||
+      pathname === '/admin/add-tree' ||
+      pathname === '/official/add-tree' ||
+      pathname === '/treecutter/add-tree' ||
+      pathname === '/cutter/add-tree' ||
+      pathname.endsWith('/add-tree')
+    );
+  };
+
   const [showForm, setShowForm] = useState(() => {
-    return window.location.pathname === '/add-tree' || window.location.search.includes('add=true');
+    return isAddTreeRoute(window.location.pathname) || window.location.search.includes('add=true');
   });
 
   useEffect(() => {
-    if (location.pathname === '/add-tree' || location.search.includes('add=true')) {
+    if (isAddTreeRoute(location.pathname) || location.search.includes('add=true')) {
       setShowForm(true);
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -7424,8 +7715,12 @@ export function ViewTreePage() {
       return {};
     }
   })();
+  const path = window.location.pathname;
   const currentUserRole = normalizeRole(currentUser.role);
-  const isCitizen = !currentUserRole || currentUserRole === 'Citizen';
+  const isAdminSession = sessionStorage.getItem('adminAuthed') === 'true' || currentUserRole === 'Admin' || path.startsWith('/admin');
+  const isOfficialSession = !isAdminSession && (sessionStorage.getItem('officialAuthed') === 'true' || currentUserRole === 'Official' || path.startsWith('/official'));
+  const isStaffSession = isAdminSession || isOfficialSession || currentUserRole === 'Tree Cutter' || path.startsWith('/treecutter') || path.startsWith('/cutter');
+  const isCitizen = !isAdminSession && !isOfficialSession && (!currentUserRole || currentUserRole === 'Citizen');
 
   const effectiveUserId = currentUser.id || currentUser._id || currentUser.userId || 'guest-citizen';
   const effectiveUserName = currentUser.name || currentUser.username || currentUser.fullName || 'Citizen User';
@@ -7433,6 +7728,9 @@ export function ViewTreePage() {
 
   const triggerAdoptModal = (tree, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
+    if (isAdminSession || isStaffSession) {
+      return;
+    }
     
     // Check if user is logged in
     if (!currentUser.role && !currentUser.username && !currentUser.name) {
@@ -7612,24 +7910,26 @@ export function ViewTreePage() {
                 </span>
               ))}
             </div>
-            <div style={{ marginTop: '16px' }}>
-              <button
-                onClick={(e) => triggerAdoptModal(selectedTree, e)}
-                disabled={isCurrentlyAdopting}
-                style={{
-                  background: '#10b981', color: '#ffffff', border: 'none',
-                  borderRadius: '10px', padding: '10px 20px', fontSize: '0.9rem', fontWeight: 800,
-                  cursor: isCurrentlyAdopting ? 'not-allowed' : 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  boxShadow: '0 4px 14px rgba(16,185,129,0.4)', transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#059669'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; }}
-              >
-                <Heart size={16} fill="#ffffff" />
-                {isCurrentlyAdopting ? 'Adopting...' : 'Adopt Tree (+100 Pts)'}
-              </button>
-            </div>
+            {!isAdminSession && !isStaffSession && (
+              <div style={{ marginTop: '16px' }}>
+                <button
+                  onClick={(e) => triggerAdoptModal(selectedTree, e)}
+                  disabled={isCurrentlyAdopting}
+                  style={{
+                    background: '#10b981', color: '#ffffff', border: 'none',
+                    borderRadius: '10px', padding: '10px 20px', fontSize: '0.9rem', fontWeight: 800,
+                    cursor: isCurrentlyAdopting ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    boxShadow: '0 4px 14px rgba(16,185,129,0.4)', transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#059669'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; }}
+                >
+                  <Heart size={16} fill="#ffffff" />
+                  {isCurrentlyAdopting ? 'Adopting...' : 'Adopt Tree (+100 Pts)'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -7943,23 +8243,25 @@ export function ViewTreePage() {
                       </div>
                     )}
                     <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingTop: '10px', borderTop: '1px dashed #e5e7eb' }}>
-                      <button
-                        onClick={(e) => triggerAdoptModal(tree, e)}
-                        disabled={adoptingId === (tree._id || tree.id)}
-                        style={{
-                          background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0',
-                          borderRadius: '8px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: 700,
-                          cursor: adoptingId === (tree._id || tree.id) ? 'not-allowed' : 'pointer',
-                          display: 'inline-flex', alignItems: 'center', gap: '5px',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#d1fae5'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = '#ecfdf5'; }}
-                      >
-                        <Heart size={13} fill="#065f46" />
-                        {adoptingId === (tree._id || tree.id) ? 'Adopting...' : 'Adopt (+100)'}
-                      </button>
-                      <span style={{ fontSize: '0.8rem', color: '#065f46', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {!isAdminSession && !isStaffSession && (
+                        <button
+                          onClick={(e) => triggerAdoptModal(tree, e)}
+                          disabled={adoptingId === (tree._id || tree.id)}
+                          style={{
+                            background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0',
+                            borderRadius: '8px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: 700,
+                            cursor: adoptingId === (tree._id || tree.id) ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex', alignItems: 'center', gap: '5px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#d1fae5'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#ecfdf5'; }}
+                        >
+                          <Heart size={13} fill="#065f46" />
+                          {adoptingId === (tree._id || tree.id) ? 'Adopting...' : 'Adopt (+100)'}
+                        </button>
+                      )}
+                      <span style={{ fontSize: '0.8rem', color: '#065f46', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginLeft: (isAdminSession || isStaffSession) ? 'auto' : 0 }}>
                         View Details <ChevronRight size={14} />
                       </span>
                     </div>
@@ -8079,8 +8381,10 @@ export function ViewTreePage() {
     );
   };
 
+  const isAuthenticatedUser = isAdminSession || isOfficialSession || Boolean(currentUser.role || currentUser.username || currentUser.name);
+
   if (selectedTree) {
-    if (!currentUser.role && !currentUser.username && !currentUser.name) {
+    if (!isAuthenticatedUser) {
       return (
         <div className="cg-public">
           <header className="cg-public-nav">
@@ -8105,7 +8409,7 @@ export function ViewTreePage() {
     } else {
       return (
         <div className="cg-app" style={{ background: '#f8fafc', minHeight: '100vh', color: '#1f2937' }}>
-          <Sidebar active="View Tree" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+          <Sidebar active="View Tree" admin={isAdminSession} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
           <div className="cg-workspace">
             <Topbar title="Tree Details" onToggleSidebar={() => setSidebarOpen(true)} />
             {renderDetailContent()}
@@ -8117,7 +8421,7 @@ export function ViewTreePage() {
   }
 
   // ── List View ───────────────────────────────────────────────────────────────
-  if (!currentUser.role && !currentUser.username && !currentUser.name) {
+  if (!isAuthenticatedUser) {
     return (
       <div className="cg-public">
         <header className="cg-public-nav">
@@ -8142,7 +8446,7 @@ export function ViewTreePage() {
   } else {
     return (
       <div className="cg-app cg-dashboard-screen" style={{ background: '#f8fafc', minHeight: '100vh', color: '#1f2937' }}>
-        <Sidebar active="View Tree" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+        <Sidebar active="View Tree" admin={isAdminSession} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
         <div className="cg-workspace">
           <Topbar title="Tree Database" onToggleSidebar={() => setSidebarOpen(true)} />
           {renderListContent()}
@@ -8169,14 +8473,19 @@ export function AttendancePage() {
     catch { return {}; }
   })();
 
+  const path = window.location.pathname;
   const rawRole = normalizeRole(currentUser.role);
-  const isAdmin = rawRole === 'Admin';
-  const isOfficial = rawRole === 'Official';
+  const isAdmin = rawRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || path.startsWith('/admin');
+  const isOfficial = !isAdmin && (rawRole === 'Official' || sessionStorage.getItem('officialAuthed') === 'true' || path.startsWith('/official') || path.startsWith('/official-management'));
 
-  // Effective identity for attendance (Tree Cutter mode when accessing attendance)
-  const effectiveRole = (isOfficial || isAdmin) ? currentUser.role : 'Tree Cutter';
-  const effectiveName = currentUser.name || 'sameeksha';
-  const effectiveUserId = currentUser.id || currentUser.email || 'TC-' + (effectiveName.toLowerCase().replace(/\s+/g, ''));
+  if (isAdmin) {
+    return <AdminAttendancePage />;
+  }
+
+  // Effective identity for attendance
+  const effectiveRole = isAdmin ? 'Admin' : (isOfficial ? 'Official' : 'Tree Cutter');
+  const effectiveName = currentUser.name || (isAdmin ? (sessionStorage.getItem('adminUsername') || 'Municipal Admin') : 'sameeksha');
+  const effectiveUserId = currentUser.id || currentUser.email || (isAdmin ? 'ADMIN-01' : ('TC-' + (effectiveName.toLowerCase().replace(/\s+/g, ''))));
 
   // Live clock
   useEffect(() => {
@@ -8329,12 +8638,15 @@ export function AttendancePage() {
 
   return (
     <div className="cg-app">
-      <Sidebar active="Attendance" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <Sidebar active="Attendance" admin={isAdmin} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
         <Topbar attendance onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page">
           <section className="cg-att-head">
-            <div><h1>Shift Logs & Attendance</h1><p>Mark your daily presence and view work history.</p></div>
+            <div>
+              <h1>Shift Logs & Attendance</h1>
+              <p>{isAdmin ? 'System-wide workforce tracking and shift oversight.' : (isOfficial ? 'Zone workforce tracking and cutter hours.' : 'Mark your daily presence and view work history.')}</p>
+            </div>
             <div className="time-card">
               <Clock3 />
               <span>Current Time (IST)</span>
@@ -8589,7 +8901,741 @@ export function AttendancePage() {
   );
 }
 
+export function AdminAttendancePage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [leaveApplications, setLeaveApplications] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [todaySummary, setTodaySummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [shiftFilter, setShiftFilter] = useState('all');
+  const [leaveStatusFilter, setLeaveStatusFilter] = useState('all');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+
+  // Override Form
+  const [overrideUser, setOverrideUser] = useState('');
+  const [overrideShift, setOverrideShift] = useState('Morning');
+  const [overrideDate, setOverrideDate] = useState(new Date().toISOString().slice(0, 10));
+  const [overrideLocation, setOverrideLocation] = useState('Zone Central HQ');
+  const [overrideSubmitting, setOverrideSubmitting] = useState(false);
+
+  // Leave Form modal for Admin
+  const [showApplyLeaveModal, setShowApplyLeaveModal] = useState(false);
+  const [leaveStaff, setLeaveStaff] = useState('');
+  const [leaveType, setLeaveType] = useState('Casual Leave');
+  const [leaveStart, setLeaveStart] = useState(new Date().toISOString().slice(0, 10));
+  const [leaveEnd, setLeaveEnd] = useState(new Date().toISOString().slice(0, 10));
+  const [leaveDays, setLeaveDays] = useState(1);
+  const [leaveReason, setLeaveReason] = useState('');
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+
+  // Live clock
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [attRes, sumRes, leaveRes, userRes] = await Promise.all([
+        fetch(`${API_URL}/api/attendance`),
+        fetch(`${API_URL}/api/attendance/today-summary`),
+        fetch(`${API_URL}/api/attendance/leaves`),
+        fetch(`${API_URL}/api/auth/users`),
+      ]);
+      const attData = attRes.ok ? await attRes.json() : { records: [] };
+      const sumData = sumRes.ok ? await sumRes.json() : {};
+      const leaveData = leaveRes.ok ? await leaveRes.json() : { leaves: [] };
+      const userData = userRes.ok ? await userRes.json() : { users: [] };
+
+      setAttendanceRecords(attData.records || []);
+      setTodaySummary(sumData || {});
+      setLeaveApplications(leaveData.leaves || []);
+      if (userData.users) {
+        const staff = userData.users.filter(u => u.role === 'Tree Cutter' || u.role === 'Official');
+        setStaffList(staff);
+      }
+    } catch (err) {
+      console.error('Failed to load admin attendance data:', err);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+    const timer = setInterval(fetchData, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Admin Leave Review handler
+  const handleReviewLeave = async (id, status) => {
+    const remarks = prompt(`Optional remarks for ${status.toLowerCase()} leave request:`, status === 'Approved' ? 'Approved by Admin' : 'Insufficient staffing coverage');
+    if (remarks === null) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/attendance/leaves/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          adminRemarks: remarks,
+          reviewedBy: 'Municipal Admin',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        Swal.fire({
+          icon: status === 'Approved' ? 'success' : 'info',
+          title: `Leave ${status}`,
+          text: data.msg,
+          confirmButtonColor: '#065f46',
+          timer: 2000,
+        });
+        fetchData();
+      } else {
+        alert(data.msg || 'Failed to update leave status');
+      }
+    } catch (err) {
+      alert('Error updating leave status');
+    }
+  };
+
+  // Submit Leave Request (Admin on behalf of staff)
+  const handleAdminApplyLeave = async (e) => {
+    e.preventDefault();
+    if (!leaveStaff) {
+      alert('Please select a staff member.');
+      return;
+    }
+    const staffObj = staffList.find(s => s._id === leaveStaff || s.name === leaveStaff);
+    if (!staffObj) {
+      alert('Staff member not found.');
+      return;
+    }
+
+    setLeaveSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/api/attendance/leaves`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: staffObj._id,
+          userName: staffObj.name,
+          userRole: staffObj.role,
+          leaveType,
+          startDate: leaveStart,
+          endDate: leaveEnd,
+          totalDays: Number(leaveDays) || 1,
+          reason: leaveReason,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Leave Recorded',
+          text: 'Staff leave application recorded successfully!',
+          confirmButtonColor: '#065f46',
+        });
+        setShowApplyLeaveModal(false);
+        setLeaveReason('');
+        fetchData();
+      } else {
+        alert(data.msg || 'Failed to record leave.');
+      }
+    } catch (err) {
+      alert('Connection error submitting leave.');
+    }
+    setLeaveSubmitting(false);
+  };
+
+  // Admin Manual Attendance Override
+  const handleAdminOverride = async (e) => {
+    e.preventDefault();
+    if (!overrideUser) {
+      alert('Please select a staff member.');
+      return;
+    }
+    const staffObj = staffList.find(s => s._id === overrideUser || s.name === overrideUser);
+    if (!staffObj) {
+      alert('Staff member not found.');
+      return;
+    }
+
+    setOverrideSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/api/attendance/admin-override`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: staffObj._id,
+          userName: staffObj.name,
+          role: staffObj.role,
+          shift: overrideShift,
+          date: overrideDate,
+          location: overrideLocation,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Attendance Override Recorded',
+          text: data.msg,
+          confirmButtonColor: '#065f46',
+        });
+        fetchData();
+      } else {
+        alert(data.msg || 'Override failed.');
+      }
+    } catch (err) {
+      alert('Error recording attendance override.');
+    }
+    setOverrideSubmitting(false);
+  };
+
+  // Export PDF/Print Report
+  const handleExportAttendanceReport = () => {
+    window.print();
+  };
+
+  // Compute metrics
+  const totalStaffCount = staffList.length || 18;
+  const presentTodayCount = todaySummary ? todaySummary.total : 0;
+  const pendingLeavesCount = leaveApplications.filter(l => l.status === 'Pending').length;
+  const activeLeavesTodayCount = leaveApplications.filter(l => l.status === 'Approved' && l.startDate <= selectedDate && l.endDate >= selectedDate).length;
+
+  // Filtered attendance logs
+  const filteredAttendance = attendanceRecords.filter(r => {
+    if (selectedDate && r.date !== selectedDate) return false;
+    if (roleFilter !== 'all' && r.role !== roleFilter) return false;
+    if (shiftFilter !== 'all' && r.shift !== shiftFilter) return false;
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      const name = (r.userName || '').toLowerCase();
+      const loc = (r.location || '').toLowerCase();
+      return name.includes(q) || loc.includes(q);
+    }
+    return true;
+  });
+
+  // Filtered leaves
+  const filteredLeaves = leaveApplications.filter(l => {
+    if (leaveStatusFilter !== 'all' && l.status !== leaveStatusFilter) return false;
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      const name = (l.userName || '').toLowerCase();
+      const type = (l.leaveType || '').toLowerCase();
+      const reason = (l.reason || '').toLowerCase();
+      return name.includes(q) || type.includes(q) || reason.includes(q);
+    }
+    return true;
+  });
+
+  return (
+    <div className="cg-app">
+      <Sidebar active="Attendance" admin isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <div className="cg-workspace">
+        <Topbar title="Staff Attendance & Leave Governance" search="Search staff or logs..." onToggleSidebar={() => setSidebarOpen(true)} />
+        <main className="cg-page">
+          <section className="cg-admin-head" style={{ marginBottom: '24px' }}>
+            <div>
+              <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--brand-accent)', fontWeight: 700 }}>MUNICIPAL WORKFORCE MANAGEMENT</span>
+              <h1 style={{ margin: '4px 0 8px 0', fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-primary)' }}>Staff Attendance & Leave Control Center</h1>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', maxWidth: '750px', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                Complete administrative oversight of municipal workforce attendance, shift timings, staff leave applications, and emergency clock-in overrides.
+              </p>
+            </div>
+
+            <div className="time-card" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', padding: '12px 20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 700, fontSize: '0.85rem' }}>
+                <Clock size={18} /> IST Live Clock
+              </div>
+              <b style={{ fontSize: '1.4rem', color: 'var(--text-primary)', fontWeight: 800 }}>
+                {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </b>
+              <small style={{ color: '#6b7280', fontSize: '0.75rem' }}>Shift Monitoring Active</small>
+            </div>
+          </section>
+
+          {/* 4 Metric KPI Cards */}
+          <section className="official-stat-grid" style={{ marginBottom: '24px' }}>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <Users color="#3b82f6" />
+              <span>Total Active Staff</span>
+              <b style={{ color: 'var(--text-primary)' }}>{totalStaffCount}</b>
+              <small style={{ color: '#64748b' }}>Cutters & Officials</small>
+            </article>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <CheckCircle2 color="#10b981" />
+              <span>Present Today</span>
+              <b style={{ color: '#10b981' }}>{presentTodayCount}</b>
+              <small style={{ color: '#10b981' }}>{Math.round((presentTodayCount / (totalStaffCount || 1)) * 100)}% Attendance Rate</small>
+            </article>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setActiveTab('leaves')}>
+              <AlertTriangle color="#f59e0b" />
+              <span>Pending Leave Requests</span>
+              <b style={{ color: '#f59e0b' }}>{pendingLeavesCount}</b>
+              <small style={{ color: '#f59e0b' }}>Requires Admin Approval</small>
+            </article>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <Calendar color="#8b5cf6" />
+              <span>Staff On Leave Today</span>
+              <b style={{ color: '#a855f7' }}>{activeLeavesTodayCount}</b>
+              <small style={{ color: '#a855f7' }}>Approved Leaves</small>
+            </article>
+          </section>
+
+          {/* Tab Navigation */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px', borderBottom: '2px solid var(--border)', paddingBottom: '4px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {[
+                { id: 'overview', label: 'Workforce Attendance Logs', icon: <Users size={16} /> },
+                { id: 'leaves', label: `Staff Leave Requests (${pendingLeavesCount})`, icon: <Calendar size={16} /> },
+                { id: 'roster', label: 'Shift Timings & Roster', icon: <Clock size={16} /> },
+                { id: 'override', label: 'Manual Attendance Override', icon: <Fingerprint size={16} /> },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '10px 18px', border: 'none', background: 'none',
+                    fontSize: '0.95rem', fontWeight: activeTab === tab.id ? '700' : '600',
+                    color: activeTab === tab.id ? 'var(--brand-accent)' : 'var(--text-secondary)',
+                    borderBottom: activeTab === tab.id ? '3px solid var(--brand-accent)' : '3px solid transparent',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  {tab.icon} {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setShowApplyLeaveModal(true)} className="cg-btn outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                <Plus size={16} /> Apply Staff Leave
+              </button>
+              <button onClick={handleExportAttendanceReport} className="cg-btn primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                <FileText size={16} /> Print / Export Audit Report
+              </button>
+            </div>
+          </div>
+
+          {/* ── TAB 1: Workforce Attendance Logs ── */}
+          {activeTab === 'overview' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Filter controls */}
+              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-surface)', padding: '16px', borderRadius: '14px', border: '1px solid var(--border)' }}>
+                <div style={{ flex: '1 1 240px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-elevated)', borderRadius: '8px', padding: '8px 12px', border: '1px solid var(--border)' }}>
+                  <Search size={16} color="var(--text-muted)" />
+                  <input
+                    type="text"
+                    placeholder="Search by staff name or location..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '0.88rem' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Date:</span>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={e => setSelectedDate(e.target.value)}
+                    style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Role:</span>
+                  <select
+                    value={roleFilter}
+                    onChange={e => setRoleFilter(e.target.value)}
+                    style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="Tree Cutter">Tree Cutters</option>
+                    <option value="Official">Officials</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Shift:</span>
+                  <select
+                    value={shiftFilter}
+                    onChange={e => setShiftFilter(e.target.value)}
+                    style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                  >
+                    <option value="all">All Shifts</option>
+                    <option value="Morning">Morning (9–12 AM)</option>
+                    <option value="Afternoon">Afternoon (12–3 PM)</option>
+                    <option value="Evening">Evening (3–5 PM)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Attendance Table */}
+              <div className="cg-panel" style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Live Shift Attendance Log</h3>
+                  <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Showing {filteredAttendance.length} records for {selectedDate}</span>
+                </div>
+
+                <table className="cg-table wide">
+                  <thead>
+                    <tr>
+                      <th>Staff Name</th>
+                      <th>Role</th>
+                      <th>Shift Session</th>
+                      <th>Date</th>
+                      <th>Clock-In Timestamp</th>
+                      <th>Location / Sector</th>
+                      <th>Attendance Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAttendance.map(r => (
+                      <tr key={r._id}>
+                        <td><b>{r.userName}</b></td>
+                        <td><span className={`tag ${r.role === 'Official' ? 'med' : 'low'}`}>{r.role}</span></td>
+                        <td><span className="tag ok">{r.shift} Shift</span></td>
+                        <td>{r.date}</td>
+                        <td><small>{new Date(r.markedAt || r.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</small></td>
+                        <td><small>{r.location || 'Logged in Field'}</small></td>
+                        <td><span className="tag ok" style={{ fontWeight: 700 }}>✓ Present</span></td>
+                      </tr>
+                    ))}
+                    {filteredAttendance.length === 0 && (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>
+                          No staff attendance recorded for the selected date and filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 2: Staff Leave Requests ── */}
+          {activeTab === 'leaves' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'var(--bg-surface)', padding: '16px', borderRadius: '14px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>Status Filter:</span>
+                  {['all', 'Pending', 'Approved', 'Rejected'].map(st => (
+                    <button
+                      key={st}
+                      onClick={() => setLeaveStatusFilter(st)}
+                      style={{
+                        padding: '6px 14px', borderRadius: '8px', border: 'none',
+                        background: leaveStatusFilter === st ? 'var(--brand-accent)' : 'var(--bg-elevated)',
+                        color: leaveStatusFilter === st ? '#fff' : 'var(--text-primary)',
+                        fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer'
+                      }}
+                    >
+                      {st === 'all' ? 'All Requests' : st}
+                    </button>
+                  ))}
+                </div>
+
+                <button onClick={() => setShowApplyLeaveModal(true)} className="cg-btn primary" style={{ fontSize: '0.85rem' }}>
+                  <Plus size={16} style={{ marginRight: '4px' }} /> Create Leave Entry
+                </button>
+              </div>
+
+              <div className="cg-panel" style={{ padding: '20px' }}>
+                <table className="cg-table wide">
+                  <thead>
+                    <tr>
+                      <th>Staff Member</th>
+                      <th>Role</th>
+                      <th>Leave Type</th>
+                      <th>Duration</th>
+                      <th>Days</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'right' }}>Admin Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLeaves.map(leave => (
+                      <tr key={leave._id}>
+                        <td><b>{leave.userName}</b></td>
+                        <td><span className={`tag ${leave.userRole === 'Official' ? 'med' : 'low'}`}>{leave.userRole}</span></td>
+                        <td><span className="tag high" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>{leave.leaveType}</span></td>
+                        <td><small>{leave.startDate} to {leave.endDate}</small></td>
+                        <td><b>{leave.totalDays} day(s)</b></td>
+                        <td style={{ maxWidth: '200px' }}><small>{leave.reason || 'Personal reasons'}</small></td>
+                        <td>
+                          <span style={{
+                            padding: '4px 10px', borderRadius: '12px', fontWeight: 700, fontSize: '0.8rem',
+                            background: leave.status === 'Approved' ? '#dcfce7' : leave.status === 'Rejected' ? '#fee2e2' : '#fffbeb',
+                            color: leave.status === 'Approved' ? '#166534' : leave.status === 'Rejected' ? '#991b1b' : '#b45309',
+                            border: leave.status === 'Approved' ? '1px solid #86efac' : leave.status === 'Rejected' ? '1px solid #fca5a5' : '1px solid #fde68a'
+                          }}>
+                            {leave.status}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {leave.status === 'Pending' ? (
+                            <div style={{ display: 'inline-flex', gap: '6px' }}>
+                              <button
+                                onClick={() => handleReviewLeave(leave._id, 'Approved')}
+                                style={{ padding: '6px 12px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleReviewLeave(leave._id, 'Rejected')}
+                                style={{ padding: '6px 12px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <small style={{ color: '#64748b' }}>Reviewed by {leave.reviewedBy || 'Admin'}</small>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredLeaves.length === 0 && (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>
+                          No staff leave applications found matching current criteria.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 3: Shift Timings & Roster ── */}
+          {activeTab === 'roster' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+              {[
+                { name: 'Morning Shift', hours: '9:00 AM – 12:00 PM', capacity: '10 Staff Required', icon: <Sun size={24} color="#f59e0b" />, desc: 'Primary field pruning, tree inspection, and routine hazard removal.' },
+                { name: 'Afternoon Shift', hours: '12:00 PM – 3:00 PM', capacity: '8 Staff Required', icon: <Sun size={24} color="#10b981" />, desc: 'Mid-day complaint response, branch clearance, and wood transport.' },
+                { name: 'Evening Shift', hours: '3:00 PM – 5:00 PM', capacity: '6 Staff Required', icon: <Moon size={24} color="#6366f1" />, desc: 'Emergency storm response, cleanup wrap-up, and equipment check-in.' },
+              ].map(s => (
+                <div key={s.name} className="cg-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {s.icon}
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>{s.name}</h3>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--brand-accent)', fontWeight: 700 }}>{s.hours}</span>
+                    </div>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b', lineHeight: 1.5 }}>{s.desc}</p>
+                  <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 700 }}>
+                    <span>Optimal Capacity:</span>
+                    <span style={{ color: '#059669' }}>{s.capacity}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── TAB 4: Manual Attendance Override ── */}
+          {activeTab === 'override' && (
+            <div className="cg-panel" style={{ maxWidth: '600px', margin: '0 auto', padding: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <Fingerprint size={28} color="#059669" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Manual Attendance Override</h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>Record attendance manually for staff who missed clock-in.</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAdminOverride} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>Select Staff Member</label>
+                  <select
+                    value={overrideUser}
+                    onChange={e => setOverrideUser(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  >
+                    <option value="">-- Choose Staff Member --</option>
+                    {staffList.map(s => (
+                      <option key={s._id} value={s._id}>{s.name} ({s.role})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>Date</label>
+                    <input
+                      type="date"
+                      value={overrideDate}
+                      onChange={e => setOverrideDate(e.target.value)}
+                      required
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>Shift Session</label>
+                    <select
+                      value={overrideShift}
+                      onChange={e => setOverrideShift(e.target.value)}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    >
+                      <option value="Morning">Morning (9 AM–12 PM)</option>
+                      <option value="Afternoon">Afternoon (12 PM–3 PM)</option>
+                      <option value="Evening">Evening (3 PM–5 PM)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>Assigned Zone / Location</label>
+                  <input
+                    type="text"
+                    value={overrideLocation}
+                    onChange={e => setOverrideLocation(e.target.value)}
+                    placeholder="e.g. Sector 04 Park"
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={overrideSubmitting}
+                  className="cg-btn primary"
+                  style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 800, marginTop: '8px' }}
+                >
+                  {overrideSubmitting ? 'Recording Override...' : 'Record Attendance Override'}
+                </button>
+              </form>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Modal: Admin Apply Leave on Behalf of Staff */}
+      {showApplyLeaveModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '480px', width: '100%', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Record Staff Leave Application</h3>
+              <button onClick={() => setShowApplyLeaveModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+            </div>
+
+            <form onSubmit={handleAdminApplyLeave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '4px' }}>Staff Member</label>
+                <select
+                  value={leaveStaff}
+                  onChange={e => setLeaveStaff(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                >
+                  <option value="">-- Choose Staff Member --</option>
+                  {staffList.map(s => (
+                    <option key={s._id} value={s._id}>{s.name} ({s.role})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '4px' }}>Leave Category</label>
+                <select
+                  value={leaveType}
+                  onChange={e => setLeaveType(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                >
+                  <option value="Casual Leave">Casual Leave</option>
+                  <option value="Sick Leave">Sick Leave</option>
+                  <option value="Emergency Leave">Emergency Leave</option>
+                  <option value="Annual Leave">Annual Leave</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '4px' }}>Start Date</label>
+                  <input
+                    type="date"
+                    value={leaveStart}
+                    onChange={e => setLeaveStart(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '4px' }}>End Date</label>
+                  <input
+                    type="date"
+                    value={leaveEnd}
+                    onChange={e => setLeaveEnd(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '4px' }}>Total Days</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={leaveDays}
+                  onChange={e => setLeaveDays(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '4px' }}>Reason / Explanation</label>
+                <textarea
+                  value={leaveReason}
+                  onChange={e => setLeaveReason(e.target.value)}
+                  rows="3"
+                  placeholder="Reason for leave request..."
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setShowApplyLeaveModal(false)} className="cg-btn outline">Cancel</button>
+                <button type="submit" disabled={leaveSubmitting} className="cg-btn primary">
+                  {leaveSubmitting ? 'Recording...' : 'Submit Leave'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PropertyInventoryPage() {
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
+    catch { return {}; }
+  })();
+  const rawRole = normalizeRole(currentUser.role);
+  const isAdmin = rawRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || window.location.pathname.startsWith('/admin');
+  if (isAdmin) {
+    return <AddPropertyPage />;
+  }
   return <PurchaseEquipmentPage />;
 }
 
@@ -8597,6 +9643,34 @@ export function AddPropertyPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('custody'); // 'custody' | 'catalog' | 'add'
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Theme state
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  useEffect(() => {
+    const handleTheme = () => setDarkMode(localStorage.getItem('theme') === 'dark');
+    window.addEventListener('themeChange', handleTheme);
+    return () => window.removeEventListener('themeChange', handleTheme);
+  }, []);
+
+  const theme = {
+    pageBg: darkMode ? '#0b1d16' : '#f8fafc',
+    cardBg: darkMode ? '#0f291e' : '#ffffff',
+    cardBorder: darkMode ? 'rgba(167, 243, 208, 0.15)' : '#e2e8f0',
+    titleColor: darkMode ? '#ffffff' : '#0f172a',
+    subTextColor: darkMode ? '#94a3b8' : '#64748b',
+    inputBg: darkMode ? '#143829' : '#ffffff',
+    inputText: darkMode ? '#ffffff' : '#0f172a',
+    inputBorder: darkMode ? 'rgba(167, 243, 208, 0.25)' : '#cbd5e1',
+    labelColor: darkMode ? '#a7f3d0' : '#047857',
+    tableHeaderBg: darkMode ? '#143829' : '#f8fafc',
+    tableRowHover: darkMode ? 'rgba(255,255,255,0.03)' : '#f1f5f9',
+    tableBorder: darkMode ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
+  };
+
+  // Form states
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -8608,16 +9682,15 @@ export function AddPropertyPage() {
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [remindingId, setRemindingId] = useState(null);
+  const [bulkReminding, setBulkReminding] = useState(false);
 
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
     catch { return {}; }
   })();
   const currentUserRole = normalizeRole(currentUser.role);
-
-  const isAdmin = currentUserRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true';
-  const isCutter = currentUserRole === 'Tree Cutter';
-  const isAuthorized = true;
+  const isAdmin = currentUserRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || window.location.pathname.startsWith('/admin');
 
   const fetchProperties = async () => {
     setLoading(true);
@@ -8625,7 +9698,7 @@ export function AddPropertyPage() {
       const res = await fetch(`${API_URL}/api/properties`);
       if (res.ok) {
         const data = await res.json();
-        setProperties(data);
+        setProperties(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Failed to fetch properties', err);
@@ -8639,7 +9712,7 @@ export function AddPropertyPage() {
       const res = await fetch(`${API_URL}/api/upload/files`);
       if (res.ok) {
         const data = await res.json();
-        setUploadFiles(data);
+        setUploadFiles(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Failed to fetch upload files', err);
@@ -8647,10 +9720,8 @@ export function AddPropertyPage() {
   };
 
   useEffect(() => {
-    if (isAuthorized) {
-      fetchProperties();
-      fetchUploadFiles();
-    }
+    fetchProperties();
+    fetchUploadFiles();
   }, []);
 
   const handleAddProperty = async (e) => {
@@ -8696,7 +9767,7 @@ export function AddPropertyPage() {
 
       const data = await res.json();
       if (res.ok) {
-        setActionSuccess(`Product "${name}" added successfully! It is now live in the Property Inventory for Tree Cutters.`);
+        setActionSuccess(`Equipment "${name}" registered successfully into central property inventory!`);
         setName('');
         setDescription('');
         setQuantity(1);
@@ -8704,6 +9775,8 @@ export function AddPropertyPage() {
         setImageFile(null);
         setImagePreview('');
         fetchProperties();
+        setActiveTab('catalog');
+        setTimeout(() => setActionSuccess(''), 4000);
       } else {
         setActionError(data.msg || 'Failed to add property');
       }
@@ -8714,378 +9787,688 @@ export function AddPropertyPage() {
     }
   };
 
-  const handleImageSelect = (e) => {
-    const selected = e.target.files?.[0] || null;
-    setImageFile(selected);
-    setSelectedUploadUrl('');
-    setImagePreview(selected ? URL.createObjectURL(selected) : '');
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      const res = await fetch(`${API_URL}/api/properties/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        setActionSuccess(`Status updated to "${newStatus}".`);
+        fetchProperties();
+        setTimeout(() => setActionSuccess(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+    }
   };
 
-  const handleSelectExistingImage = (e) => {
-    const url = e.target.value;
-    setSelectedUploadUrl(url);
-    setImageFile(null);
-    setImagePreview(url ? resolveImageUrl(url) : '');
-  };
-
-  const handlePurchaseProperty = async (property) => {
-    if (!window.confirm(`Purchase "${property.name}" from inventory?`)) return;
-    setIsSubmitting(true);
+  const handleSendReminder = async (reqItem, property) => {
+    const targetKey = `${reqItem.userId || reqItem.userName}-${property._id}`;
+    setRemindingId(targetKey);
     setActionSuccess('');
     setActionError('');
 
+    const staffName = reqItem.userName || 'Tree Cutter';
+    const toolName = property.name;
+
     try {
-      const res = await fetch(`${API_URL}/api/properties/${property._id}/purchase`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.id || currentUser._id || 'unknown',
-          userName: currentUser.name || currentUser.username || 'Tree Cutter'
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.msg || 'Purchase request failed');
+      // 1. In-App System Notification Dispatch
+      let notifSent = false;
+      try {
+        const res = await fetch(`${API_URL}/api/properties/remind-overdue`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: reqItem.userId,
+            userName: staffName,
+            propertyId: property._id,
+            propertyName: toolName
+          })
+        });
+        if (res.ok) notifSent = true;
+      } catch (_) {}
+
+      if (!notifSent) {
+        try {
+          const res = await fetch(`${API_URL}/api/notifications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              targetUserId: reqItem.userId || null,
+              targetRole: 'Tree Cutter',
+              type: 'equipment_reminder',
+              title: '⚠️ Equipment Return Reminder',
+              message: `Dear ${staffName}, Municipal Admin reminds you to submit/return "${toolName}" to central property inventory.`,
+              relatedId: property._id
+            })
+          });
+          if (res.ok) {
+            notifSent = true;
+          } else {
+            // Fallback for older backend instances with restricted enum
+            await fetch(`${API_URL}/api/notifications`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                targetUserId: reqItem.userId || null,
+                targetRole: 'Tree Cutter',
+                type: 'task_assigned',
+                title: '⚠️ Equipment Return Reminder',
+                message: `Dear ${staffName}, Municipal Admin reminds you to submit/return "${toolName}" to central property inventory.`,
+                relatedId: property._id
+              })
+            });
+            notifSent = true;
+          }
+        } catch (_) {}
       }
-      setActionSuccess(`Purchased "${property.name}" successfully.`);
-      fetchProperties();
+
+      // 2. Native PWA / Browser Push Notification Trigger
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          new Notification('⚠️ Action Required: Equipment Return Reminder', {
+            body: `Reminder dispatched to ${staffName} for returning "${toolName}".`,
+            icon: '/favicon.ico'
+          });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission();
+        }
+      }
+
+      // 3. SweetAlert2 Confirmation Dialog
+      Swal.fire({
+        icon: 'success',
+        title: 'Reminder Dispatched!',
+        html: `
+          <div style="text-align: left; font-size: 0.9rem;">
+            <p style="margin: 0 0 6px;"><b>Staff Recipient:</b> ${staffName} (ID: ${reqItem.userId || 'FIELD-STAFF'})</p>
+            <p style="margin: 0 0 6px;"><b>Equipment Item:</b> ${toolName}</p>
+            <p style="margin: 6px 0 0; color: #10b981; font-weight: 700;">✓ In-App Notification, Bell Badge & PWA Alert Sent!</p>
+          </div>
+        `,
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'Done'
+      });
+
+      setActionSuccess(`📩 Reminder dispatched to ${staffName} for returning "${toolName}".`);
+      setTimeout(() => setActionSuccess(''), 4000);
     } catch (err) {
-      setActionError(err.message || 'Purchase failed.');
+      setActionError(err.message || 'Error dispatching reminder.');
     } finally {
-      setIsSubmitting(false);
+      setRemindingId(null);
+    }
+  };
+
+  const handleSendAllReminders = async () => {
+    if (!window.confirm('Send late return reminders to all staff currently holding equipment?')) return;
+    setBulkReminding(true);
+    setActionSuccess('');
+    setActionError('');
+    try {
+      try {
+        await fetch(`${API_URL}/api/properties/remind-all-overdue`, { method: 'POST' });
+      } catch (_) {}
+
+      // Trigger Browser PWA Push Notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('⚡ Bulk Equipment Reminders Sent', {
+          body: `Dispatched return alerts to ${custodyList.length} staff members holding municipal tools.`
+        });
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Bulk Reminders Dispatched!',
+        text: `Sent late return reminders to all ${custodyList.length} staff members holding active equipment checkouts.`,
+        confirmButtonColor: '#10b981'
+      });
+
+      setActionSuccess(`⚡ Sent late return reminders to ${custodyList.length} staff members holding equipment.`);
+      setTimeout(() => setActionSuccess(''), 5000);
+    } catch (err) {
+      setActionError(err.message || 'Error sending bulk reminders.');
+    } finally {
+      setBulkReminding(false);
     }
   };
 
   const handleDeleteProperty = async (id, propName) => {
     if (!window.confirm(`Are you sure you want to delete "${propName}"?`)) return;
     try {
-      const res = await fetch(`${API_URL}/api/properties/${id}`, {
-        method: 'DELETE'
-      });
+      const res = await fetch(`${API_URL}/api/properties/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setActionSuccess(`Deleted "${propName}" successfully!`);
         fetchProperties();
         setTimeout(() => setActionSuccess(''), 3000);
-      } else {
-        alert('Failed to delete property');
       }
     } catch (err) {
       console.error('Error deleting property', err);
     }
   };
 
+  // Extract all active custody assignments ("Who Has What")
+  const custodyList = useMemo(() => {
+    const list = [];
+    properties.forEach((prop) => {
+      if (Array.isArray(prop.purchaseRequests) && prop.purchaseRequests.length > 0) {
+        prop.purchaseRequests.forEach((reqItem) => {
+          list.push({
+            reqItem,
+            property: prop
+          });
+        });
+      }
+    });
+    return list;
+  }, [properties]);
 
+  // Analytics KPIs
+  const totalItemsCount = properties.length;
+  const activeCustodyCount = custodyList.length;
+  const availableStockUnits = properties.reduce((acc, p) => acc + (Number(p.quantity) || 0), 0);
+  const totalQuantityUnits = availableStockUnits + activeCustodyCount;
+  const maintenanceCount = properties.filter(p => p.status === 'Maintenance').length;
 
-  const statusTag = (s) => {
-    if (s === 'Available') return 'ok';
-    if (s === 'Assigned') return 'med';
-    return 'low';
-  };
+  const filteredProperties = properties.filter(p => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+  });
 
   const apiBase = API_URL.replace(/\/$/, '');
   const resolveImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
-
     const normalized = imageUrl.replace(/\\/g, '/').trim();
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
-      return normalized;
-    }
-
-    if (normalized.startsWith('/uploads/')) {
-      return `${apiBase}${normalized}`;
-    }
-
-    if (normalized.startsWith('uploads/')) {
-      return `${apiBase}/${normalized}`;
-    }
-
-    const uploadsIndex = normalized.indexOf('/uploads/');
-    if (uploadsIndex !== -1) {
-      return `${apiBase}${normalized.slice(uploadsIndex)}`;
-    }
-
-    const filename = normalized.split('/').pop();
-    return `${apiBase}/uploads/${filename}`;
+    if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
+    if (normalized.startsWith('/uploads/')) return `${apiBase}${normalized}`;
+    if (normalized.startsWith('uploads/')) return `${apiBase}/${normalized}`;
+    return `${apiBase}/uploads/${normalized.split('/').pop()}`;
   };
 
   return (
     <div className="cg-app">
       <Sidebar active="Add Property" admin={true} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
-        <Topbar title="Add Property" search="Search inventory..." onToggleSidebar={() => setSidebarOpen(true)} />
-        <main className="cg-page">
-          <section className="cg-admin-head">
+        <Topbar title="Property Inventory Control" search="Search assets, tools..." onToggleSidebar={() => setSidebarOpen(true)} />
+        <main className="cg-page" style={{ background: theme.pageBg, minHeight: 'calc(100vh - 60px)', padding: '24px', transition: 'background 0.2s' }}>
+          
+          {/* Header Banner */}
+          <section className="cg-admin-head" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <span>Municipal Property & Equipment</span>
-              <h1>Add & Manage Property</h1>
+              <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Municipal Infrastructure Governance
+              </span>
+              <h1 style={{ margin: '4px 0 0', fontSize: '1.8rem', fontWeight: 900, color: theme.titleColor }}>
+                Asset & Property Control Center
+              </h1>
             </div>
-            {isAdmin && (
-              <span className="tag ok" style={{ fontSize: '0.9rem', padding: '6px 12px' }}>Admin Mode</span>
-            )}
-            {isCutter && (
-              <span className="tag med" style={{ fontSize: '0.9rem', padding: '6px 12px' }}>Tree Cutter Mode</span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={handleSendAllReminders}
+                disabled={bulkReminding || custodyList.length === 0}
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: '#ffffff', border: 'none', borderRadius: '10px', padding: '10px 16px',
+                  fontWeight: 800, fontSize: '0.88rem', cursor: custodyList.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)'
+                }}
+              >
+                <Bell size={16} /> {bulkReminding ? 'Dispatching...' : `Send Overdue Reminders (${custodyList.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={fetchProperties}
+                className="cg-btn outline"
+                style={{ background: theme.cardBg, color: theme.titleColor, borderColor: theme.cardBorder, borderRadius: '10px', padding: '10px 14px' }}
+              >
+                <RefreshCw size={16} /> Refresh
+              </button>
+            </div>
           </section>
 
+          {/* Feedback Notices */}
           {actionSuccess && (
-            <div className="official-notice" style={{ background: '#dcfce7', color: '#166534', border: '1px solid #86efac', marginBottom: '20px' }}>
-              <CheckCircle2 size={18} /> {actionSuccess}
+            <div className="official-notice" style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '14px 18px', borderRadius: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700 }}>
+              <CheckCircle2 size={20} /> {actionSuccess}
             </div>
           )}
-
           {actionError && (
-            <div className="official-notice" style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', marginBottom: '20px' }}>
-              <AlertTriangle size={18} /> {actionError}
+            <div className="official-notice" style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '14px 18px', borderRadius: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700 }}>
+              <AlertTriangle size={20} /> {actionError}
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', alignItems: 'start' }}>
-            <section className="cg-panel top-line" style={{ padding: '24px' }}>
-              <h2 style={{ marginBottom: '6px' }}>Add Equipment / Tool</h2>
-              <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '20px' }}>Register new equipment or property item.</p>
-              <form onSubmit={handleAddProperty} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>PROPERTY NAME</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Grass Cutter, Chainsaw"
-                    required
-                    style={{
-                      height: '42px',
-                      padding: '0 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem',
-                      outline: 'none',
-                      background: '#fff',
-                      color: '#1f2937'
-                    }}
-                  />
+          {/* 4 Analytics KPI Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ background: theme.cardBg, border: `1px solid ${theme.cardBorder}`, borderRadius: '14px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: theme.subTextColor, textTransform: 'uppercase' }}>Total Registered Tools</span>
+                <span style={{ background: '#ecfdf5', color: '#059669', padding: '6px', borderRadius: '8px' }}><Package size={20} /></span>
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: theme.titleColor }}>{totalItemsCount} Types</div>
+              <div style={{ fontSize: '0.8rem', color: theme.subTextColor, marginTop: '4px' }}>{totalQuantityUnits} total physical units in system</div>
+            </div>
+
+            <div style={{ background: theme.cardBg, border: `1px solid ${theme.cardBorder}`, borderRadius: '14px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: theme.subTextColor, textTransform: 'uppercase' }}>Available For Checkout</span>
+                <span style={{ background: '#e0f2fe', color: '#0284c7', padding: '6px', borderRadius: '8px' }}><CheckCircle2 size={20} /></span>
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0284c7' }}>{availableStockUnits} Units</div>
+              <div style={{ fontSize: '0.8rem', color: theme.subTextColor, marginTop: '4px' }}>Ready for staff assignment</div>
+            </div>
+
+            <div style={{ background: theme.cardBg, border: `1px solid ${theme.cardBorder}`, borderRadius: '14px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: theme.subTextColor, textTransform: 'uppercase' }}>Staff Custody ("Who Has What")</span>
+                <span style={{ background: '#fef3c7', color: '#d97706', padding: '6px', borderRadius: '8px' }}><Users size={20} /></span>
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#d97706' }}>{activeCustodyCount} Active</div>
+              <div style={{ fontSize: '0.8rem', color: theme.subTextColor, marginTop: '4px' }}>Equipment checked out by staff</div>
+            </div>
+
+            <div style={{ background: theme.cardBg, border: `1px solid ${theme.cardBorder}`, borderRadius: '14px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: theme.subTextColor, textTransform: 'uppercase' }}>Under Maintenance</span>
+                <span style={{ background: '#fee2e2', color: '#dc2626', padding: '6px', borderRadius: '8px' }}><ShieldAlert size={20} /></span>
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#dc2626' }}>{maintenanceCount} Items</div>
+              <div style={{ fontSize: '0.8rem', color: theme.subTextColor, marginTop: '4px' }}>Repair or inspection required</div>
+            </div>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div style={{ display: 'flex', gap: '8px', borderBottom: `2px solid ${theme.cardBorder}`, marginBottom: '24px' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('custody')}
+              style={{
+                padding: '12px 20px', fontSize: '0.92rem', fontWeight: 800, border: 'none', background: 'none',
+                color: activeTab === 'custody' ? '#059669' : theme.subTextColor,
+                borderBottom: activeTab === 'custody' ? '3px solid #059669' : '3px solid transparent',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+              }}
+            >
+              <Users size={18} /> Staff Inventory Custody ("Who Has What") ({custodyList.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('catalog')}
+              style={{
+                padding: '12px 20px', fontSize: '0.92rem', fontWeight: 800, border: 'none', background: 'none',
+                color: activeTab === 'catalog' ? '#059669' : theme.subTextColor,
+                borderBottom: activeTab === 'catalog' ? '3px solid #059669' : '3px solid transparent',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+              }}
+            >
+              <Database size={18} /> Equipment Catalog & Status Control ({properties.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('add')}
+              style={{
+                padding: '12px 20px', fontSize: '0.92rem', fontWeight: 800, border: 'none', background: 'none',
+                color: activeTab === 'add' ? '#059669' : theme.subTextColor,
+                borderBottom: activeTab === 'add' ? '3px solid #059669' : '3px solid transparent',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+              }}
+            >
+              <PlusCircle size={18} /> Register New Equipment
+            </button>
+          </div>
+
+          {/* Tab 1: Staff Inventory Custody ("Who Has What") */}
+          {activeTab === 'custody' && (
+            <div style={{ background: theme.cardBg, borderRadius: '16px', border: `1px solid ${theme.cardBorder}`, padding: '24px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: theme.titleColor }}>Active Equipment Custody Roster</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: theme.subTextColor }}>Monitor staff holding tools and dispatch late return reminders.</p>
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>DESCRIPTION</label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="e.g. 50cc petrol engine, safety guard, heavy duty"
-                    rows="3"
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem',
-                      outline: 'none',
-                      background: '#fff',
-                      color: '#1f2937'
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>UPLOAD IMAGE</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      style={{
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '0.9rem',
-                        outline: 'none',
-                        background: '#fff',
-                        color: '#1f2937'
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>OR SELECT UPLOADED IMAGE</label>
-                    <select
-                      value={selectedUploadUrl}
-                      onChange={handleSelectExistingImage}
-                      style={{
-                        height: '42px',
-                        padding: '0 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '0.9rem',
-                        outline: 'none',
-                        background: '#fff',
-                        color: '#1f2937'
-                      }}
-                    >
-                      <option value="">Choose existing upload</option>
-                      {uploadFiles.map((file) => (
-                        <option key={file.filename} value={file.url}>{file.filename}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {imagePreview && (
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '10px', marginTop: '12px', border: '1px solid #e2e8f0' }}
-                    />
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>QUANTITY</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => setQuantity(Number(e.target.value) || 1)}
-                      required
-                      style={{
-                        height: '42px',
-                        padding: '0 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '0.9rem',
-                        outline: 'none',
-                        background: '#fff',
-                        color: '#1f2937'
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>STATUS</label>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      style={{
-                        height: '42px',
-                        padding: '0 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '0.9rem',
-                        outline: 'none',
-                        background: '#fff',
-                        color: '#1f2937'
-                      }}
-                    >
-                      <option value="Available">Available</option>
-                      <option value="Assigned">Assigned</option>
-                      <option value="Maintenance">Maintenance</option>
-                    </select>
-                  </div>
-                </div>
-
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSendAllReminders}
+                  disabled={bulkReminding || custodyList.length === 0}
                   className="cg-btn primary"
-                  disabled={isSubmitting}
-                  style={{ marginTop: '10px', height: '42px' }}
+                  style={{ borderRadius: '10px', fontSize: '0.88rem' }}
                 >
-                  {isSubmitting ? 'Adding...' : 'Add Property'}
+                  <Send size={15} /> Send All Overdue Reminders
                 </button>
-              </form>
-            </section>
-
-            <section className="cg-panel" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2>Registered Properties ({properties.length})</h2>
-                <button className="cg-btn outline" onClick={fetchProperties} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>Refresh</button>
               </div>
 
-              {loading ? (
-                <p style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>Loading properties...</p>
-              ) : properties.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                  <Database size={40} style={{ opacity: 0.3, marginBottom: '10px' }} />
-                  <p>No properties registered yet.</p>
+              {custodyList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px 20px', color: theme.subTextColor }}>
+                  <CheckCircle2 size={48} color="#10b981" style={{ opacity: 0.6, marginBottom: '12px' }} />
+                  <h4 style={{ margin: '0 0 6px', fontSize: '1.1rem', fontWeight: 700, color: theme.titleColor }}>All Inventory Accounted For</h4>
+                  <p style={{ margin: 0, fontSize: '0.9rem' }}>No staff members currently hold checked-out equipment.</p>
                 </div>
               ) : (
                 <div className="table-responsive" style={{ overflowX: 'auto' }}>
-                  <table className="cg-table wide">
+                  <table className="cg-table wide" style={{ width: '100%' }}>
                     <thead>
-                      <tr>
-                        <th>Image</th>
-                        <th>Equipment Name</th>
-                        <th>Description</th>
-                        <th>Qty</th>
-                        <th>Status</th>
-                        <th>Added Date</th>
-                        <th>Requests</th>
-                        {isAdmin && <th>Actions</th>}
-                        {isCutter && <th>Buy</th>}
+                      <tr style={{ background: theme.tableHeaderBg }}>
+                        <th style={{ color: theme.titleColor }}>Staff Member</th>
+                        <th style={{ color: theme.titleColor }}>Equipment Name</th>
+                        <th style={{ color: theme.titleColor }}>Checkout Date</th>
+                        <th style={{ color: theme.titleColor }}>Status</th>
+                        <th style={{ textAlign: 'right', color: theme.titleColor }}>Admin Reminder Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {properties.map((prop) => (
-                        <tr key={prop._id}>
-                          <td>
-                            {prop.imageUrl ? (
-                              <img
-                                src={resolveImageUrl(prop.imageUrl)}
-                                alt={prop.name}
-                                style={{ width: '72px', height: '72px', objectFit: 'cover', borderRadius: '12px', border: '1px solid #e2e8f0' }}
-                              />
-                            ) : (
-                              <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>No image</span>
-                            )}
-                          </td>
-                          <td><b>{prop.name}</b></td>
-                          <td>{prop.description || <i style={{ color: '#9ca3af' }}>No description</i>}</td>
-                          <td>{prop.quantity}</td>
-                          <td><span className={`tag ${statusTag(prop.status)}`}>{prop.status}</span></td>
-                          <td><small>{prop.addedAt || new Date(prop.createdAt).toLocaleDateString('en-IN')}</small></td>
-                          <td>{prop.purchaseCount || 0}</td>
-                          {isAdmin && (
+                      {custodyList.map(({ reqItem, property }, idx) => {
+                        const uniqueKey = reqItem._id || `${reqItem.userId || reqItem.userName || 'staff'}-${property._id || 'prop'}-${idx}`;
+                        const isRemindingThis = remindingId === `${reqItem.userId || reqItem.userName}-${property._id}`;
+                        return (
+                          <tr key={uniqueKey} style={{ borderBottom: `1px solid ${theme.tableBorder}` }}>
                             <td>
+                              <div style={{ fontWeight: 800, color: theme.titleColor }}>{reqItem.userName || 'Tree Cutter'}</div>
+                              <span style={{ fontSize: '0.78rem', color: theme.subTextColor }}>ID: {reqItem.userId || 'FIELD-STAFF'}</span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {property.imageUrl && (
+                                  <img src={resolveImageUrl(property.imageUrl)} alt={property.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }} />
+                                )}
+                                <div>
+                                  <div style={{ fontWeight: 700, color: theme.titleColor }}>{property.name}</div>
+                                  <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: 700, marginTop: '2px' }}>1 Unit Checked Out</div>
+                                  <div style={{ fontSize: '0.74rem', color: theme.subTextColor }}>Storage Available: {property.quantity}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ fontSize: '0.85rem', color: theme.subTextColor, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <Clock size={14} color={theme.subTextColor} />
+                                {reqItem.requestedAt ? new Date(reqItem.requestedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Today'}
+                              </div>
+                            </td>
+                            <td>
+                              <span className="tag med" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>
+                                Checked Out (In Use)
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
                               <button
-                                onClick={() => handleDeleteProperty(prop._id, prop.name)}
+                                type="button"
+                                onClick={() => handleSendReminder(reqItem, property)}
+                                disabled={isRemindingThis}
                                 style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  color: '#dc2626',
-                                  padding: '4px'
+                                  background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0',
+                                  borderRadius: '8px', padding: '6px 14px', fontSize: '0.82rem', fontWeight: 800,
+                                  cursor: isRemindingThis ? 'not-allowed' : 'pointer',
+                                  display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
                                 }}
-                                title="Delete Property"
                               >
-                                <Trash2 size={18} />
+                                <Send size={14} />
+                                {isRemindingThis ? 'Sending...' : 'Send Late Reminder'}
                               </button>
                             </td>
-                          )}
-                          {isCutter && (
-                            <td>
-                              {prop.status === 'Available' && prop.quantity > 0 ? (
-                                <button
-                                  className="cg-btn outline"
-                                  onClick={() => handlePurchaseProperty(prop)}
-                                  disabled={isSubmitting}
-                                  style={{ padding: '8px 12px', fontSize: '0.85rem', borderRadius: '8px' }}
-                                >
-                                  Buy
-                                </button>
-                              ) : (
-                                <span style={{ color: '#6b7280', fontSize: '0.85rem' }}>{prop.quantity <= 0 ? 'Out of stock' : 'Unavailable'}</span>
-                              )}
-                            </td>
-                          )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Equipment Catalog & Status Control */}
+          {activeTab === 'catalog' && (
+            <div style={{ background: theme.cardBg, borderRadius: '16px', border: `1px solid ${theme.cardBorder}`, padding: '24px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: theme.titleColor }}>Equipment Inventory Catalog</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: theme.subTextColor }}>Manage asset availability, change statuses, and remove equipment.</p>
+                </div>
+                <label className="cg-search" style={{ margin: 0, maxWidth: '300px' }}>
+                  <Search size={18} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search equipment..."
+                    style={{ fontSize: '0.88rem', background: theme.inputBg, color: theme.inputText, borderColor: theme.inputBorder }}
+                  />
+                </label>
+              </div>
+
+              {loading ? (
+                <p style={{ textAlign: 'center', padding: '40px', color: theme.subTextColor }}>Loading property records...</p>
+              ) : filteredProperties.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px 20px', color: theme.subTextColor }}>
+                  <Database size={44} style={{ opacity: 0.3, marginBottom: '10px' }} />
+                  <p>No equipment matching search filter.</p>
+                </div>
+              ) : (
+                <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                  <table className="cg-table wide" style={{ width: '100%' }}>
+                    <thead>
+                      <tr style={{ background: theme.tableHeaderBg }}>
+                        <th style={{ color: theme.titleColor }}>Asset Preview</th>
+                        <th style={{ color: theme.titleColor }}>Equipment Title & Description</th>
+                        <th style={{ color: theme.titleColor }}>Units</th>
+                        <th style={{ color: theme.titleColor }}>Current Status</th>
+                        <th style={{ color: theme.titleColor }}>Checked Out Count</th>
+                        <th style={{ color: theme.titleColor }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProperties.map((prop) => (
+                        <tr key={prop._id} style={{ borderBottom: `1px solid ${theme.tableBorder}` }}>
+                          <td>
+                            {prop.imageUrl ? (
+                              <img src={resolveImageUrl(prop.imageUrl)} alt={prop.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
+                            ) : (
+                              <div style={{ width: '64px', height: '64px', borderRadius: '10px', background: darkMode ? '#1e293b' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                                <Package size={24} />
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: theme.titleColor }}>{prop.name}</div>
+                            <div style={{ fontSize: '0.82rem', color: theme.subTextColor, marginTop: '2px', maxWidth: '320px' }}>{prop.description || 'No description provided.'}</div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: theme.titleColor }}>{prop.quantity} Available</div>
+                            <div style={{ fontSize: '0.76rem', color: theme.subTextColor, marginTop: '2px' }}>
+                              {(prop.purchaseRequests ? prop.purchaseRequests.length : 0)} Checked Out ({(Number(prop.quantity) || 0) + (prop.purchaseRequests ? prop.purchaseRequests.length : 0)} Total)
+                            </div>
+                          </td>
+                          <td>
+                            <select
+                              value={prop.status}
+                              onChange={(e) => handleStatusUpdate(prop._id, e.target.value)}
+                              style={{
+                                padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700,
+                                border: '1px solid #cbd5e1', cursor: 'pointer',
+                                background: prop.status === 'Available' ? '#ecfdf5' : prop.status === 'Assigned' ? '#fef3c7' : '#fee2e2',
+                                color: prop.status === 'Available' ? '#047857' : prop.status === 'Assigned' ? '#b45309' : '#b91c1c'
+                              }}
+                            >
+                              <option value="Available">Available</option>
+                              <option value="Assigned">Assigned</option>
+                              <option value="Maintenance">Maintenance</option>
+                            </select>
+                          </td>
+                          <td>
+                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: theme.titleColor }}>
+                              {prop.purchaseRequests ? prop.purchaseRequests.length : 0} Staff Active
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteProperty(prop._id, prop.name)}
+                              style={{
+                                background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
+                                borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700
+                              }}
+                              title="Delete Property"
+                            >
+                              <Trash2 size={16} /> Delete
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
-            </section>
-          </div>
+            </div>
+          )}
+
+          {/* Tab 3: Register New Equipment Form */}
+          {activeTab === 'add' && (
+            <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+              <section className="cg-panel top-line" style={{ padding: '32px', background: darkMode ? '#0f291e' : '#ffffff', borderRadius: '20px', border: `1px solid ${theme.cardBorder}`, boxShadow: '0 12px 36px rgba(0,0,0,0.1)' }}>
+                <h2 style={{ marginBottom: '4px', fontSize: '1.4rem', fontWeight: 900, color: theme.titleColor, letterSpacing: '-0.01em' }}>Register New Equipment / Asset</h2>
+                <p style={{ color: theme.subTextColor, fontSize: '0.88rem', marginBottom: '24px' }}>Add a new municipal tool to central inventory for arborists and tree cutters.</p>
+                <form onSubmit={handleAddProperty} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: theme.labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>PROPERTY NAME</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Grass Cutter, Chainsaw, Harness Kit"
+                      required
+                      style={{
+                        height: '46px', padding: '0 16px', borderRadius: '10px',
+                        border: `1px solid ${theme.inputBorder}`, fontSize: '0.95rem',
+                        outline: 'none', background: theme.inputBg, color: theme.inputText, fontWeight: 500
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: theme.labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>DESCRIPTION</label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="e.g. 50cc petrol engine, safety guard, heavy duty specification"
+                      rows="3"
+                      style={{
+                        padding: '12px 16px', borderRadius: '10px',
+                        border: `1px solid ${theme.inputBorder}`, fontSize: '0.95rem',
+                        outline: 'none', background: theme.inputBg, color: theme.inputText, fontWeight: 500
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 800, color: theme.labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>UPLOAD IMAGE</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const selected = e.target.files?.[0] || null;
+                          setImageFile(selected);
+                          setSelectedUploadUrl('');
+                          setImagePreview(selected ? URL.createObjectURL(selected) : '');
+                        }}
+                        style={{
+                          padding: '10px 14px', borderRadius: '10px',
+                          border: `1px solid ${theme.inputBorder}`, fontSize: '0.88rem',
+                          outline: 'none', background: theme.inputBg, color: theme.inputText, cursor: 'pointer'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 800, color: theme.labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>OR SELECT EXISTING UPLOAD</label>
+                      <select
+                        value={selectedUploadUrl}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          setSelectedUploadUrl(url);
+                          setImageFile(null);
+                          setImagePreview(url ? resolveImageUrl(url) : '');
+                        }}
+                        style={{
+                          height: '46px', padding: '0 16px', borderRadius: '10px',
+                          border: `1px solid ${theme.inputBorder}`, fontSize: '0.95rem',
+                          outline: 'none', background: theme.inputBg, color: theme.inputText, fontWeight: 500, cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">Choose existing upload</option>
+                        {uploadFiles.map((file) => (
+                          <option key={file.filename} value={file.url}>{file.filename}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {imagePreview && (
+                      <div style={{ borderRadius: '12px', overflow: 'hidden', border: '2px solid #10b981', marginTop: '8px' }}>
+                        <img src={imagePreview} alt="Preview" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 800, color: theme.labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>INITIAL QUANTITY</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Number(e.target.value) || 1)}
+                        required
+                        style={{
+                          height: '46px', padding: '0 16px', borderRadius: '10px',
+                          border: `1px solid ${theme.inputBorder}`, fontSize: '0.95rem',
+                          outline: 'none', background: theme.inputBg, color: theme.inputText, fontWeight: 500
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 800, color: theme.labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>INITIAL STATUS</label>
+                      <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        style={{
+                          height: '46px', padding: '0 16px', borderRadius: '10px',
+                          border: `1px solid ${theme.inputBorder}`, fontSize: '0.95rem',
+                          outline: 'none', background: theme.inputBg, color: theme.inputText, fontWeight: 500, cursor: 'pointer'
+                        }}
+                      >
+                        <option value="Available">Available</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="Maintenance">Maintenance</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="cg-btn primary"
+                    disabled={isSubmitting}
+                    style={{
+                      marginTop: '12px', height: '48px', borderRadius: '12px', fontSize: '1rem', fontWeight: 800,
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                    }}
+                  >
+                    <PlusCircle size={20} />
+                    {isSubmitting ? 'Registering Equipment...' : 'Register Equipment'}
+                  </button>
+                </form>
+              </section>
+            </div>
+          )}
+
         </main>
       </div>
     </div>
   );
 }
-
 export function PurchaseEquipmentPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [properties, setProperties] = useState([]);
@@ -9102,8 +10485,15 @@ export function PurchaseEquipmentPage() {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
     catch { return {}; }
   })();
-  const currentUserRole = normalizeRole(currentUser.role);
-  const isCutter = currentUserRole === 'Tree Cutter';
+
+  const path = window.location.pathname;
+  const rawRole = normalizeRole(currentUser.role);
+  const isAdmin = rawRole === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || path.startsWith('/admin');
+  const isOfficial = !isAdmin && (rawRole === 'Official' || sessionStorage.getItem('officialAuthed') === 'true' || path.startsWith('/official') || path.startsWith('/official-management'));
+  const isCutter = !isAdmin && !isOfficial;
+
+  const modeBadgeText = isAdmin ? 'Admin Control Mode' : (isOfficial ? 'Official Control Mode' : 'Tree Cutter Mode');
+  const modeBadgeClass = isAdmin ? 'tag red' : (isOfficial ? 'tag low' : 'tag med');
 
   const fetchProperties = async () => {
     setLoading(true);
@@ -9283,7 +10673,7 @@ export function PurchaseEquipmentPage() {
 
   return (
     <div className="cg-app">
-      <Sidebar active="Property Inventory" admin={false} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <Sidebar active="Property Inventory" admin={isAdmin} isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
         <Topbar title="Property Inventory" search="Search inventory..." onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page">
@@ -9292,7 +10682,7 @@ export function PurchaseEquipmentPage() {
               <span>Municipal Property & Tools</span>
               <h1>Property Inventory</h1>
             </div>
-            <span className="tag med" style={{ fontSize: '0.9rem', padding: '6px 12px' }}>Tree Cutter Mode</span>
+            <span className={modeBadgeClass} style={{ fontSize: '0.9rem', padding: '6px 12px' }}>{modeBadgeText}</span>
           </section>
 
           {actionSuccess && (
@@ -9879,6 +11269,639 @@ export function VerifyCertificatePage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export function AdminComplaintsPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [cutters, setCutters] = useState([]);
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('complaints');
+  const [selectedImagePreview, setSelectedImagePreview] = useState(null);
+  const [notice, setNotice] = useState('');
+
+  // Admin gate
+  const [adminAuthed, setAdminAuthed] = useState(() => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {};
+      if (normalizeRole(currentUser.role) === 'Admin') return true;
+    } catch {}
+    return sessionStorage.getItem('adminAuthed') === 'true';
+  });
+  const [adminUser, setAdminUser] = useState('');
+  const [adminPass, setAdminPass] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [adminShake, setAdminShake] = useState(false);
+
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    const u = adminUser.toLowerCase().trim();
+    const p = adminPass.trim();
+    if ((u === 'admin' || u === 'admin@example.com') && (p === 'admin123' || p === 'admin@123')) {
+      sessionStorage.setItem('adminAuthed', 'true');
+      const adminObj = { id: 'admin-static', name: 'Municipal Admin', email: 'admin@example.com', role: 'Admin' };
+      localStorage.setItem('currentUser', JSON.stringify(adminObj));
+      setAdminAuthed(true);
+      setAdminError('');
+    } else {
+      setAdminError('Invalid credentials. Use admin / admin123');
+      setAdminShake(true);
+      setTimeout(() => setAdminShake(false), 600);
+    }
+  };
+
+  const showNotice = (msg) => {
+    setNotice(msg);
+    setTimeout(() => setNotice(''), 3500);
+  };
+
+  const fetchComplaints = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/complaints`);
+      const data = await res.json();
+      if (res.ok) {
+        setComplaints(data.complaints || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch complaints:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCutters = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/cutters`);
+      const data = await res.json();
+      if (data.cutters && data.cutters.length > 0) {
+        const names = Array.from(new Set(data.cutters.map(c => typeof c === 'string' ? c : c.name || c.email).filter(Boolean)));
+        setCutters(names);
+      }
+    } catch (err) {
+      console.error('Failed to load cutters:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+    fetchCutters();
+    const interval = setInterval(fetchComplaints, 12000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleUpdateStatus = async (id, status, assignedTo = null) => {
+    try {
+      const body = { status, officialName: 'Admin Governance' };
+      if (assignedTo) body.assignedTo = assignedTo;
+
+      const res = await fetch(`${API_URL}/api/complaints/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error('Failed to update complaint');
+
+      setComplaints(prev => prev.map(c => c._id === id ? { ...c, status, assignedTo: assignedTo || c.assignedTo } : c));
+      showNotice(`Complaint status updated to '${status}'!`);
+      Swal.fire({
+        icon: 'success',
+        title: 'Complaint Updated',
+        text: `Status set to '${status}'${assignedTo ? ` & assigned to ${assignedTo}` : ''}`,
+        confirmButtonColor: '#065f46',
+        timer: 2500,
+        timerProgressBar: true
+      });
+    } catch (err) {
+      showNotice(err.message || 'Status update failed.');
+    }
+  };
+
+  const handleAssignCutter = async (id, cutterName) => {
+    if (!cutterName) return;
+    await handleUpdateStatus(id, 'Scheduled', cutterName);
+  };
+
+  const handleDeleteComplaint = async (id, complaint) => {
+    const confirmDelete = window.confirm(`Are you sure you want to remove complaint #${id.slice(-4).toUpperCase()} (${issueLabels[complaint.issueType] || complaint.issueType})?`);
+    if (!confirmDelete) return;
+
+    try {
+      await fetch(`${API_URL}/api/complaints/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Resolved', officialName: 'Admin Removed' }),
+      });
+      setComplaints(prev => prev.filter(c => c._id !== id));
+      showNotice('Complaint removed from active queue.');
+      Swal.fire({
+        icon: 'success',
+        title: 'Complaint Removed',
+        text: 'Issue resolved & removed from active list.',
+        timer: 2000,
+        confirmButtonColor: '#065f46'
+      });
+    } catch (err) {
+      setComplaints(prev => prev.filter(c => c._id !== id));
+    }
+  };
+
+  const getValidPhotoUrl = (rawImg) => {
+    if (!rawImg || typeof rawImg !== 'string') return '';
+    const trimmed = rawImg.trim();
+    if (!trimmed || trimmed.startsWith('blob:')) return '';
+    if (trimmed.startsWith('data:image/')) return trimmed;
+    let cleanUrl = trimmed;
+    const secondHttp = cleanUrl.indexOf('http', 5);
+    if (secondHttp !== -1) {
+      cleanUrl = cleanUrl.substring(secondHttp);
+    }
+    if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      return cleanUrl;
+    }
+    if (cleanUrl.startsWith('/uploads/') || cleanUrl.startsWith('uploads/')) {
+      return `${API_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+    }
+    return '';
+  };
+
+  const filteredComplaints = complaints.filter(c => {
+    if (selectedFilter === 'Pending' && c.status !== 'Pending') return false;
+    if (selectedFilter === 'In Review' && c.status !== 'In Review') return false;
+    if (selectedFilter === 'Scheduled' && c.status !== 'Scheduled' && c.status !== 'In Progress') return false;
+    if (selectedFilter === 'Resolved' && c.status !== 'Resolved' && c.status !== 'Closed') return false;
+    if (selectedFilter === 'Replantation' && !c.requiresReplantation && c.issueType !== 'dead') return false;
+
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      const loc = (c.location || '').toLowerCase();
+      const sub = (c.submittedBy || '').toLowerCase();
+      const type = (issueLabels[c.issueType] || c.issueType || '').toLowerCase();
+      const desc = (c.description || '').toLowerCase();
+      return loc.includes(q) || sub.includes(q) || type.includes(q) || desc.includes(q);
+    }
+    return true;
+  });
+
+  const counts = {
+    total: complaints.length,
+    pending: complaints.filter(c => c.status === 'Pending').length,
+    inReview: complaints.filter(c => c.status === 'In Review').length,
+    scheduled: complaints.filter(c => c.status === 'Scheduled' || c.status === 'In Progress').length,
+    resolved: complaints.filter(c => c.status === 'Resolved' || c.status === 'Closed').length,
+    replantation: complaints.filter(c => c.requiresReplantation || c.issueType === 'dead').length,
+  };
+
+  if (!adminAuthed) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f8fafc', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ maxWidth: '420px', width: '100%', background: '#fff', padding: '32px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px rgba(0,0,0,0.08)' }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <ShieldCheck size={48} color="#065f46" />
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '8px 0 4px', color: '#0f172a' }}>Admin Complaints Access</h2>
+            <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0 }}>Enter administrative password to access Complaints Oversight.</p>
+          </div>
+          {adminError && <div style={{ padding: '10px', background: '#fee2e2', color: '#991b1b', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>{adminError}</div>}
+          <form onSubmit={handleAdminLogin}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Admin Username</label>
+              <input type="text" value={adminUser} onChange={e => setAdminUser(e.target.value)} required style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} placeholder="admin" />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Admin Password</label>
+              <input type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} required style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} placeholder="••••••••" />
+            </div>
+            <button type="submit" style={{ width: '100%', padding: '12px', background: '#065f46', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' }}>Login to Admin Complaints</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="cg-app">
+      <Sidebar active="Complaints" admin isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <div className="cg-workspace">
+        <Topbar title="Admin Complaints Oversight & Action Center" search="Search complaints..." onToggleSidebar={() => setSidebarOpen(true)} />
+        <main className="cg-page">
+          <section className="cg-admin-head" style={{ marginBottom: '24px' }}>
+            <div>
+              <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--brand-accent)', fontWeight: 700 }}>ADMINISTRATIVE COMPLAINTS GOVERNANCE</span>
+              <h1 style={{ margin: '4px 0 8px 0', fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-primary)' }}>Admin Complaints Oversight & Action Center</h1>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', maxWidth: '750px', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                Complete administrative control over citizen tree complaints. Overlook live field reports, re-assign tree cutters, inspect proof attachments, and force resolution on stale issues.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Link className="cg-btn outline" to="/admin" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <ShieldCheck size={18} /> Admin Console
+              </Link>
+              <button className="official-live" onClick={fetchComplaints} style={{ cursor: 'pointer' }}>
+                <span className="pulse-indicator"></span> Refresh Live Feed ({counts.total})
+              </button>
+            </div>
+          </section>
+
+          {notice && (
+            <div style={{ padding: '12px 18px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--brand-accent)', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '20px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle2 size={18} /> {notice}
+            </div>
+          )}
+
+          {/* Stat Overview Grid */}
+          <section className="official-stat-grid" style={{ marginBottom: '24px' }}>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedFilter('all')}>
+              <AlertTriangle color="#3b82f6" />
+              <span>Total Complaints</span>
+              <b style={{ color: 'var(--text-primary)' }}>{counts.total}</b>
+            </article>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedFilter('Pending')}>
+              <AlertTriangle color="#ef4444" />
+              <span>Pending & Unresolved</span>
+              <b style={{ color: '#f87171' }}>{counts.pending}</b>
+            </article>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedFilter('In Review')}>
+              <Users color="#8b5cf6" />
+              <span>Under Review</span>
+              <b style={{ color: '#c084fc' }}>{counts.inReview}</b>
+            </article>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedFilter('Scheduled')}>
+              <Clock color="#3b82f6" />
+              <span>Scheduled to Cutters</span>
+              <b style={{ color: '#60a5fa' }}>{counts.scheduled}</b>
+            </article>
+            <article style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedFilter('Resolved')}>
+              <ShieldCheck color="#10b981" />
+              <span>Resolved & Closed</span>
+              <b style={{ color: '#4ade80' }}>{counts.resolved}</b>
+            </article>
+          </section>
+
+          {/* Filter Bar & Search */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px', background: 'var(--bg-surface)', padding: '16px 20px', borderRadius: '14px', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '4px' }}>Filter:</span>
+              {[
+                ['all', `All (${counts.total})`],
+                ['Pending', `Pending (${counts.pending})`],
+                ['In Review', `In Review (${counts.inReview})`],
+                ['Scheduled', `Scheduled (${counts.scheduled})`],
+                ['Resolved', `Resolved (${counts.resolved})`],
+                ['Replantation', `Replantation (${counts.replantation})`],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setSelectedFilter(key)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    border: selectedFilter === key ? '1px solid var(--brand-accent)' : '1px solid var(--border)',
+                    background: selectedFilter === key ? 'var(--brand-glow)' : 'var(--bg-elevated)',
+                    color: selectedFilter === key ? 'var(--brand-accent)' : 'var(--text-primary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ position: 'relative', minWidth: '260px' }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search by location, user, issue..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.85rem',
+                  outline: 'none'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* View Tabs */}
+          <nav className="official-tabs" style={{ marginBottom: '20px' }}>
+            <button className={activeTab === 'complaints' ? 'active' : ''} onClick={() => setActiveTab('complaints')}>Complaints Action Matrix</button>
+            <button className={activeTab === 'proofs' ? 'active' : ''} onClick={() => setActiveTab('proofs')}>Photo & Proof Audit ({filteredComplaints.filter(c => getValidPhotoUrl(c.photoUrl || c.image || c.photo || c.beforeImageUrl)).length})</button>
+            <button className={activeTab === 'cutters' ? 'active' : ''} onClick={() => setActiveTab('cutters')}>Tree Cutter Work Distribution ({cutters.length} Cutters)</button>
+          </nav>
+
+          {activeTab === 'complaints' && (
+            <div className="data-table-container" style={{ background: 'var(--bg-surface)', borderRadius: '16px', padding: '24px', border: '1px solid var(--border)', boxShadow: '0 10px 25px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>Live Complaints Management ({filteredComplaints.length})</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Real-time database sync</span>
+              </div>
+
+              {loading ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '32px' }}>Loading complaints from database...</p>
+              ) : filteredComplaints.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', borderRadius: '12px' }}>
+                  <AlertTriangle size={40} color="#94a3b8" style={{ marginBottom: '12px' }} />
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem' }}>No complaints match the selected filter.</p>
+                </div>
+              ) : (
+                <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                  <table className="custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-subtle)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', borderRadius: '8px 0 0 8px' }}>Photo</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Issue & Ref ID</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Location & Description</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Reporter & Date</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Current Status</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Assign Tree Cutter</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Admin Status Override</th>
+                        <th style={{ padding: '12px', textAlign: 'right', borderRadius: '0 8px 8px 0' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredComplaints.map(c => {
+                        const photo = getValidPhotoUrl(c.photoUrl || c.image || c.photo || c.beforeImageUrl);
+
+                        let statusBg = 'rgba(245, 158, 11, 0.15)';
+                        let statusColor = '#f59e0b';
+                        if (c.status === 'Resolved') { statusBg = 'rgba(16, 185, 129, 0.15)'; statusColor = '#10b981'; }
+                        else if (c.status === 'In Review') { statusBg = 'rgba(168, 85, 247, 0.15)'; statusColor = '#c4b5fd'; }
+                        else if (c.status === 'Scheduled' || c.status === 'In Progress') { statusBg = 'rgba(59, 130, 246, 0.15)'; statusColor = '#93c5fd'; }
+
+                        return (
+                          <tr key={c._id} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                            <td style={{ padding: '12px' }}>
+                              <div
+                                style={{
+                                  width: '52px',
+                                  height: '52px',
+                                  borderRadius: '8px',
+                                  overflow: 'hidden',
+                                  border: '1px solid var(--border)',
+                                  background: 'var(--bg-subtle)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  position: 'relative',
+                                  cursor: photo ? 'pointer' : 'default',
+                                  flexShrink: 0
+                                }}
+                                onClick={() => photo && setSelectedImagePreview(photo)}
+                                title={photo ? 'Click to enlarge photo' : 'No photo submitted'}
+                              >
+                                {photo ? (
+                                  <img
+                                    src={photo}
+                                    alt={c.issueType}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0, zIndex: 1 }}
+                                    onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                                  />
+                                ) : null}
+                                <Camera size={20} color="var(--text-muted)" opacity={0.6} />
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)', display: 'block' }}>
+                                {issueLabels[c.issueType] || c.issueType}
+                              </strong>
+                              <small style={{ fontSize: '0.75rem', color: 'var(--brand-accent)', fontWeight: 700 }}>
+                                #{c._id.slice(-6).toUpperCase()}
+                              </small>
+                              {c.requiresReplantation && (
+                                <div style={{ fontSize: '0.7rem', color: '#34d399', background: 'rgba(52, 211, 153, 0.15)', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', fontWeight: 700 }}>
+                                  🌱 Replant Required
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px', maxWidth: '240px' }}>
+                              <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                📍 {c.location || 'Municipal Canopy Sector'}
+                              </strong>
+                              <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                {c.description || 'Routine tree maintenance report.'}
+                              </p>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)', display: 'block' }}>{c.submittedBy || 'Citizen'}</strong>
+                              <small style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                {new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </small>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{ padding: '4px 10px', borderRadius: '12px', background: statusBg, color: statusColor, fontSize: '0.78rem', fontWeight: 700, border: `1px solid ${statusColor}40`, display: 'inline-block' }}>
+                                {c.status}
+                              </span>
+                              {c.assignedTo && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', fontWeight: 600 }}>
+                                  👤 {c.assignedTo}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <select
+                                defaultValue={c.assignedTo || ''}
+                                onChange={e => handleAssignCutter(c._id, e.target.value)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: '8px',
+                                  fontSize: '0.82rem',
+                                  fontWeight: 600,
+                                  border: '1px solid var(--brand-accent)',
+                                  background: 'var(--bg-surface)',
+                                  color: 'var(--text-primary)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <option value="" disabled>+ Select Tree Cutter...</option>
+                                {cutters.map(ct => (
+                                  <option key={ct} value={ct} style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
+                                    {ct}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <select
+                                value={c.status}
+                                onChange={e => handleUpdateStatus(c._id, e.target.value)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: '8px',
+                                  fontSize: '0.82rem',
+                                  fontWeight: 600,
+                                  border: '1px solid var(--border)',
+                                  background: 'var(--bg-surface)',
+                                  color: 'var(--text-primary)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {['Pending', 'In Review', 'Scheduled', 'In Progress', 'Resolved'].map(st => (
+                                  <option key={st} value={st} style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
+                                    {st}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                {c.status !== 'Resolved' && (
+                                  <button
+                                    onClick={() => handleUpdateStatus(c._id, 'Resolved')}
+                                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #16a34a', background: 'rgba(22, 163, 74, 0.15)', color: '#4ade80', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                                    title="Mark Resolved"
+                                  >
+                                    Resolve
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteComplaint(c._id, c)}
+                                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                                  title="Delete complaint"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'proofs' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+              {filteredComplaints.filter(c => getValidPhotoUrl(c.photoUrl || c.image || c.photo || c.beforeImageUrl)).length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', padding: '40px', background: 'var(--bg-surface)', borderRadius: '16px', textAlign: 'center', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                  <Camera size={40} color="#94a3b8" style={{ marginBottom: '12px' }} />
+                  <p style={{ margin: 0, fontWeight: 700 }}>No valid complaint photos submitted yet.</p>
+                </div>
+              ) : (
+                filteredComplaints.filter(c => getValidPhotoUrl(c.photoUrl || c.image || c.photo || c.beforeImageUrl)).map(c => {
+                  const photo = getValidPhotoUrl(c.photoUrl || c.image || c.photo || c.beforeImageUrl);
+
+                  return (
+                    <div key={c._id} style={{ background: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{
+                        height: '180px',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        border: '1px solid var(--border)',
+                        position: 'relative',
+                        background: 'var(--bg-elevated)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        color: 'var(--text-muted)'
+                      }}>
+                        {photo ? (
+                          <img
+                            src={photo}
+                            alt={c.issueType}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', position: 'absolute', inset: 0, zIndex: 1 }}
+                            onClick={() => setSelectedImagePreview(photo)}
+                            onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                          />
+                        ) : null}
+                        <Camera size={32} opacity={0.4} />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>No Image Attached</span>
+                        <span style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.75)', color: '#fff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, zIndex: 2 }}>
+                          {c.status}
+                        </span>
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: '1rem', color: 'var(--text-primary)', display: 'block' }}>{issueLabels[c.issueType] || c.issueType}</strong>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'block', margin: '4px 0' }}>📍 {c.location}</span>
+                        <small style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>By {c.submittedBy || 'Citizen'} • Assigned: {c.assignedTo || 'Unassigned'}</small>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                        <select
+                          defaultValue={c.assignedTo || ''}
+                          onChange={e => handleAssignCutter(c._id, e.target.value)}
+                          style={{ flex: 1, padding: '6px', borderRadius: '6px', fontSize: '0.78rem', border: '1px solid var(--brand-accent)', background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
+                        >
+                          <option value="" disabled>Reassign Cutter...</option>
+                          {cutters.map(ct => <option key={ct} value={ct}>{ct}</option>)}
+                        </select>
+                        <button onClick={() => handleUpdateStatus(c._id, 'Resolved')} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>
+                          Resolve
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {activeTab === 'cutters' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+              {cutters.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>No registered tree cutters found in database.</p>
+              ) : (
+                cutters.map(cutter => {
+                  const assignedTasks = complaints.filter(c => c.assignedTo === cutter);
+                  const activeCount = assignedTasks.filter(c => c.status !== 'Resolved').length;
+                  const resolvedCount = assignedTasks.filter(c => c.status === 'Resolved').length;
+
+                  return (
+                    <div key={cutter} style={{ background: 'var(--bg-surface)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'var(--brand-glow)', color: 'var(--brand-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.1rem', border: '1px solid var(--brand-accent)' }}>
+                          {cutter.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)', display: 'block' }}>{cutter}</strong>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--brand-accent)', fontWeight: 600 }}>Arborist / Tree Cutter</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', background: 'var(--bg-elevated)', padding: '12px', borderRadius: '10px', marginBottom: '14px', border: '1px solid var(--border)' }}>
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Active Tasks</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#f59e0b' }}>{activeCount}</strong>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Completed</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#10b981' }}>{resolvedCount}</strong>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        {assignedTasks.length} Total Complaints Handled
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* Full Image Zoom Modal */}
+          {selectedImagePreview && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setSelectedImagePreview(null)}>
+              <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh', background: 'var(--bg-surface)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+                <button onClick={() => setSelectedImagePreview(null)} style={{ position: 'absolute', top: '-12px', right: '-12px', width: '32px', height: '32px', borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                <img src={selectedImagePreview} alt="Enlarged Attachment" style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: '10px', objectFit: 'contain' }} />
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

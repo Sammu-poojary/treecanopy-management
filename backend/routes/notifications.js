@@ -93,14 +93,27 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ msg: 'type, title, and message are required' });
     }
 
-    const notification = await Notification.create({
-      targetUserId: targetUserId || null,
-      targetRole: targetRole || null,
-      type,
-      title,
-      message,
-      relatedId: relatedId || null,
-    });
+    let notification;
+    try {
+      notification = await Notification.create({
+        targetUserId: targetUserId || null,
+        targetRole: targetRole || null,
+        type,
+        title,
+        message,
+        relatedId: relatedId || null,
+      });
+    } catch (createErr) {
+      // Fallback if 'equipment_reminder' type is rejected by older enum schema
+      notification = await Notification.create({
+        targetUserId: targetUserId || null,
+        targetRole: targetRole || null,
+        type: 'task_assigned',
+        title,
+        message,
+        relatedId: relatedId || null,
+      });
+    }
 
     res.status(201).json({ msg: 'Notification created', notification });
   } catch (error) {

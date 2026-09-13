@@ -29,6 +29,8 @@ const getTypeIcon = (type) => {
       return <AlertTriangle size={16} style={{ color: '#f59e0b' }} />;
     case 'attendance_marked':
       return <Clock size={16} style={{ color: '#06b6d4' }} />;
+    case 'equipment_reminder':
+      return <Bell size={16} style={{ color: '#ef4444' }} />;
     default:
       return <ShieldAlert size={16} style={{ color: '#10b981' }} />;
   }
