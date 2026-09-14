@@ -7,6 +7,8 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import TreeEncyclopediaPage from './pages/TreeEncyclopediaPage';
 import OfficialLoginPage from './pages/OfficialLoginPage';
+import TreeCutterTaskPage from './pages/TreeCutterTaskPage';
+import TreeCutterAttendancePage from './pages/TreeCutterAttendancePage';
 import {
   AddPropertyPage,
   AdminConsolePage,
@@ -67,6 +69,15 @@ function App() {
     return role === 'Tree Cutter' || role === 'Official' || role === 'Admin' || sessionStorage.getItem('adminAuthed') === 'true' || sessionStorage.getItem('officialAuthed') === 'true' ? children : <Navigate to="/login" replace />;
   };
 
+  const DynamicAttendanceRoute = () => {
+    const user = getCurrentUser();
+    const role = normalizeRole(user?.role);
+    if (role === 'Tree Cutter') {
+      return <TreeCutterAttendancePage />;
+    }
+    return <AttendancePage />;
+  };
+
   return (
     <Router>
       <Routes>
@@ -125,10 +136,10 @@ function App() {
         <Route path="/cutter/dashboard" element={<CutterOnly><DashboardPage /></CutterOnly>} />
         <Route path="/treecutter/communication" element={<CutterOnly><CommunicationPage /></CutterOnly>} />
         <Route path="/cutter/communication" element={<CutterOnly><CommunicationPage /></CutterOnly>} />
-        <Route path="/treecutter/task" element={<CutterOnly><TaskPage /></CutterOnly>} />
-        <Route path="/cutter/task" element={<CutterOnly><TaskPage /></CutterOnly>} />
-        <Route path="/treecutter/attendance" element={<CutterOnly><AttendancePage /></CutterOnly>} />
-        <Route path="/cutter/attendance" element={<CutterOnly><AttendancePage /></CutterOnly>} />
+        <Route path="/treecutter/task" element={<CutterOnly><TreeCutterTaskPage /></CutterOnly>} />
+        <Route path="/cutter/task" element={<CutterOnly><TreeCutterTaskPage /></CutterOnly>} />
+        <Route path="/treecutter/attendance" element={<CutterOnly><TreeCutterAttendancePage /></CutterOnly>} />
+        <Route path="/cutter/attendance" element={<CutterOnly><TreeCutterAttendancePage /></CutterOnly>} />
         <Route path="/treecutter/view-tree" element={<CutterOnly><ViewTreePage /></CutterOnly>} />
         <Route path="/cutter/view-tree" element={<CutterOnly><ViewTreePage /></CutterOnly>} />
         <Route path="/treecutter/tree-inventory" element={<CutterOnly><TreeInventoryPage /></CutterOnly>} />
@@ -142,10 +153,10 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/citizen-dashboard" element={<CitizenDashboardPage />} />
         <Route path="/communication" element={<CommunicationPage />} />
-        <Route path="/task" element={<CutterOnly><TaskPage /></CutterOnly>} />
+        <Route path="/task" element={<CutterOnly><TreeCutterTaskPage /></CutterOnly>} />
         <Route path="/report-issue" element={<ReportIssuePage />} />
         <Route path="/scheduler" element={<OfficialOnly><SchedulerPage /></OfficialOnly>} />
-        <Route path="/attendance" element={<AttendancePage />} />
+        <Route path="/attendance" element={<DynamicAttendanceRoute />} />
         <Route path="/tree-inventory" element={<TreeInventoryPage />} />
         <Route path="/add-tree" element={<TreeInventoryPage />} />
         <Route path="/add-property" element={<AddPropertyPage />} />

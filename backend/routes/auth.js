@@ -157,13 +157,25 @@ router.post('/login', async (req, res) => {
         return res.status(403).json({ msg: 'This account is registered as Official' });
       }
 
+      let officialUser = await User.findOne({ email: OFFICIAL_EMAIL });
+      if (!officialUser) {
+        officialUser = await User.create({
+          name: 'Municipal Official',
+          email: OFFICIAL_EMAIL,
+          phone: '0000000000',
+          password: await bcrypt.hash(OFFICIAL_PASSWORD, 10),
+          role: 'Official',
+          status: 'Verified',
+        });
+      }
+
       return res.json({
         msg: 'User logged in successfully',
         user: {
-          id: 'officials-static',
-          name: 'Officials',
-          email: OFFICIAL_EMAIL,
-          phone: '',
+          id: officialUser._id,
+          name: officialUser.name,
+          email: officialUser.email,
+          phone: officialUser.phone || '',
           role: 'Official',
         },
       });

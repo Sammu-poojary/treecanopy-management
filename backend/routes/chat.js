@@ -20,52 +20,87 @@ router.get('/threads', async (req, res) => {
     const { userId, userRole } = req.query;
     const normRole = normalizeRole(userRole);
 
-    // Fetch registered users to populate eligible chat partners
-    let partnerUsers = [];
+    // 1. Fetch registered users from MongoDB (case-insensitive role check)
+    let dbPartners = [];
     if (normRole === 'Tree Cutter') {
-      // Tree Cutters can only chat with Officials and Admins (P2P Tree Cutter chat blocked)
-      partnerUsers = await User.find({ role: { $in: ['Official', 'Admin'] } }).select('name username role _id email');
-    } else if (normRole === 'Official') {
-      // Officials can chat with Tree Cutters, Officials, and Admins
-      partnerUsers = await User.find({ role: { $in: ['Tree Cutter', 'Official', 'Admin'] } }).select('name username role _id email');
-    } else if (normRole === 'Admin') {
-      // Admins can chat with Officials and Tree Cutters
-      partnerUsers = await User.find({ role: { $in: ['Official', 'Tree Cutter', 'Admin'] } }).select('name username role _id email');
+      dbPartners = await User.find({ role: { $in: ['Official', 'official', 'Admin', 'admin'] } }).select('name username role _id email');
+    } else {
+      dbPartners = await User.find({ role: { $in: ['Tree Cutter', 'tree cutter', 'Official', 'official', 'Admin', 'admin'] } }).select('name username role _id email');
     }
 
-    // Default sample recipients if user database has few records
-    const defaultPartners = [
-      { _id: 'official-main', name: 'Municipal Tree Officer (Zone 1)', role: 'Official', email: 'official@treecanopy.org' },
-      { _id: 'admin-main', name: 'Canopy Central Admin', role: 'Admin', email: 'admin@treecanopy.org' },
-    ];
-    if (normRole === 'Official' || normRole === 'Admin') {
-      defaultPartners.push({ _id: 'cutter-ramesh', name: 'Ramesh Kumar (Lead Cutter)', role: 'Tree Cutter', email: 'ramesh@treecanopy.org' });
-      defaultPartners.push({ _id: 'cutter-suresh', name: 'Suresh Gowda (Arborist)', role: 'Tree Cutter', email: 'suresh@treecanopy.org' });
-    }
+    // 2. Inspect existing ChatMessages involving this user to include any active conversation partners
+    const pastMsgs = await ChatMessage.find({
+      $or: [
+        { senderId: userId },
+        { receiverId: userId }
+      ]
+    }).select('senderId senderName senderRole receiverId receiverName receiverRole');
 
-    const mergedPartners = [...partnerUsers];
-    defaultPartners.forEach(dp => {
-      if (!mergedPartners.some(p => String(p._id) === String(dp._id))) {
-        mergedPartners.push(dp);
+    const msgPartners = [];
+    pastMsgs.forEach(m => {
+      if (m.senderId && String(m.senderId) !== String(userId) && !m.senderId.includes('static')) {
+        msgPartners.push({ _id: String(m.senderId), name: m.senderName || 'Staff Member', role: m.senderRole || 'Official' });
+      }
+      if (m.receiverId && m.receiverId !== 'all' && String(m.receiverId) !== String(userId) && !m.receiverId.includes('static')) {
+        msgPartners.push({ _id: String(m.receiverId), name: m.receiverName || 'Staff Member', role: m.receiverRole || 'Official' });
       }
     });
 
-    // Filter out current user from partner list
-    const filteredPartners = mergedPartners.filter(p => String(p._id) !== String(userId));
+    // 3. Merge registered users into map
+    const partnerMap = new Map();
 
-    // Fetch active message threads involving this user or role
-    const activeMessages = await ChatMessage.find({
+    dbPartners.forEach(p => {
+      partnerMap.set(String(p._id), {
+        _id: String(p._id),
+        name: p.name || p.username || 'User',
+        role: normalizeRole(p.role),
+        email: p.email || ''
+      });
+    });
+
+    msgPartners.forEach(p => {
+      if (!partnerMap.has(p._id)) {
+        partnerMap.set(p._id, p);
+      }
+    });
+
+    // 4. Fetch latest message timestamp per partner & sort active conversations to top
+    const allUserMsgs = await ChatMessage.find({
       $or: [
         { senderId: userId },
         { receiverId: userId },
         { receiverRole: normRole },
         { receiverId: 'all' }
       ]
-    }).sort({ createdAt: -1 }).limit(100);
+    }).sort({ createdAt: -1 });
+
+    const partnerLastMsgMap = new Map();
+    allUserMsgs.forEach(m => {
+      const sId = String(m.senderId);
+      const rId = String(m.receiverId);
+      const otherId = (sId === String(userId)) ? rId : sId;
+      if (otherId && otherId !== 'all' && !partnerLastMsgMap.has(otherId)) {
+        partnerLastMsgMap.set(otherId, new Date(m.createdAt).getTime());
+      }
+    });
+
+    const finalPartners = Array.from(partnerMap.values())
+      .filter(p => String(p._id) !== String(userId))
+      .filter(p => {
+        if (normRole === 'Tree Cutter' && normalizeRole(p.role) === 'Tree Cutter') {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const timeA = partnerLastMsgMap.get(a._id) || 0;
+        const timeB = partnerLastMsgMap.get(b._id) || 0;
+        return timeB - timeA; // Most recent active conversation first!
+      });
 
     res.json({
-      partners: filteredPartners,
-      recentMessages: activeMessages
+      partners: finalPartners,
+      recentMessages: allUserMsgs.slice(0, 100)
     });
   } catch (err) {
     console.error('Error fetching chat threads:', err);
@@ -73,15 +108,36 @@ router.get('/threads', async (req, res) => {
   }
 });
 
-// GET /api/chat/messages - Get message history for a given thread
+// GET /api/chat/messages - Get message history for a given specific thread/partner
 router.get('/messages', async (req, res) => {
   try {
-    const { threadId } = req.query;
-    if (!threadId) {
-      return res.status(400).json({ msg: 'threadId parameter is required' });
+    const { threadId, userId, partnerId } = req.query;
+
+    if (!userId || !partnerId) {
+      if (threadId) {
+        const messages = await ChatMessage.find({ threadId }).sort({ createdAt: 1 });
+        return res.json(messages);
+      }
+      return res.status(400).json({ msg: 'userId and partnerId parameters are required' });
     }
 
-    const messages = await ChatMessage.find({ threadId }).sort({ createdAt: 1 });
+    const uStr = String(userId).trim();
+    const pStr = String(partnerId).trim();
+
+    // Compute standard computed threadId
+    const ids = [uStr, pStr].sort();
+    const computedThread = `thread_${ids[0]}_${ids[1]}`;
+
+    // Strictly isolate messages between this specific user and this specific partner
+    const query = {
+      $or: [
+        { threadId: computedThread },
+        { senderId: uStr, receiverId: pStr },
+        { senderId: pStr, receiverId: uStr }
+      ]
+    };
+
+    const messages = await ChatMessage.find(query).sort({ createdAt: 1 });
     res.json(messages);
   } catch (err) {
     console.error('Error fetching messages:', err);

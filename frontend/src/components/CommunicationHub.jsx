@@ -516,7 +516,8 @@ export function CommunicationHub({ defaultRole }) {
       const res = await fetch(`${API_URL}/api/complaints`);
       if (res.ok) {
         const data = await res.json();
-        setTaskList(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : (data.complaints || []);
+        setTaskList(list);
       }
     } catch (_) {}
   };
@@ -526,7 +527,8 @@ export function CommunicationHub({ defaultRole }) {
       const res = await fetch(`${API_URL}/api/attendance/leaves`);
       if (res.ok) {
         const data = await res.json();
-        setLeaveList(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : (data.leaves || []);
+        setLeaveList(list);
       }
     } catch (_) {}
   };
@@ -536,7 +538,8 @@ export function CommunicationHub({ defaultRole }) {
       const res = await fetch(`${API_URL}/api/properties`);
       if (res.ok) {
         const data = await res.json();
-        setInventoryList(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : (data.properties || []);
+        setInventoryList(list);
       }
     } catch (_) {}
   };
@@ -551,39 +554,39 @@ export function CommunicationHub({ defaultRole }) {
   // Specific Work Tasks for Target Tree Cutter
   const targetTasks = useMemo(() => {
     if (!taskList || taskList.length === 0) return [];
-    if (!targetCutterId && !targetCutterName) return taskList;
 
     const nameLower = targetCutterName.toLowerCase().trim();
     const idStr = String(targetCutterId || '').trim();
 
     const specific = taskList.filter(t => {
-      const assignedId = String(t.assignedCutterId || t.assignedTo || t.cutterId || t.userId || '');
-      const assignedName = String(t.assignedCutter || t.assignedCutterName || t.assignedToName || t.userName || '').toLowerCase();
-      
+      const assignedId = String(t.assignedToId || t.assignedCutterId || t.assignedTo || t.cutterId || t.userId || '').trim();
+      const assignedName = String(t.assignedTo || t.assignedCutter || t.assignedCutterName || t.assignedToName || t.userName || '').toLowerCase().trim();
+
       const matchId = idStr && (assignedId === idStr);
-      const matchName = nameLower && (assignedName.includes(nameLower) || nameLower.includes(assignedName));
+      const matchName = nameLower.length > 0 && (assignedName.length > 0 && (assignedName.includes(nameLower) || nameLower.includes(assignedName)));
       return matchId || matchName;
     });
 
-    return specific.length > 0 ? specific : taskList;
+    return (specific.length > 0 || !targetCutterName) ? specific : taskList;
   }, [taskList, targetCutterId, targetCutterName]);
 
   // Specific Leave Requests for Target Tree Cutter
   const targetLeaves = useMemo(() => {
     if (!leaveList || leaveList.length === 0) return [];
-    if (!targetCutterId && !targetCutterName) return leaveList;
 
     const nameLower = targetCutterName.toLowerCase().trim();
     const idStr = String(targetCutterId || '').trim();
 
-    return leaveList.filter(l => {
-      const uId = String(l.userId || l.user || '');
-      const uName = String(l.userName || l.userFullName || '').toLowerCase();
+    const specific = leaveList.filter(l => {
+      const uId = String(l.userId || l.user || '').trim();
+      const uName = String(l.userName || l.userFullName || '').toLowerCase().trim();
 
       const matchId = idStr && (uId === idStr);
-      const matchName = nameLower && (uName.includes(nameLower) || nameLower.includes(uName));
+      const matchName = nameLower.length > 0 && (uName.length > 0 && (uName.includes(nameLower) || nameLower.includes(uName)));
       return matchId || matchName;
     });
+
+    return (specific.length > 0 || !targetCutterName) ? specific : leaveList;
   }, [leaveList, targetCutterId, targetCutterName]);
 
   // Specific Borrowed Tool Reminders for Target Tree Cutter
@@ -598,11 +601,11 @@ export function CommunicationHub({ defaultRole }) {
     inventoryList.forEach(p => {
       if (Array.isArray(p.purchaseRequests) && p.purchaseRequests.length > 0) {
         p.purchaseRequests.forEach(req => {
-          const rId = String(req.userId || req.id || '');
-          const rName = String(req.userName || '').toLowerCase();
+          const rId = String(req.userId || req.id || '').trim();
+          const rName = String(req.userName || '').toLowerCase().trim();
 
           const matchId = idStr && (rId === idStr);
-          const matchName = nameLower && (rName.includes(nameLower) || nameLower.includes(rName));
+          const matchName = nameLower.length > 0 && (rName.length > 0 && (rName.includes(nameLower) || nameLower.includes(rName)));
 
           if (!targetCutterId && !targetCutterName) {
             checkedOutList.push({ property: p, req });
@@ -613,7 +616,7 @@ export function CommunicationHub({ defaultRole }) {
       }
     });
 
-    return checkedOutList;
+    return (checkedOutList.length > 0 || !targetCutterName) ? checkedOutList : inventoryList.map(p => ({ property: p, req: { userName: 'Staff' } }));
   }, [inventoryList, targetCutterId, targetCutterName]);
 
   // Compute current threadId
@@ -624,13 +627,25 @@ export function CommunicationHub({ defaultRole }) {
     return `thread_${ids[0]}_${ids[1]}`;
   }, [activePartner, myUserId]);
 
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(perm => setNotifPermission(perm));
+    } else if ('Notification' in window) {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
+
   // Fetch thread messages
   const fetchMessages = async (isPolling = false) => {
-    if (!currentThreadId) return;
+    if (!currentThreadId && !activePartner) return;
     if (!isPolling) setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/chat/messages?threadId=${encodeURIComponent(currentThreadId)}`);
+      const partnerId = activePartner ? (activePartner._id || activePartner.id) : '';
+      const partnerName = activePartner ? (activePartner.name || activePartner.username || '') : '';
+      const partnerRole = activePartner ? normalizeRole(activePartner.role) : '';
+      const url = `${API_URL}/api/chat/messages?threadId=${encodeURIComponent(currentThreadId || '')}&userId=${encodeURIComponent(myUserId)}&userRole=${encodeURIComponent(myRole)}&partnerId=${encodeURIComponent(partnerId)}&partnerRole=${encodeURIComponent(partnerRole)}&partnerName=${encodeURIComponent(partnerName)}`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         const msgList = Array.isArray(data) ? data : [];
@@ -667,14 +682,14 @@ export function CommunicationHub({ defaultRole }) {
 
   useEffect(() => {
     fetchMessages(false);
-  }, [currentThreadId]);
+  }, [activePartner, currentThreadId]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       fetchMessages(true);
     }, 3000);
     return () => clearInterval(interval);
-  }, [currentThreadId]);
+  }, [activePartner, currentThreadId]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -941,7 +956,12 @@ export function CommunicationHub({ defaultRole }) {
                 return (
                   <div
                     key={partnerId}
-                    onClick={() => setActivePartner(p)}
+                    onClick={() => {
+                      if ((activePartner?._id || activePartner?.id) !== partnerId) {
+                        setMessages([]);
+                        setActivePartner(p);
+                      }
+                    }}
                     style={{
                       padding: '12px 14px', borderRadius: '12px', cursor: 'pointer',
                       background: isActive ? (darkMode ? 'rgba(52, 211, 153, 0.15)' : '#e0f2fe') : 'transparent',

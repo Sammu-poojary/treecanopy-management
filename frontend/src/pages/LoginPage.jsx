@@ -76,7 +76,7 @@ const LoginPage = () => {
 
       const roleRedirects = {
         Official: '/official-management',
-        'Tree Cutter': '/task',
+        'Tree Cutter': '/treecutter/dashboard',
         Admin: '/admin',
         Citizen: '/home',
       };
@@ -150,7 +150,7 @@ const LoginPage = () => {
 
       const roleRedirects = {
         Official: '/official-management',
-        'Tree Cutter': '/task',
+        'Tree Cutter': '/treecutter/dashboard',
         Admin: '/admin',
         Citizen: '/home',
       };
