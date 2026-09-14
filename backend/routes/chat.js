@@ -111,7 +111,7 @@ router.get('/threads', async (req, res) => {
 // GET /api/chat/messages - Get message history for a given specific thread/partner
 router.get('/messages', async (req, res) => {
   try {
-    const { threadId, userId, partnerId } = req.query;
+    const { threadId, userId, partnerId, partnerName, partnerRole, userRole } = req.query;
 
     if (!userId || !partnerId) {
       if (threadId) {
@@ -123,21 +123,28 @@ router.get('/messages', async (req, res) => {
 
     const uStr = String(userId).trim();
     const pStr = String(partnerId).trim();
+    const pName = String(partnerName || '').trim();
+    const normUserRole = normalizeRole(userRole);
 
     // Compute standard computed threadId
     const ids = [uStr, pStr].sort();
     const computedThread = `thread_${ids[0]}_${ids[1]}`;
 
-    // Strictly isolate messages between this specific user and this specific partner
-    const query = {
-      $or: [
-        { threadId: computedThread },
-        { senderId: uStr, receiverId: pStr },
-        { senderId: pStr, receiverId: uStr }
-      ]
-    };
+    const orClauses = [
+      { threadId: computedThread },
+      { senderId: uStr, receiverId: pStr },
+      { senderId: pStr, receiverId: uStr }
+    ];
 
-    const messages = await ChatMessage.find(query).sort({ createdAt: 1 });
+    if (pName) {
+      const nameRegex = new RegExp(pName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      orClauses.push(
+        { senderName: nameRegex, receiverRole: normUserRole },
+        { receiverName: nameRegex, senderRole: normUserRole }
+      );
+    }
+
+    const messages = await ChatMessage.find({ $or: orClauses }).sort({ createdAt: 1 });
     res.json(messages);
   } catch (err) {
     console.error('Error fetching messages:', err);

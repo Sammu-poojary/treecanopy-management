@@ -7,7 +7,6 @@ const LeaveSchema = new mongoose.Schema(
     userRole: { type: String, required: true, default: 'Tree Cutter' },
     leaveType: {
       type: String,
-      enum: ['Casual Leave', 'Sick Leave', 'Emergency Leave', 'Annual Leave'],
       default: 'Casual Leave',
     },
     startDate: { type: String, required: true }, // YYYY-MM-DD

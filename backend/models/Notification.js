@@ -31,6 +31,8 @@ const notificationSchema = new mongoose.Schema(
         'goal_completed',
         'equipment_reminder',
         'chat_message',
+        'leave_requested',
+        'leave_approved',
       ],
       required: true,
     },

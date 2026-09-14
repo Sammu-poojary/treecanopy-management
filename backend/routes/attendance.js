@@ -221,13 +221,34 @@ const Leave = require('../models/Leave');
 // @desc    Get staff leave applications
 router.get('/leaves', async (req, res) => {
   try {
-    const { status, userId, role } = req.query;
+    const { status, userId, role, userName } = req.query;
     const filter = {};
     if (status) filter.status = status;
-    if (userId) filter.userId = userId;
     if (role) filter.userRole = role;
 
-    const leaves = await Leave.find(filter).sort({ createdAt: -1 });
+    if (userId) {
+      filter.$or = [
+        { userId: userId },
+        { userName: { $regex: userId, $options: 'i' } }
+      ];
+    } else if (userName) {
+      filter.userName = { $regex: userName, $options: 'i' };
+    }
+
+    const rawLeaves = await Leave.find(filter).sort({ createdAt: -1 });
+    const leaveMap = new Map();
+    rawLeaves.forEach(l => {
+      const key = `${(l.userName || '').toLowerCase()}_${l.startDate}_${l.endDate}`;
+      if (!leaveMap.has(key)) {
+        leaveMap.set(key, l);
+      } else {
+        const existing = leaveMap.get(key);
+        if (l.status === 'Approved' && existing.status !== 'Approved') {
+          leaveMap.set(key, l);
+        }
+      }
+    });
+    const leaves = Array.from(leaveMap.values());
     res.json({ leaves });
   } catch (error) {
     res.status(500).json({ msg: 'Failed to fetch leave applications', error: error.message });
@@ -235,13 +256,15 @@ router.get('/leaves', async (req, res) => {
 });
 
 // @route   POST /api/attendance/leaves
-// @desc    Submit a staff leave application
+// @desc    Submit a staff leave application (Auto-approved as per configuration)
 router.post('/leaves', async (req, res) => {
   try {
-    const { userId, userName, userRole, leaveType, startDate, endDate, totalDays, reason } = req.body;
+    const { userId, userName, userRole, leaveType, startDate, endDate, totalDays, reason, status } = req.body;
     if (!userId || !userName || !startDate || !endDate) {
       return res.status(400).json({ msg: 'userId, userName, startDate, and endDate are required' });
     }
+
+    const leaveStatus = status || 'Approved'; // Auto-approved by default
 
     const leave = await Leave.create({
       userId,
@@ -251,19 +274,23 @@ router.post('/leaves', async (req, res) => {
       startDate,
       endDate,
       totalDays: Number(totalDays) || 1,
-      reason: reason || '',
-      status: 'Pending',
+      reason: (reason && reason.trim()) ? reason.trim() : `${leaveType || 'Leave'} application for ${userName}`,
+      status: leaveStatus,
     });
 
-    await Notification.create({
-      targetRole: 'Admin',
-      type: 'leave_requested',
-      title: 'Staff Leave Requested',
-      message: `${userName} (${leave.userRole}) has applied for ${leave.leaveType} (${startDate} to ${endDate}).`,
-      relatedId: leave._id.toString(),
-    });
+    try {
+      await Notification.create({
+        targetRole: 'Admin',
+        type: 'leave_requested',
+        title: 'Staff Leave Registered',
+        message: `${userName} (${leave.userRole}) has registered for ${leave.leaveType} (${startDate} to ${endDate}).`,
+        relatedId: leave._id.toString(),
+      });
+    } catch (notifErr) {
+      console.error('Leave notification creation skipped:', notifErr.message);
+    }
 
-    res.status(201).json({ msg: 'Leave application submitted successfully.', leave });
+    res.status(201).json({ msg: 'Leave application registered successfully.', leave });
   } catch (error) {
     res.status(500).json({ msg: 'Failed to submit leave application', error: error.message });
   }
@@ -297,6 +324,18 @@ router.patch('/leaves/:id/status', async (req, res) => {
     res.json({ msg: `Leave application ${status.toLowerCase()} successfully.`, leave });
   } catch (error) {
     res.status(500).json({ msg: 'Failed to update leave status', error: error.message });
+  }
+});
+
+// @route   DELETE /api/attendance/leaves/:id
+// @desc    Delete a leave application
+router.delete('/leaves/:id', async (req, res) => {
+  try {
+    const leave = await Leave.findByIdAndDelete(req.params.id);
+    if (!leave) return res.status(404).json({ msg: 'Leave application not found' });
+    res.json({ msg: 'Leave application deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to delete leave application', error: error.message });
   }
 });
 

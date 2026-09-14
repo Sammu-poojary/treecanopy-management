@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import NotificationBell from '../components/NotificationBell';
 import CitizenDashboard from '../components/CitizenDashboard';
 import AdminDashboard from '../components/AdminDashboard';
 import { Link, useNavigate, useSearchParams, useLocation, useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon, Polyline, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import diseasedLeafImg from '../assets/diseased_leaf.png';
 import pestsGridImg from '../assets/pests_grid.png';
@@ -150,6 +150,7 @@ import {
   BookOpen,
   School,
   Building2,
+  Truck,
 } from 'lucide-react';
 
 // ─── Helper to check if a Tree Cutter is currently on leave ──────────────────
@@ -160,9 +161,10 @@ export const checkCutterLeaveStatus = (cutterName, targetDateStr = null) => {
   try {
     const l1 = JSON.parse(localStorage.getItem('officialLeaves') || '[]');
     const l2 = JSON.parse(localStorage.getItem('staff_leave_requests') || '[]');
-    allLeaves = [...l1, ...l2];
+    const l3 = window.globalStaffLeaves || [];
+    allLeaves = [...l1, ...l2, ...l3];
   } catch {
-    allLeaves = [];
+    allLeaves = window.globalStaffLeaves || [];
   }
 
   const nameLower = cutterName.toLowerCase().trim();
@@ -754,13 +756,7 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
         <h1 className="cg-topbar-title">{title}</h1>
       )}
 
-      {showSearch && (
-        <label className="cg-search">
-          <Search size={20} />
-          <input placeholder={search} />
-        </label>
-      )}
-
+      {/* Topbar Right Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
         {/* Dark / Light Theme Toggle Button */}
         <button
@@ -1356,6 +1352,127 @@ const initialDefaultTasks = [
   }
 ];
 
+// Top-Level Geo-Tag Image Proof Display Component
+function GeoTaggedImageProof({ imageUrl, gps, locationText, altText, proofLabel }) {
+  if (!imageUrl) return null;
+
+  const getFormattedImgUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url;
+    }
+    if (url.includes('http://') || url.includes('https://')) {
+      const match = url.match(/(https?:\/\/[^\s]+)/);
+      if (match) return match[1];
+    }
+    return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const src = getFormattedImgUrl(imageUrl);
+  if (!src) return null;
+
+  let lat = gps?.lat;
+  let lng = gps?.lng;
+  if (!lat || lat === '0' || lat === 0 || lat === '0.000000' || lat === '0.0') {
+    lat = '13.340900';
+  }
+  if (!lng || lng === '0' || lng === 0 || lng === '0.000000' || lng === '0.0') {
+    lng = '74.742100';
+  }
+
+  const timestamp = gps?.capturedAt ? new Date(gps.capturedAt).toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  }) : new Date().toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  return (
+    <div className="photo-proof-card" style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(16,185,129,0.35)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', background: '#020f0d' }}>
+      {/* Top Header Watermark Badge */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+        background: 'linear-gradient(180deg, rgba(2,15,13,0.88) 0%, rgba(2,15,13,0) 100%)',
+        padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        pointerEvents: 'none'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', fontWeight: 800, color: '#34d399', letterSpacing: '0.04em' }}>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
+          CANOPYGUARD FIELD TELEMETRY
+        </div>
+        <span style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace', fontWeight: 700, background: 'rgba(0,0,0,0.65)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.18)' }}>
+          VERIFIED RECORD #GPS-AUDIT
+        </span>
+      </div>
+
+      {/* Ambient Blurred Background (to fill aspect ratio gaps seamlessly) */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', filter: 'blur(20px) brightness(0.35)',
+          transform: 'scale(1.2)', pointerEvents: 'none'
+        }}
+      />
+
+      {/* Full Crisp Uncropped Image */}
+      <img
+        src={src}
+        alt={altText || 'Geo-tagged field proof'}
+        className="photo-proof-img"
+        style={{
+          position: 'relative', zIndex: 2, width: '100%', height: 'auto',
+          maxHeight: '520px', minHeight: '260px', objectFit: 'contain', display: 'block', margin: '0 auto'
+        }}
+        onError={(e) => {
+          if (imageUrl && !e.target.dataset.triedFallback) {
+            e.target.dataset.triedFallback = 'true';
+            e.target.src = imageUrl;
+          }
+        }}
+      />
+
+      {/* Bottom HUD Overlay */}
+      <div className="photo-proof-overlay" style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
+        background: 'linear-gradient(0deg, rgba(2,15,13,0.95) 0%, rgba(2,15,13,0.7) 70%, rgba(2,15,13,0) 100%)',
+        padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '6px',
+        borderTop: '1px solid rgba(52,211,153,0.15)'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+          <span className="geo-tag-pill" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
+            background: 'rgba(16,185,129,0.25)', border: '1px solid #10b981', color: '#34d399',
+            padding: '3px 10px', borderRadius: '999px', fontSize: '0.76rem', fontWeight: 800
+          }}>
+            <MapPin size={12} color="#10b981" /> {lat}° N, {lng}° E
+          </span>
+          <span style={{
+            fontSize: '0.74rem', background: 'rgba(15,23,42,0.85)', color: '#f1f5f9',
+            padding: '3px 10px', borderRadius: '999px', backdropFilter: 'blur(4px)',
+            border: '1px solid rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600
+          }}>
+            <Building size={12} color="#94a3b8" /> {locationText || 'Udupi Field Location'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '2px' }}>
+          <span style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
+            <Clock size={12} color="#60a5fa" /> {timestamp}
+          </span>
+          <span className="proof-status-pill" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
+            background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.4)',
+            padding: '2px 8px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 800
+          }}>
+            <CheckCircle2 size={12} color="#10b981" /> {proofLabel || 'GPS Verified Proof'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TaskPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -1475,113 +1592,19 @@ export function TaskPage() {
     });
   };
 
-// Geo-Tag Image Proof Display Component
-function GeoTaggedImageProof({ imageUrl, gps, locationText, altText, proofLabel }) {
-  if (!imageUrl) return null;
-
-  const getFormattedImgUrl = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
-      return url;
-    }
-    if (url.includes('http://') || url.includes('https://')) {
-      const match = url.match(/(https?:\/\/[^\s]+)/);
-      if (match) return match[1];
-    }
-    return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-  };
-
-  const src = getFormattedImgUrl(imageUrl);
-
-  let lat = gps?.lat;
-  let lng = gps?.lng;
-  if (!lat || lat === '0' || lat === 0 || lat === '0.000000' || lat === '0.0') {
-    lat = '13.340900';
-  }
-  if (!lng || lng === '0' || lng === 0 || lng === '0.000000' || lng === '0.0') {
-    lng = '74.742100';
-  }
-
-  const timestamp = gps?.capturedAt ? new Date(gps.capturedAt).toLocaleString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  }) : new Date().toLocaleString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
-
-  return (
-    <div className="photo-proof-card" style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(16,185,129,0.35)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', background: '#051d18' }}>
-      {/* Top Header Watermark Badge */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-        background: 'linear-gradient(180deg, rgba(5,29,24,0.9) 0%, rgba(5,29,24,0) 100%)',
-        padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        backdropFilter: 'blur(4px)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', fontWeight: 800, color: '#34d399', letterSpacing: '0.04em' }}>
-          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
-          CANOPYGUARD FIELD TELEMETRY
-        </div>
-        <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace', fontWeight: 700, background: 'rgba(0,0,0,0.65)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.18)' }}>
-          VERIFIED RECORD #GPS-AUDIT
-        </span>
-      </div>
-
-      <img
-        src={src}
-        alt={altText || 'Geo-tagged field proof'}
-        className="photo-proof-img"
-        style={{ width: '100%', height: '220px', objectFit: 'cover', display: 'block' }}
-        onError={(e) => {
-          if (imageUrl && !e.target.dataset.triedFallback) {
-            e.target.dataset.triedFallback = 'true';
-            e.target.src = imageUrl;
-          }
-        }}
-      />
-
-      {/* Bottom HUD Overlay */}
-      <div className="photo-proof-overlay" style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
-        background: 'linear-gradient(0deg, rgba(6,26,20,0.96) 0%, rgba(6,26,20,0.75) 75%, rgba(6,26,20,0) 100%)',
-        padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px',
-        backdropFilter: 'blur(6px)', borderTop: '1px solid rgba(52,211,153,0.2)'
-      }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-          <span className="geo-tag-pill" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '5px',
-            background: 'rgba(16,185,129,0.25)', border: '1px solid #10b981', color: '#34d399',
-            padding: '4px 12px', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 800
-          }}>
-            <MapPin size={13} color="#10b981" /> {lat}° N, {lng}° E
-          </span>
-          <span style={{
-            fontSize: '0.76rem', background: 'rgba(15,23,42,0.85)', color: '#f1f5f9',
-            padding: '4px 12px', borderRadius: '999px', backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600
-          }}>
-            <Building size={13} color="#94a3b8" /> {locationText || 'Udupi Field Location'}
-          </span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '2px' }}>
-          <span style={{ fontSize: '0.74rem', color: '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
-            <Clock size={13} color="#60a5fa" /> {timestamp}
-          </span>
-          <span className="proof-status-pill" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '5px',
-            background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.4)',
-            padding: '3px 10px', borderRadius: '999px', fontSize: '0.74rem', fontWeight: 800
-          }}>
-            <CheckCircle2 size={13} color="#10b981" /> {proofLabel || 'GPS Verified Proof'}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+// Leaflet Turn-by-Turn GPS Navigation Modal Component for Task Board
+function MapFlyTo({ position }) {
+  const map = useMap();
+  useEffect(() => { map.flyTo(position, 15); }, [position[0], position[1]]);
+  return null;
 }
 
-// Leaflet Turn-by-Turn GPS Navigation Modal Component for Task Board
 function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
   const [userPos, setUserPos] = useState([13.3500, 74.7500]);
+  const [gpsReady, setGpsReady] = useState(false);
+  const [gpsError, setGpsError] = useState(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [gpsSource, setGpsSource] = useState(null); // 'device' | 'ip'
   const [routePolyline, setRoutePolyline] = useState([]);
   const [navigationSteps, setNavigationSteps] = useState([]);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
@@ -1593,17 +1616,48 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
   const destLng = Number(navTarget?.lng) || 74.7421;
   const destPos = useMemo(() => [destLat, destLng], [destLat, destLng]);
 
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      const watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          setUserPos([pos.coords.latitude, pos.coords.longitude]);
-        },
-        () => {},
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-      return () => navigator.geolocation.clearWatch(watchId);
+  const startGPS = async () => {
+    if (!('geolocation' in navigator)) {
+      setGpsError('HTML5 Geolocation not supported by browser.');
+      setGpsReady(false);
+      return null;
     }
+
+    setGpsError(null);
+
+    const onSuccess = (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      setUserPos([lat, lng]);
+      setGpsAccuracy(Math.round(pos.coords.accuracy));
+      setGpsReady(true);
+      setGpsSource('device');
+      setGpsError(null);
+    };
+
+    const onError = (err) => {
+      let msg = 'Showing target field navigation.';
+      if (err.code === 1) msg = 'Location permission denied by browser. Enable location access and click "Retry GPS".';
+      else if (err.code === 2) msg = 'GPS signal unavailable.';
+      else if (err.code === 3) msg = 'GPS request timed out.';
+      setGpsError(msg);
+      setGpsReady(false);
+    };
+
+    const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, opts);
+    const watchId = navigator.geolocation.watchPosition(onSuccess, (err) => {
+      if (err.code === 1) setGpsError('Location permission denied.');
+    }, opts);
+    return watchId;
+  };
+
+  useEffect(() => {
+    let watchId = null;
+    startGPS().then(id => { watchId = id; });
+    return () => {
+      if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   useEffect(() => {
@@ -1685,12 +1739,20 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
               <Navigation size={22} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>
-                {navTarget.type === 'disposal' ? '🚚 Live Route to Government Disposal Yard' : '🧭 Live GPS Route to Assigned Task Site'}
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {navTarget.type === 'disposal' ? <Truck size={18} /> : <Navigation size={18} />}
+                {navTarget.type === 'disposal' ? 'Live Route to Government Disposal Yard' : 'Live GPS Route to Assigned Task Site'}
               </h3>
-              <span style={{ fontSize: '0.82rem', color: darkMode ? '#95d5b2' : '#64748b' }}>
-                Target: {navTarget.title} ({navTarget.address})
-              </span>
+              {/* FROM → TO Route Labels */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#10b981', fontWeight: 700 }}>
+                  <MapPin size={13} /> FROM: Your Current GPS Location
+                </span>
+                <ArrowRight size={13} color={darkMode ? '#6b7280' : '#9ca3af'} />
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#3b82f6', fontWeight: 700 }}>
+                  <Target size={13} /> TO: {navTarget.title} — {navTarget.address}
+                </span>
+              </div>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: darkMode ? '#fff' : '#64748b', cursor: 'pointer', padding: '6px' }}>
@@ -1698,13 +1760,41 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
           </button>
         </div>
 
+        {/* GPS Status Banner */}
+        {gpsError && (
+          <div style={{
+            padding: '10px 20px',
+            background: gpsSource === 'ip' ? '#1e3a5f' : '#7f1d1d',
+            color: gpsSource === 'ip' ? '#93c5fd' : '#fca5a5',
+            fontSize: '0.83rem', fontWeight: 600, display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: '12px'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={16} color={gpsSource === 'ip' ? '#60a5fa' : '#f87171'} />
+              {gpsError}
+              {gpsSource === 'ip' && <span style={{ opacity: 0.75, fontSize: '0.78rem' }}>(accuracy ~2km — enable device GPS for precise routing)</span>}
+            </span>
+            <button
+              onClick={() => startGPS()}
+              style={{
+                padding: '4px 12px', borderRadius: '6px',
+                background: gpsSource === 'ip' ? '#2563eb' : '#dc2626',
+                color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
+                display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0
+              }}
+            >
+              <RefreshCw size={13} /> Retry GPS
+            </button>
+          </div>
+        )}
+
         {/* Info stats bar */}
         <div style={{
           padding: '12px 20px', background: darkMode ? '#09221b' : '#ecfdf5',
           display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: `1px solid ${darkMode ? 'rgba(52,211,153,0.2)' : '#a7f3d0'}`
         }}>
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
               <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Distance</span>
               <strong style={{ fontSize: '1.15rem', color: '#10b981', fontWeight: 900 }}>{totalDistance ? `${totalDistance} km` : 'Calculating...'}</strong>
@@ -1714,10 +1804,19 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
               <strong style={{ fontSize: '1.15rem', color: '#3b82f6', fontWeight: 900 }}>{totalDuration ? `${totalDuration} mins` : 'Calculating...'}</strong>
             </div>
             <div>
-              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Live GPS Tracking</span>
-              <strong style={{ fontSize: '0.85rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span> Active Positioning
-              </strong>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Your GPS Position</span>
+              {gpsReady ? (
+                <strong style={{ fontSize: '0.78rem', color: gpsSource === 'ip' ? '#60a5fa' : '#059669', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'monospace' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: gpsSource === 'ip' ? '#3b82f6' : '#10b981', display: 'inline-block', boxShadow: `0 0 6px ${gpsSource === 'ip' ? '#3b82f6' : '#10b981'}` }}></span>
+                  {userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}
+                  {gpsAccuracy && <span style={{ fontSize: '0.7rem', opacity: 0.7, fontFamily: 'inherit' }}> (±{gpsAccuracy}m {gpsSource === 'ip' ? 'IP' : 'GPS'})</span>}
+                </strong>
+              ) : (
+                <strong style={{ fontSize: '0.78rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }}></span>
+                  Acquiring GPS...
+                </strong>
+              )}
             </div>
           </div>
           <button
@@ -1733,13 +1832,15 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
         </div>
 
         {/* Map & Turn-by-Turn Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', flex: 1, minHeight: '420px' }}>
-          <div style={{ position: 'relative', height: '100%', minHeight: '420px' }}>
-            <MapContainer center={userPos} zoom={14} style={{ height: '100%', width: '100%' }}>
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <Marker position={userPos}><Popup>📍 My Current Live GPS Location</Popup></Marker>
-              <Marker position={destPos}><Popup>🎯 Destination: {navTarget.title}</Popup></Marker>
-              {routePolyline.length > 0 && <Polyline positions={routePolyline} color="#3b82f6" weight={6} opacity={0.85} />}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', minHeight: '450px' }}>
+          <div style={{ position: 'relative', height: '450px' }}>
+            <MapContainer center={userPos} zoom={14} style={{ height: '450px', width: '100%' }}>
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+              {gpsReady && <MapFlyTo position={userPos} />}
+              <Marker position={userPos}><Popup>FROM: {gpsSource === 'ip' ? 'Your Approximate IP Location' : 'Your Current GPS Location'}<br/>{userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}</Popup></Marker>
+              <Marker position={destPos}><Popup>TO: {navTarget.title} — {navTarget.address}</Popup></Marker>
+              {gpsReady && gpsAccuracy && <Circle center={userPos} radius={gpsAccuracy} color={gpsSource === 'ip' ? '#3b82f6' : '#10b981'} fillOpacity={0.08} weight={1} />}
+              {routePolyline.length > 0 && <Polyline positions={routePolyline} color="#3b82f6" weight={6} opacity={0.85} dashArray="10, 5" />}
             </MapContainer>
           </div>
 
@@ -2746,58 +2847,63 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
                     <h2 style={{ color: 'var(--title)', margin: '0 0 4px', fontSize: '1.1rem' }}>{selectedTask?.location}</h2>
                     <p style={{ color: 'var(--text-secondary)', margin: '0 0 12px', fontSize: '0.88rem' }}>{selectedTask?.title}</p>
                     <div className="mini-map" style={{ height: '200px', position: 'relative', overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--border)', marginTop: '12px' }}>
-                      <MapContainer
-                        key={selectedTask?.id || 'default'}
-                        center={[13.3409, 74.7421]}
-                        zoom={14}
-                        scrollWheelZoom={false}
-                        style={{ height: '100%', width: '100%' }}
-                        zoomControl={true}
-                      >
-                        <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        <Marker position={[13.3409, 74.7421]}>
-                          <Popup>
-                            <div style={{ minWidth: '160px' }}>
-                              <strong style={{ display: 'block', marginBottom: '4px', color: '#1b4332' }}>
-                                📍 {selectedTask?.title || 'Task Location'}
-                              </strong>
-                              <span style={{ display: 'block', color: '#4b5563', fontSize: '13px', marginBottom: '4px' }}>
-                                {selectedTask?.location || 'Udupi, Karnataka'}
-                              </span>
-                              <span style={{ color: '#6b7280', fontSize: '12px' }}>
-                                Assigned to: {selectedTask?.cutter || 'Unassigned'}
-                              </span>
-                            </div>
-                          </Popup>
-                        </Marker>
-                      </MapContainer>
-                      <div style={{ position: 'absolute', bottom: '10px', right: '10px', display: 'flex', gap: '6px', zIndex: 1000 }}>
-                        <button
-                          onClick={() => setNavTarget({
-                            lat: selectedTask?.beforeGps?.lat || 13.3409,
-                            lng: selectedTask?.beforeGps?.lng || 74.7421,
-                            title: selectedTask?.title || 'Task Location',
-                            address: selectedTask?.location || 'Udupi, Karnataka',
-                            type: 'task'
-                          })}
-                          style={{
-                            padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#10b981',
-                            color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700,
-                            boxShadow: '0 2px 6px rgba(16,185,129,0.3)'
-                          }}
-                        >
-                          <Navigation size={14} /> 🧭 Live GPS Route
-                        </button>
-                        <a
-                          href={`https://www.google.com/maps?q=13.3409,74.7421`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            padding: '6px 12px', fontSize: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      {(() => {
+                        const targetLat = Number(selectedTask?.locationLat || selectedTask?.lat || selectedTask?.latitude || selectedTask?.beforeGps?.lat) || 13.3409;
+                        const targetLng = Number(selectedTask?.locationLng || selectedTask?.lng || selectedTask?.longitude || selectedTask?.beforeGps?.lng) || 74.7421;
+                        return (
+                          <>
+                            <MapContainer
+                              key={`${selectedTask?.id || 'default'}-${targetLat}-${targetLng}`}
+                              center={[targetLat, targetLng]}
+                              zoom={15}
+                              scrollWheelZoom={false}
+                              style={{ height: '100%', width: '100%' }}
+                              zoomControl={true}
+                            >
+                              <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                              />
+                              <Marker position={[targetLat, targetLng]}>
+                                <Popup>
+                                  <div style={{ minWidth: '160px' }}>
+                                    <strong style={{ display: 'block', marginBottom: '4px', color: '#1b4332' }}>
+                                      Target Field Location: {selectedTask?.title || 'Task Location'}
+                                    </strong>
+                                    <span style={{ display: 'block', color: '#4b5563', fontSize: '13px', marginBottom: '4px' }}>
+                                      {selectedTask?.location || 'Field Location'}
+                                    </span>
+                                    <span style={{ color: '#6b7280', fontSize: '12px' }}>
+                                      Assigned to: {selectedTask?.cutter || 'Unassigned'}
+                                    </span>
+                                  </div>
+                                </Popup>
+                              </Marker>
+                            </MapContainer>
+                            <div style={{ position: 'absolute', bottom: '10px', right: '10px', display: 'flex', gap: '6px', zIndex: 1000 }}>
+                              <button
+                                onClick={() => setNavTarget({
+                                  lat: targetLat,
+                                  lng: targetLng,
+                                  title: selectedTask?.title || 'Task Location',
+                                  address: selectedTask?.location || 'Field Location',
+                                  type: 'task'
+                                })}
+                                style={{
+                                  padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#10b981',
+                                  color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700,
+                                  boxShadow: '0 2px 6px rgba(16,185,129,0.3)'
+                                }}
+                              >
+                                <Navigation size={14} /> Navigate Here
+                              </button>
+                              <a
+                                href={`https://www.google.com/maps?q=${targetLat},${targetLng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  padding: '6px 12px', fontSize: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.95)',
                             border: '1px solid #cbd5e1', borderRadius: '6px', display: 'flex',
                             alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#1e293b',
                             fontWeight: 600, boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
@@ -2806,7 +2912,10 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
                           <ExternalLink size={14} /> Google Maps
                         </a>
                       </div>
-                    </div>
+                    </>
+                  );
+                })()}
+              </div>
 
                     <style dangerouslySetInnerHTML={{
                       __html: `
@@ -2912,10 +3021,10 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <button
                       onClick={() => setNavTarget({
-                        lat: selectedTask?.beforeGps?.lat || 13.3409,
-                        lng: selectedTask?.beforeGps?.lng || 74.7421,
+                        lat: Number(selectedTask?.locationLat || selectedTask?.lat || selectedTask?.latitude || selectedTask?.beforeGps?.lat) || 13.3409,
+                        lng: Number(selectedTask?.locationLng || selectedTask?.lng || selectedTask?.longitude || selectedTask?.beforeGps?.lng) || 74.7421,
                         title: selectedTask?.title || 'Task Site',
-                        address: selectedTask?.location || 'Udupi Field Location',
+                        address: selectedTask?.location || 'Field Location',
                         type: 'task'
                       })}
                       style={{
@@ -4347,12 +4456,19 @@ export function SchedulerPage() {
 
   const openScheduleModal = (targetDay) => {
     const dayToUse = targetDay || selectedDay;
-    const defaultCutter = cutters.length > 0 ? (typeof cutters[0] === 'string' ? cutters[0] : cutters[0].name || cutters[0].email) : 'Boxy';
-
     const y = currentMonthDate.getFullYear();
     const m = String(currentMonthDate.getMonth() + 1).padStart(2, '0');
     const d = String(dayToUse).padStart(2, '0');
     const defaultDateStr = `${y}-${m}-${d}`;
+
+    const availableCutter = cutters.find(c => {
+      const name = typeof c === 'string' ? c : c.name || c.email;
+      return !checkCutterLeaveStatus(name, defaultDateStr).isOnLeave;
+    });
+
+    const defaultCutter = availableCutter
+      ? (typeof availableCutter === 'string' ? availableCutter : availableCutter.name || availableCutter.email)
+      : (cutters.length > 0 ? (typeof cutters[0] === 'string' ? cutters[0] : cutters[0].name || cutters[0].email) : 'Boxy');
 
     setScheduleForm({
       assignedTo: defaultCutter,
@@ -4608,6 +4724,7 @@ export function SchedulerPage() {
                             <option
                               key={c._id || cutterName}
                               value={cutterName}
+                              disabled={leaveInfo.isOnLeave}
                               style={{ background: leaveInfo.isOnLeave ? '#fee2e2' : 'var(--bg-surface)', color: leaveInfo.isOnLeave ? '#991b1b' : 'var(--text-primary)' }}
                             >
                               {leaveInfo.isOnLeave ? `⛔ ${cutterName} (ON LEAVE - ${leaveInfo.startDate} to ${leaveInfo.endDate})` : `🪓 ${cutterName}`}
@@ -4712,6 +4829,12 @@ export function SchedulerPage() {
                     />
                   </div>
 
+                  {checkCutterLeaveStatus(scheduleForm.assignedTo, scheduleForm.scheduledDate).isOnLeave && (
+                    <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#f87171', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px', fontSize: '0.85rem', fontWeight: 600 }}>
+                      ⛔ {scheduleForm.assignedTo} is on leave from {checkCutterLeaveStatus(scheduleForm.assignedTo, scheduleForm.scheduledDate).startDate} to {checkCutterLeaveStatus(scheduleForm.assignedTo, scheduleForm.scheduledDate).endDate}. Task assignment is disabled.
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
                     <button
                       type="button"
@@ -4735,14 +4858,17 @@ export function SchedulerPage() {
                         padding: '10px 20px',
                         borderRadius: '8px',
                         border: 'none',
-                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                        background: checkCutterLeaveStatus(scheduleForm.assignedTo, scheduleForm.scheduledDate).isOnLeave
+                          ? '#475569'
+                          : 'linear-gradient(135deg, #10b981, #059669)',
                         color: '#ffffff',
-                        cursor: 'pointer',
+                        cursor: checkCutterLeaveStatus(scheduleForm.assignedTo, scheduleForm.scheduledDate).isOnLeave ? 'not-allowed' : 'pointer',
                         fontWeight: 700,
                         fontSize: '0.88rem',
+                        opacity: checkCutterLeaveStatus(scheduleForm.assignedTo, scheduleForm.scheduledDate).isOnLeave ? 0.6 : 1,
                         boxShadow: '0 4px 12px rgba(16,185,129,0.3)'
                       }}
-                      disabled={schedulingLoading}
+                      disabled={schedulingLoading || checkCutterLeaveStatus(scheduleForm.assignedTo, scheduleForm.scheduledDate).isOnLeave}
                     >
                       {schedulingLoading ? 'Scheduling...' : 'Assign Schedule'}
                     </button>
@@ -5067,30 +5193,109 @@ export function OfficialManagementPage() {
     coords: [13.3409, 74.7421],
   });
 
-  const getProofImageUrl = (task, key) => {
-    let url = key === 'before' ? task.beforeImage : key === 'after' ? task.afterImage : task.wasteProof;
-    if (url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/'))) {
-      return url;
-    }
-    const linkedComplaint = complaints.find(c => c._id === task.complaintId);
-    if (key === 'before' && linkedComplaint && linkedComplaint.photoUrl) {
-      return linkedComplaint.photoUrl;
-    }
-    if (key === 'before') return 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80';
-    if (key === 'after') return 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=800&auto=format&fit=crop&q=80';
-    return 'https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?w=800&auto=format&fit=crop&q=80';
+  const resolveImageUrl = (imageUrl) => {
+    if (!imageUrl) return '';
+    const normalized = String(imageUrl).replace(/\\/g, '/').trim();
+    if (!normalized || normalized === 'Submitted' || normalized === 'Pending upload' || normalized === 'Pending') return '';
+    if (normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('data:')) return normalized;
+    const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+    if (normalized.startsWith('/uploads/')) return `${apiBase}${normalized}`;
+    if (normalized.startsWith('uploads/')) return `${apiBase}/${normalized}`;
+    return `${apiBase}/uploads/${normalized.split('/').pop()}`;
   };
 
+  const getProofImageUrl = (task, key) => {
+    let rawUrl = '';
+    if (key === 'before') {
+      rawUrl = task.beforeImageUrl || (task.beforeImage && task.beforeImage.length > 20 && !task.beforeImage.includes(' ') ? task.beforeImage : '');
+    } else if (key === 'after') {
+      rawUrl = task.afterImageUrl || (task.afterImage && task.afterImage.length > 20 && !task.afterImage.includes(' ') ? task.afterImage : '');
+    } else if (key === 'waste') {
+      rawUrl = task.wasteProofUrl || task.wasteImageUrl || (task.wasteProof && task.wasteProof.length > 20 && !task.wasteProof.includes(' ') ? task.wasteProof : '');
+    }
+
+    const linkedComplaint = complaints.find(c => String(c._id) === String(task.complaintId || task.id));
+    if (!rawUrl && linkedComplaint) {
+      if (key === 'before') {
+        rawUrl = linkedComplaint.beforeImageUrl || linkedComplaint.photoUrl || linkedComplaint.image || linkedComplaint.photo || '';
+      } else if (key === 'after') {
+        rawUrl = linkedComplaint.afterImageUrl || linkedComplaint.afterPhoto || '';
+      } else if (key === 'waste') {
+        rawUrl = linkedComplaint.wasteImageUrl || linkedComplaint.wasteProofUrl || '';
+      }
+    }
+
+    return resolveImageUrl(rawUrl);
+  };
+
+  const getProofGps = (task, key) => {
+    if (!task) return { lat: '13.340900', lng: '74.742100' };
+    if (key === 'before' && (task.beforeGps || task.beforeLat)) {
+      return task.beforeGps || { lat: String(task.beforeLat), lng: String(task.beforeLng) };
+    }
+    if (key === 'after' && (task.afterGps || task.afterLat)) {
+      return task.afterGps || { lat: String(task.afterLat), lng: String(task.afterLng) };
+    }
+    if (key === 'waste' && (task.wasteGps || task.wasteLat)) {
+      return task.wasteGps || { lat: String(task.wasteLat), lng: String(task.wasteLng) };
+    }
+    if (task.gps) return task.gps;
+    if (task.lat && task.lng) return { lat: String(task.lat), lng: String(task.lng) };
+
+    const linkedComplaint = complaints.find(c => String(c._id) === String(task.complaintId || task.id));
+    if (linkedComplaint) {
+      if (linkedComplaint.latitude && linkedComplaint.longitude) {
+        return { lat: String(linkedComplaint.latitude), lng: String(linkedComplaint.longitude) };
+      }
+      if (linkedComplaint.gps) return linkedComplaint.gps;
+    }
+    return { lat: '13.340900', lng: '74.742100' };
+  };
+
+  const [complaintFilter, setComplaintFilter] = useState('pending'); // 'pending', 'all', 'verified'
   const [proofFilter, setProofFilter] = useState('active'); // 'active', 'all', 'closed'
   const [proofSort, setProofSort] = useState('updated_desc'); // 'updated_desc', 'updated_asc', 'status', 'priority'
+
+  const processedComplaints = useMemo(() => {
+    let list = [...complaints];
+    if (complaintFilter === 'pending') {
+      list = list.filter(c => {
+        const s = (c.status || '').trim();
+        if (['Verified', 'Resolved', 'Closed', 'Completed'].includes(s)) return false;
+        if (c.closedBy || c.closedAt || c.verifiedAt) return false;
+        const linkedTask = tasks.find(t => t.complaintId === c._id || t.id === c._id);
+        if (linkedTask && ['Verified', 'Resolved', 'Closed', 'Completed'].includes(linkedTask.status)) return false;
+        return true;
+      });
+    } else if (complaintFilter === 'verified') {
+      list = list.filter(c => {
+        const s = (c.status || '').trim();
+        if (['Verified', 'Resolved', 'Closed', 'Completed'].includes(s)) return true;
+        if (c.closedBy || c.closedAt || c.verifiedAt) return true;
+        const linkedTask = tasks.find(t => t.complaintId === c._id || t.id === c._id);
+        if (linkedTask && ['Verified', 'Resolved', 'Closed', 'Completed'].includes(linkedTask.status)) return true;
+        return false;
+      });
+    }
+    return list;
+  }, [complaints, complaintFilter, tasks]);
 
   const processedProofTasks = useMemo(() => {
     let list = [...tasks];
 
     if (proofFilter === 'active') {
-      list = list.filter(t => t.status !== 'Closed');
+      list = list.filter(t => {
+        if (['Closed', 'Verified', 'Resolved'].includes(t.status)) return false;
+        const pState = t.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' };
+        const allVerified = ['before', 'after', 'waste'].every(k => ['Verified', 'Not Required'].includes(pState[k]));
+        return !allVerified;
+      });
     } else if (proofFilter === 'closed') {
-      list = list.filter(t => t.status === 'Closed');
+      list = list.filter(t => {
+        if (['Closed', 'Verified', 'Resolved'].includes(t.status)) return true;
+        const pState = t.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' };
+        return ['before', 'after', 'waste'].every(k => ['Verified', 'Not Required'].includes(pState[k]));
+      });
     }
 
     list.sort((a, b) => {
@@ -5133,6 +5338,22 @@ export function OfficialManagementPage() {
         }
       })
       .catch(err => console.error('Failed to load dynamic cutters:', err));
+
+    fetch(`${API_URL}/api/attendance/leaves`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.leaves) {
+          window.globalStaffLeaves = data.leaves;
+          const localLeaves = JSON.parse(localStorage.getItem('officialLeaves') || '[]');
+          const map = new Map();
+          [...data.leaves, ...localLeaves].forEach(l => {
+            const key = l._id || `${l.userName}_${l.startDate}`;
+            if (!map.has(key)) map.set(key, l);
+          });
+          localStorage.setItem('officialLeaves', JSON.stringify(Array.from(map.values())));
+        }
+      })
+      .catch(err => console.error('Failed to load leaves in official desk:', err));
   }, []);
 
   useEffect(() => {
@@ -5149,10 +5370,24 @@ export function OfficialManagementPage() {
             list.forEach(c => {
               if (c.assignedTo) {
                 const index = updated.findIndex(t => t.complaintId === c._id);
+                const beforeUrl = c.beforeImageUrl || c.photoUrl || c.image || '';
+                const afterUrl = c.afterImageUrl || c.afterPhoto || '';
+                const wasteUrl = c.wasteProofUrl || c.wasteImageUrl || c.wastePhoto || '';
+
                 if (index !== -1) {
-                  if (updated[index].cutter !== c.assignedTo) {
-                    updated[index] = { ...updated[index], cutter: c.assignedTo };
-                  }
+                  updated[index] = {
+                    ...updated[index],
+                    cutter: c.assignedTo || updated[index].cutter,
+                    status: c.status || updated[index].status,
+                    beforeImageUrl: beforeUrl || updated[index].beforeImageUrl || '',
+                    afterImageUrl: afterUrl || updated[index].afterImageUrl || '',
+                    wasteProofUrl: wasteUrl || updated[index].wasteProofUrl || '',
+                    beforeGps: c.beforeGps || updated[index].beforeGps || null,
+                    afterGps: c.afterGps || updated[index].afterGps || null,
+                    wasteGps: c.wasteGps || updated[index].wasteGps || null,
+                    locationLat: c.locationLat || updated[index].locationLat,
+                    locationLng: c.locationLng || updated[index].locationLng,
+                  };
                 } else {
                   const initialProg = c.status === 'Resolved' ? 100 : c.status === 'Work Completed' ? 85 : c.status === 'Waste Disposed' ? 95 : c.status === 'In Progress' ? 60 : c.status === 'Reached Location' ? 40 : 15;
                   updated.unshift({
@@ -5167,10 +5402,18 @@ export function OfficialManagementPage() {
                     progress: initialProg,
                     dueDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
                     visits: [{ time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }), location: c.location || 'Pending GPS', note: `Assigned to ${c.assignedTo}.` }],
-                    beforeImage: c.photoUrl ? 'Submitted' : 'Pending upload',
-                    afterImage: c.status === 'Resolved' || c.status === 'Work Completed' ? 'Submitted' : 'Pending upload',
-                    wasteProof: c.status === 'Resolved' || c.status === 'Waste Disposed' ? 'Submitted' : 'Pending upload',
-                    proofStatus: { before: c.photoUrl ? 'Pending' : 'Not Required', after: 'Pending', waste: 'Pending' },
+                    beforeImage: beforeUrl ? 'Submitted' : 'Pending upload',
+                    afterImage: afterUrl ? 'Submitted' : (c.status === 'Resolved' || c.status === 'Work Completed' ? 'Submitted' : 'Pending upload'),
+                    wasteProof: wasteUrl ? 'Submitted' : (c.status === 'Resolved' || c.status === 'Waste Disposed' ? 'Submitted' : 'Pending upload'),
+                    beforeImageUrl: beforeUrl,
+                    afterImageUrl: afterUrl,
+                    wasteProofUrl: wasteUrl,
+                    beforeGps: c.beforeGps || null,
+                    afterGps: c.afterGps || null,
+                    wasteGps: c.wasteGps || null,
+                    locationLat: c.locationLat || null,
+                    locationLng: c.locationLng || null,
+                    proofStatus: { before: beforeUrl ? 'Pending' : 'Not Required', after: afterUrl ? 'Pending' : 'Pending upload', waste: wasteUrl ? 'Pending' : 'Pending upload' },
                   });
                 }
               }
@@ -5228,8 +5471,15 @@ export function OfficialManagementPage() {
   };
 
   const verifyComplaint = (complaint) => {
-    updateComplaintStatus(complaint._id, 'In Review');
-    showNotice('Complaint verified and moved into official review.');
+    updateComplaintStatus(complaint._id, 'Verified');
+    showNotice('Complaint verified and archived from pending review desk.');
+    Swal.fire({
+      icon: 'success',
+      title: 'Complaint Verified!',
+      text: 'Verified successfully! This item is now moved out of the active review desk.',
+      confirmButtonColor: '#10b981',
+      timer: 2200,
+    });
   };
 
   const assignComplaint = (complaint) => {
@@ -5304,6 +5554,17 @@ export function OfficialManagementPage() {
     event.preventDefault();
     if (!maintenanceForm.title.trim() || !maintenanceForm.location.trim()) {
       showNotice('Add a task title and location before creating maintenance work.');
+      return;
+    }
+
+    const leaveCheck = checkCutterLeaveStatus(maintenanceForm.cutter, maintenanceForm.dueDate);
+    if (leaveCheck.isOnLeave) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Tree Cutter On Leave',
+        html: `<strong>${maintenanceForm.cutter}</strong> is currently on <strong>${leaveCheck.leaveType}</strong> (from <code>${leaveCheck.startDate}</code> to <code>${leaveCheck.endDate}</code>).<br/><br/>You cannot schedule tasks to a tree cutter while they are on leave. Please select an available tree cutter.`,
+        confirmButtonColor: '#ef4444'
+      });
       return;
     }
 
@@ -5818,11 +6079,36 @@ export function OfficialManagementPage() {
           {activeView === 'complaints' && (
             <section className="official-grid">
               <div className="cg-panel official-list" style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 240px)', overflow: 'hidden' }}>
-                <header style={{ flexShrink: 0 }}><h2>Public Complaints</h2><span>{loading ? 'Loading...' : `${complaints.length} records`}</span></header>
+                <header style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h2 style={{ margin: 0 }}>Public Complaints</h2>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      {loading ? 'Loading...' : `${processedComplaints.length} ${complaintFilter === 'pending' ? 'Pending Review' : complaintFilter === 'verified' ? 'Verified' : 'Total'}`}
+                    </span>
+                  </div>
+                  <select
+                    value={complaintFilter}
+                    onChange={e => setComplaintFilter(e.target.value)}
+                    style={{
+                      background: 'var(--bg-elevated, #1f2937)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border)',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="pending">Pending Review Only</option>
+                    <option value="verified">Verified / Resolved</option>
+                    <option value="all">All Complaints</option>
+                  </select>
+                </header>
                 <div style={{ overflowY: 'auto', flex: 1, paddingBottom: '16px' }}>
-                {complaints.length === 0 ? (
-                  <p className="official-empty">No complaints found. Start the backend server to view live submissions.</p>
-                ) : complaints.map(complaint => (
+                {processedComplaints.length === 0 ? (
+                  <p className="official-empty">No complaints matching filter "{complaintFilter}".</p>
+                ) : processedComplaints.map(complaint => (
                   <div
                     key={complaint._id}
                     className={`official-complaint-card ${selectedComplaint?._id === complaint._id ? 'selected' : ''}`}
@@ -5902,11 +6188,21 @@ export function OfficialManagementPage() {
                               fontWeight: 700
                             }}
                           >
-                            {getCutterOptions(complaint.assignedTo).map((cutter, idx) => (
-                              <option key={`assign-cutter-${cutter}-${idx}`} value={cutter}>
-                                {cutter} {cutter === complaint.assignedTo ? '(Currently Assigned)' : ''}
-                              </option>
-                            ))}
+                            {getCutterOptions(complaint.assignedTo).map((cutter, idx) => {
+                              const leaveInfo = checkCutterLeaveStatus(cutter);
+                              return (
+                                <option
+                                  key={`assign-cutter-${cutter}-${idx}`}
+                                  value={cutter}
+                                  disabled={leaveInfo.isOnLeave}
+                                  style={{ background: leaveInfo.isOnLeave ? '#450a0a' : '#0b2518', color: leaveInfo.isOnLeave ? '#f87171' : '#ffffff' }}
+                                >
+                                  {leaveInfo.isOnLeave
+                                    ? `⛔ ${cutter} (ON LEAVE - ${leaveInfo.startDate} to ${leaveInfo.endDate})`
+                                    : `${cutter}${cutter === complaint.assignedTo ? ' (Currently Assigned)' : ''}`}
+                                </option>
+                              );
+                            })}
                           </select>
                         </label>
 
@@ -5951,101 +6247,125 @@ export function OfficialManagementPage() {
                         </p>
                       )}
                       <div className="official-photo-review-v2">
-                        {/* Public Inspection Photo Card Item */}
-                        <div className="official-photo-card-item">
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Camera size={18} color="#52b788" />
-                                <b style={{ fontSize: '0.88rem', color: '#ffffff' }}>Public Inspection Photo</b>
+                        {(() => {
+                          const photo = resolveImageUrl(selectedComplaint.photoUrl || selectedComplaint.image || selectedComplaint.beforeImageUrl);
+                          const complaintLat = Number(selectedComplaint.locationLat || selectedComplaint.lat || selectedComplaint.latitude || selectedComplaint.beforeGps?.lat) || 13.3409;
+                          const complaintLng = Number(selectedComplaint.locationLng || selectedComplaint.lng || selectedComplaint.longitude || selectedComplaint.beforeGps?.lng) || 74.7421;
+                          const hasPhoto = Boolean(photo);
+
+                          return (
+                            <>
+                              {/* Public Inspection Photo Card Item */}
+                              <div className="official-photo-card-item">
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <Camera size={18} color="#52b788" />
+                                      <b style={{ fontSize: '0.88rem', color: '#ffffff' }}>Public Inspection Photo</b>
+                                    </div>
+                                    <span style={{ fontSize: '0.72rem', background: hasPhoto ? 'rgba(82, 183, 136, 0.18)' : 'rgba(245, 158, 11, 0.18)', color: hasPhoto ? '#52b788' : '#f59e0b', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                                      {hasPhoto ? 'Uploaded' : 'No Photo'}
+                                    </span>
+                                  </div>
+
+                                  {hasPhoto ? (
+                                    <div
+                                      onClick={() => setPreviewModal({
+                                        isOpen: true,
+                                        taskId: selectedComplaint._id ? selectedComplaint._id.slice(-6).toUpperCase() : 'CMP',
+                                        key: 'before',
+                                        label: `Public Complaint Image (${issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType || 'Issue'})`,
+                                        imageUrl: photo,
+                                        status: 'Submitted for Verification',
+                                        gps: { lat: complaintLat.toFixed(6), lng: complaintLng.toFixed(6) },
+                                        locationText: selectedComplaint.location || 'Field Location'
+                                      })}
+                                      style={{
+                                        height: '110px',
+                                        width: '100%',
+                                        borderRadius: '8px',
+                                        overflow: 'hidden',
+                                        position: 'relative',
+                                        cursor: 'pointer',
+                                        border: '1px solid rgba(82, 183, 136, 0.3)',
+                                        background: '#000'
+                                      }}
+                                      title="Click to inspect high-res photo"
+                                    >
+                                      <img
+                                        src={photo}
+                                        alt="Public complaint inspection"
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                      />
+                                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#ffffff', fontSize: '0.82rem', fontWeight: 600 }}>
+                                        <Eye size={16} /> Click to Inspect
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div style={{ height: '110px', width: '100%', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', padding: '10px', textAlign: 'center' }}>
+                                      <Camera size={24} style={{ opacity: 0.4, marginBottom: '4px' }} />
+                                      <span style={{ fontSize: '0.78rem' }}>No Photo Submitted with Complaint</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {hasPhoto && (
+                                  <button
+                                    className="cg-btn outline compact"
+                                    onClick={() => setPreviewModal({
+                                      isOpen: true,
+                                      taskId: selectedComplaint._id ? selectedComplaint._id.slice(-6).toUpperCase() : 'CMP',
+                                      key: 'before',
+                                      label: `Public Complaint Image (${issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType || 'Issue'})`,
+                                      imageUrl: photo,
+                                      status: 'Submitted for Verification',
+                                      gps: { lat: complaintLat.toFixed(6), lng: complaintLng.toFixed(6) },
+                                      locationText: selectedComplaint.location || 'Field Location'
+                                    })}
+                                    style={{ fontSize: '0.8rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '6px' }}
+                                  >
+                                    <Eye size={14} /> View Full Image
+                                  </button>
+                                )}
                               </div>
-                              <span style={{ fontSize: '0.72rem', background: 'rgba(82, 183, 136, 0.18)', color: '#52b788', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
-                                {selectedComplaint.photoUrl ? 'Uploaded' : 'Sample Photo'}
-                              </span>
-                            </div>
 
-                            <div
-                              onClick={() => setPreviewModal({
-                                isOpen: true,
-                                taskId: selectedComplaint._id.slice(-6).toUpperCase(),
-                                key: 'before',
-                                label: `Public Complaint Image (${issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType})`,
-                                imageUrl: selectedComplaint.photoUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80',
-                                status: 'Submitted for Verification'
-                              })}
-                              style={{
-                                height: '110px',
-                                width: '100%',
-                                borderRadius: '8px',
-                                overflow: 'hidden',
-                                position: 'relative',
-                                cursor: 'pointer',
-                                border: '1px solid rgba(82, 183, 136, 0.3)',
-                                background: '#000'
-                              }}
-                              title="Click to inspect high-res photo"
-                            >
-                              <img
-                                src={selectedComplaint.photoUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80'}
-                                alt="Public complaint inspection"
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              />
-                              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#ffffff', fontSize: '0.82rem', fontWeight: 600 }}>
-                                <Eye size={16} /> Click to Inspect
+                              {/* GPS Location Verification Card Item */}
+                              <div className="official-photo-card-item">
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <MapPin size={18} color="#60a5fa" />
+                                      <b style={{ fontSize: '0.88rem', color: '#ffffff' }}>GPS Field Verification</b>
+                                    </div>
+                                    <span style={{ fontSize: '0.72rem', background: 'rgba(59, 130, 246, 0.18)', color: '#60a5fa', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                                      📍 Geotagged
+                                    </span>
+                                  </div>
+
+                                  <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7', padding: 0, border: 'none' }}>
+                                    <b style={{ color: '#74c69d' }}>GPS Coordinates:</b> {complaintLat.toFixed(4)}° N, {complaintLng.toFixed(4)}° E
+                                  </p>
+                                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.4, padding: 0, border: 'none' }}>
+                                    GPS Geofence ensures the assigned tree cutter physically visits the exact location before task completion.
+                                  </p>
+                                </div>
+
+                                <button
+                                  className="cg-btn primary compact"
+                                  onClick={() => setGpsMapModal({
+                                    isOpen: true,
+                                    complaintTitle: issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType || 'Complaint',
+                                    locationName: selectedComplaint.location || 'Field Location',
+                                    coords: [complaintLat, complaintLng]
+                                  })}
+                                  style={{ fontSize: '0.8rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', marginTop: '6px' }}
+                                >
+                                  <Navigation size={14} /> Open GPS Location Map
+                                </button>
                               </div>
-                            </div>
-                          </div>
-
-                          <button
-                            className="cg-btn outline compact"
-                            onClick={() => setPreviewModal({
-                              isOpen: true,
-                              taskId: selectedComplaint._id.slice(-6).toUpperCase(),
-                              key: 'before',
-                              label: `Public Complaint Image (${issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType})`,
-                              imageUrl: selectedComplaint.photoUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=80',
-                              status: 'Submitted for Verification'
-                            })}
-                            style={{ fontSize: '0.8rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '6px' }}
-                          >
-                            <Eye size={14} /> View Full Image
-                          </button>
-                        </div>
-
-                        {/* GPS Location Verification Card Item */}
-                        <div className="official-photo-card-item">
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <MapPin size={18} color="#60a5fa" />
-                                <b style={{ fontSize: '0.88rem', color: '#ffffff' }}>GPS Field Verification</b>
-                              </div>
-                              <span style={{ fontSize: '0.72rem', background: 'rgba(59, 130, 246, 0.18)', color: '#60a5fa', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
-                                📍 Tagged
-                              </span>
-                            </div>
-
-                            <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7', padding: 0, border: 'none' }}>
-                              <b style={{ color: '#74c69d' }}>GPS Coordinates:</b> 13.3409° N, 74.7421° E
-                            </p>
-                            <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.4, padding: 0, border: 'none' }}>
-                              GPS Geofence ensures the assigned tree cutter physically visits the exact location before task completion.
-                            </p>
-                          </div>
-
-                          <button
-                            className="cg-btn primary compact"
-                            onClick={() => setGpsMapModal({
-                              isOpen: true,
-                              complaintTitle: issueLabels[selectedComplaint.issueType] || selectedComplaint.issueType,
-                              locationName: selectedComplaint.location || 'Padigaru Road, Doddana Gudde, Udupi',
-                              coords: [13.3409, 74.7421]
-                            })}
-                            style={{ fontSize: '0.8rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', marginTop: '6px' }}
-                          >
-                            <Navigation size={14} /> Open GPS Location Map
-                          </button>
-                        </div>
+                            </>
+                          );
+                        })()}
                       </div>
                       <label className="official-field">
                         {selectedComplaint.assignedTo ? `Re-assign tree cutter (Currently: ${selectedComplaint.assignedTo})` : 'Assign tree cutter'}
@@ -6056,6 +6376,7 @@ export function OfficialManagementPage() {
                               <option
                                 key={`desk-cutter-${cutter}-${idx}`}
                                 value={cutter}
+                                disabled={leaveInfo.isOnLeave}
                                 style={{ background: leaveInfo.isOnLeave ? '#450a0a' : '#0b2518', color: leaveInfo.isOnLeave ? '#fca5a5' : '#ffffff' }}
                               >
                                 {leaveInfo.isOnLeave ? `⛔ ${cutter} (ON LEAVE - ${leaveInfo.startDate} to ${leaveInfo.endDate})` : `${cutter} ${cutter === selectedComplaint.assignedTo ? '(Currently Assigned)' : ''}`}
@@ -6233,6 +6554,9 @@ export function OfficialManagementPage() {
                           ].map(([key, label, value]) => {
                             const imgUrl = getProofImageUrl(task, key);
                             const isVerified = proofState[key] === 'Verified';
+                            const proofGps = getProofGps(task, key);
+                            const proofLoc = key === 'waste' ? (task.dumpingLocation || 'Government Waste Yard') : (task.location || 'Field Location');
+
                             return (
                               <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', gap: '10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -6255,13 +6579,21 @@ export function OfficialManagementPage() {
                                       key,
                                       label,
                                       imageUrl: imgUrl,
-                                      status: proofState[key] || 'Pending'
+                                      status: proofState[key] || 'Pending',
+                                      gps: proofGps,
+                                      locationText: proofLoc
                                     })}
                                   >
-                                    <img src={imgUrl} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      <Eye size={14} color="#fff" />
-                                    </div>
+                                     {imgUrl ? (
+                                       <img src={imgUrl} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                     ) : (
+                                       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: '#6b7280' }}>
+                                         <Camera size={14} />
+                                       </div>
+                                     )}
+                                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                       <Eye size={14} color="#fff" />
+                                     </div>
                                   </div>
                                   <div>
                                     <b style={{ display: 'block', fontSize: '13px' }}>{label}</b>
@@ -6289,7 +6621,9 @@ export function OfficialManagementPage() {
                                       key,
                                       label,
                                       imageUrl: imgUrl,
-                                      status: proofState[key] || 'Pending'
+                                      status: proofState[key] || 'Pending',
+                                      gps: proofGps,
+                                      locationText: proofLoc
                                     })}
                                   >
                                     <Eye size={13} /> View
@@ -6396,12 +6730,24 @@ export function OfficialManagementPage() {
                 <X size={22} />
               </button>
             </div>
-            <div style={{ padding: '20px', textAlign: 'center', background: '#000' }}>
-              <img
-                src={previewModal.imageUrl}
-                alt={previewModal.label}
-                style={{ maxHeight: '55vh', maxWidth: '100%', borderRadius: '8px', objectFit: 'contain', border: '1px solid rgba(255,255,255,0.1)' }}
-              />
+            <div style={{ padding: '16px', background: '#04100c' }}>
+              {resolveImageUrl(previewModal.imageUrl) ? (
+                <div style={{ maxWidth: '620px', margin: '0 auto' }}>
+                  <GeoTaggedImageProof
+                    imageUrl={previewModal.imageUrl}
+                    gps={previewModal.gps || { lat: '13.340900', lng: '74.742100' }}
+                    locationText={previewModal.locationText || 'Field Geotagged Location'}
+                    altText={previewModal.label}
+                    proofLabel={previewModal.label}
+                  />
+                </div>
+              ) : (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af' }}>
+                  <Camera size={44} style={{ opacity: 0.4, marginBottom: '12px' }} />
+                  <h4 style={{ color: '#ffffff', margin: '0 0 6px', fontSize: '1rem' }}>No Photo Uploaded for this Stage</h4>
+                  <p style={{ margin: 0, fontSize: '0.85rem' }}>The assigned tree cutter has not uploaded a proof photo for {previewModal.label} yet.</p>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '12px', padding: '16px 20px', justifyContent: 'flex-end', borderTop: '1px solid var(--border, #1f2937)' }}>
               <button
@@ -10124,6 +10470,25 @@ export function AttendancePage() {
     }
   };
 
+  const handleDeleteLeave = async (leaveId) => {
+    const confirm = await Swal.fire({
+      title: 'Remove Leave Application?',
+      text: 'Are you sure you want to delete this leave request from MongoDB database?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Yes, Delete'
+    });
+    if (!confirm.isConfirmed) return;
+    try {
+      await fetch(`${API_URL}/api/attendance/leaves/${leaveId}`, { method: 'DELETE' });
+      setLeaveRequests(prev => prev.filter(l => l._id !== leaveId));
+      Swal.fire({ icon: 'success', title: 'Leave Application Removed', timer: 1800, showConfirmButton: false });
+    } catch (err) {
+      console.error('Delete leave error:', err);
+    }
+  };
+
   const shiftInfo = [
     { name: 'Morning', hours: '9:00 AM – 12:00 PM', icon: <Sun size={18} /> },
     { name: 'Afternoon', hours: '12:00 PM – 3:00 PM', icon: <Sun size={18} /> },
@@ -10707,28 +11072,38 @@ export function AttendancePage() {
                             </span>
                           </td>
                           <td>
-                            {l.status === 'Pending' ? (
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <button
-                                  className="cg-btn primary compact"
-                                  style={{ padding: '3px 8px', fontSize: '0.75rem' }}
-                                  onClick={() => updateLeaveStatus(l._id, 'Approved')}
-                                >
-                                  ✓ Approve
-                                </button>
-                                <button
-                                  className="cg-btn outline compact"
-                                  style={{ padding: '3px 8px', fontSize: '0.75rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171' }}
-                                  onClick={() => updateLeaveStatus(l._id, 'Rejected')}
-                                >
-                                  ❌ Reject
-                                </button>
-                              </div>
-                            ) : (
-                              <span style={{ fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>
-                                Processed ({l.reviewedBy || 'Official'})
-                              </span>
-                            )}
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              {l.status === 'Pending' ? (
+                                <>
+                                  <button
+                                    className="cg-btn primary compact"
+                                    style={{ padding: '3px 8px', fontSize: '0.75rem' }}
+                                    onClick={() => updateLeaveStatus(l._id, 'Approved')}
+                                  >
+                                    ✓ Approve
+                                  </button>
+                                  <button
+                                    className="cg-btn outline compact"
+                                    style={{ padding: '3px 8px', fontSize: '0.75rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171' }}
+                                    onClick={() => updateLeaveStatus(l._id, 'Rejected')}
+                                  >
+                                    ❌ Reject
+                                  </button>
+                                </>
+                              ) : (
+                                <span style={{ fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic', marginRight: '6px' }}>
+                                  Processed ({l.reviewedBy || 'Official'})
+                                </span>
+                              )}
+                              <button
+                                className="cg-btn outline compact"
+                                style={{ padding: '3px 8px', fontSize: '0.75rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171' }}
+                                onClick={() => handleDeleteLeave(l._id)}
+                                title="Remove leave application"
+                              >
+                                🗑️ Remove
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -12448,6 +12823,90 @@ export function AddPropertyPage() {
   );
 }
 
+const resolveEquipmentImageUrl = (imageUrl, category = '', name = '') => {
+  if (imageUrl) {
+    const normalized = imageUrl.replace(/\\/g, '/').trim();
+    if (normalized.includes('photo-1590283603385-17ffb3a7f29f')) {
+      return 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80';
+    }
+    if (normalized.includes('photo-1541888946425-d0fbb186a5b7') || normalized.includes('photo-1581092160607')) {
+      return 'https://images.unsplash.com/photo-1578885136359-16c8bd4d3a8e?w=600&auto=format&fit=crop&q=80';
+    }
+    if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
+    if (normalized.startsWith('/uploads/')) return `http://localhost:5000${normalized}`;
+    if (normalized.startsWith('uploads/')) return `http://localhost:5000/${normalized}`;
+    const uploadsIndex = normalized.indexOf('/uploads/');
+    if (uploadsIndex !== -1) return `http://localhost:5000${normalized.slice(uploadsIndex)}`;
+    const filename = normalized.split('/').pop();
+    if (filename) return `http://localhost:5000/uploads/${filename}`;
+  }
+
+  const nameLower = String(name || '').toLowerCase();
+  const catLower = String(category || '').toLowerCase();
+
+  if (nameLower.includes('saw') || catLower.includes('saw') || catLower.includes('cutting') || nameLower.includes('chainsaw')) {
+    return 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80';
+  }
+  if (nameLower.includes('harness') || nameLower.includes('climbing') || catLower.includes('climbing')) {
+    return 'https://images.unsplash.com/photo-1578885136359-16c8bd4d3a8e?w=600&auto=format&fit=crop&q=80';
+  }
+  if (nameLower.includes('shoe') || nameLower.includes('boot') || catLower.includes('footwear')) {
+    return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80';
+  }
+  if (nameLower.includes('sickle') || nameLower.includes('cutter') || nameLower.includes('pruner') || catLower.includes('trimming')) {
+    return 'https://images.unsplash.com/photo-1592417817098-8f3d6eb1b7a5?w=600&auto=format&fit=crop&q=80';
+  }
+  if (nameLower.includes('wheelbarrow') || nameLower.includes('cart') || catLower.includes('hauling')) {
+    return 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=600&auto=format&fit=crop&q=80';
+  }
+  if (nameLower.includes('glass') || catLower.includes('eye') || nameLower.includes('goggles')) {
+    return 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80';
+  }
+  if (nameLower.includes('glove')) {
+    return 'https://images.unsplash.com/photo-1617957772097-873523f6667d?w=600&auto=format&fit=crop&q=80';
+  }
+  if (nameLower.includes('rope') || catLower.includes('rope')) {
+    return 'https://images.unsplash.com/photo-1516900557549-41557d405adf?w=600&auto=format&fit=crop&q=80';
+  }
+  return 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=600&auto=format&fit=crop&q=80';
+};
+
+const EquipmentImage = memo(({ src, alt, category, name, size = '64px' }) => {
+  const [hasErr, setHasErr] = useState(false);
+  const url = resolveEquipmentImageUrl(src, category, name);
+
+  if (hasErr || !url) {
+    return (
+      <div style={{
+        width: size,
+        height: size,
+        borderRadius: '12px',
+        background: 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(5,150,105,0.3) 100%)',
+        border: '1px solid rgba(16,185,129,0.4)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#34d399',
+        gap: '3px',
+        flexShrink: 0
+      }}>
+        <Wrench size={20} />
+        <span style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Tool</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt={alt || name || 'Equipment'}
+      onError={() => setHasErr(true)}
+      style={{ width: size, height: size, objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border)', flexShrink: 0 }}
+    />
+  );
+});
+
 export function PurchaseEquipmentPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [properties, setProperties] = useState([]);
@@ -12727,6 +13186,12 @@ export function PurchaseEquipmentPage() {
   const resolveImageUrl = (imageUrl, category = '', name = '') => {
     if (imageUrl) {
       const normalized = imageUrl.replace(/\\/g, '/').trim();
+      if (normalized === 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600&auto=format&fit=crop&q=80') {
+        return 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&auto=format&fit=crop&q=80';
+      }
+      if (normalized === 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=600&auto=format&fit=crop&q=80') {
+        return 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80';
+      }
       if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
       if (normalized.startsWith('/uploads/')) return `${apiBase}${normalized}`;
       if (normalized.startsWith('uploads/')) return `${apiBase}/${normalized}`;
@@ -12738,54 +13203,21 @@ export function PurchaseEquipmentPage() {
     const nameLower = String(name || '').toLowerCase();
     const catLower = String(category || '').toLowerCase();
     if (nameLower.includes('saw') || catLower.includes('saw') || catLower.includes('cutting') || catLower.includes('power')) {
-      return 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600&auto=format&fit=crop&q=80';
+      return 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&auto=format&fit=crop&q=80';
     }
     if (nameLower.includes('harness') || nameLower.includes('helmet') || catLower.includes('safety') || catLower.includes('climbing')) {
-      return 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=600&auto=format&fit=crop&q=80';
+      return 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80';
     }
-    return 'https://images.unsplash.com/photo-1508873696983-2df5057c0861?w=600&auto=format&fit=crop&q=80';
+    if (nameLower.includes('glass') || catLower.includes('eye')) {
+      return 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80';
+    }
+    if (nameLower.includes('glove')) {
+      return 'https://images.unsplash.com/photo-1617957772097-873523f6667d?w=600&auto=format&fit=crop&q=80';
+    }
+    return 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80';
   };
 
-  const EquipmentImage = ({ src, alt, category, name, size = '72px' }) => {
-    const [hasErr, setHasErr] = useState(false);
-    const url = resolveImageUrl(src, category, name);
-
-    if (hasErr || !url) {
-      return (
-        <div style={{
-          width: size,
-          height: size,
-          borderRadius: '12px',
-          background: 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(5,150,105,0.3) 100%)',
-          border: '1px solid rgba(16,185,129,0.4)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#34d399',
-          gap: '3px',
-          flexShrink: 0
-        }}>
-          <Wrench size={22} />
-          <span style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Tool</span>
-        </div>
-      );
-    }
-
-    return (
-      <img
-        src={url}
-        alt={alt || name || 'Equipment'}
-        onError={() => setHasErr(true)}
-        style={{ width: size, height: size, objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border)', flexShrink: 0 }}
-      />
-    );
-  };
-
-  // Available Items Filter
-  const availableItems = properties.filter(prop => prop.status !== 'Deleted');
-
-  // Borrowed Items Filter: Matches API purchaseRequests + LocalStorage cutter_borrowed_tools + default arborist tools
+  // Always merge default arborist tools for Tree Cutters unless returned
   const borrowedItems = useMemo(() => {
     const localList = (() => {
       try { return JSON.parse(localStorage.getItem(`cutter_borrowed_tools_${currentUserId}`) || '[]'); }
@@ -12820,54 +13252,14 @@ export function PurchaseEquipmentPage() {
       }
     });
 
-    // Always merge default arborist tools for Tree Cutters unless returned
-    if (isCutter) {
-      const defaultTools = [
-        {
-          _id: 'prop-stihl-500i',
-          name: 'STIHL MS 500i Heavy Duty Chainsaw',
-          category: 'Power Equipment',
-          status: 'Checked Out',
-          serialNumber: 'EQ-STL-8821',
-          imageUrl: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600&auto=format&fit=crop&q=80',
-          description: 'Heavy duty professional arborist chainsaw for emergency tree branch removal.',
-          purchaseRequests: [
-            {
-              userId: currentUserId || 'snow-id',
-              username: cutterName,
-              userName: cutterName,
-              requestedAt: new Date(Date.now() - 3.5 * 3600 * 1000).toISOString()
-            }
-          ]
-        },
-        {
-          _id: 'prop-harness-kit',
-          name: 'Arborist Safety Harness & Climbing Helmet',
-          category: 'Safety Equipment',
-          status: 'Checked Out',
-          serialNumber: 'EQ-SAF-4402',
-          imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=600&auto=format&fit=crop&q=80',
-          description: 'Full-body safety climbing harness & certified helmet kit.',
-          purchaseRequests: [
-            {
-              userId: currentUserId || 'snow-id',
-              username: cutterName,
-              userName: cutterName,
-              requestedAt: new Date(Date.now() - 2.1 * 3600 * 1000).toISOString()
-            }
-          ]
-        }
-      ];
-
-      defaultTools.forEach(tool => {
-        if (!returnedList.includes(tool._id) && !map.has(tool._id)) {
-          map.set(tool._id, tool);
-        }
-      });
-    }
-
     return Array.from(map.values());
-  }, [properties, currentUserId, currentUserNameLower, isCutter, cutterName]);
+  }, [properties, currentUserId, currentUserNameLower]);
+
+  const availableItems = useMemo(() => {
+    const list = properties && properties.length > 0 ? properties : DEFAULT_PROPERTIES;
+    const borrowedIds = borrowedItems.map(b => String(b._id || b.id));
+    return list.filter(p => !borrowedIds.includes(String(p._id || p.id)));
+  }, [properties, DEFAULT_PROPERTIES, borrowedItems]);
 
   // Precise Live Return Countdown Timer (HH:MM:SS)
   const getRemainingTimeDetails = (requestedAt) => {
@@ -12912,7 +13304,7 @@ export function PurchaseEquipmentPage() {
     };
   };
 
-  // ── Automatic 1-Hour Deadline Pop-Up Notification & Email Trigger ──
+  // ── Automatic 1-Hour & Overdue Return Deadline Pop-Up Alert & Email Dispatcher ──
   useEffect(() => {
     if (!isCutter || borrowedItems.length === 0) return;
 
@@ -12921,28 +13313,74 @@ export function PurchaseEquipmentPage() {
         (r.userId && r.userId === currentUserId) ||
         (r.userName && r.userName.toLowerCase().includes(currentUserNameLower)) ||
         (r.username && r.username.toLowerCase().includes(currentUserNameLower))
-      ) || item.purchaseRequests?.[0] || { requestedAt: new Date(Date.now() - 23 * 3600 * 1000 - 5 * 60 * 1000).toISOString() };
+      ) || item.purchaseRequests?.[0] || { requestedAt: new Date(Date.now() - 24.5 * 3600 * 1000).toISOString() };
 
       const timeDetails = getRemainingTimeDetails(userReq?.requestedAt);
+      const cutterEmail = currentUser.email || currentUser.emailId || localStorage.getItem('userEmail') || `${currentUserNameLower}@udupimunicipal.gov.in`;
 
-      if (timeDetails.isWarning1Hour && !timeDetails.isOverdue) {
-        const notifKey = `cutter_warn_notif_${item._id}_${cutterName}`;
+      // 1. OVERDUE EMAIL & ALERT DISPATCH
+      if (timeDetails.isOverdue) {
+        const overdueNotifKey = `cutter_overdue_notif_${item._id || item.id}_${cutterName}`;
+        const alreadyNotifiedOverdue = localStorage.getItem(overdueNotifKey);
+
+        if (!alreadyNotifiedOverdue) {
+          localStorage.setItem(overdueNotifKey, new Date().toISOString());
+
+          Swal.fire({
+            icon: 'error',
+            title: '🚨 EQUIPMENT OVERDUE - IMMEDIATE RETURN REQUIRED!',
+            html: `
+              <div style="text-align: left; font-size: 0.92rem; line-height: 1.5; color: #1e293b;">
+                <p style="margin-top:0;">Urgent Notice for Arborist <b>${cutterName}</b>,</p>
+                <div style="background: #fef2f2; border: 2px solid #ef4444; padding: 14px; border-radius: 10px; margin-bottom: 12px;">
+                  <b style="color: #991b1b; font-size: 1rem;">Overdue Tool: ${item.name}</b><br/>
+                  <span style="color: #dc2626; font-weight: 800;">Status: EXPIRED 24-HOUR RETURN DEADLINE</span><br/>
+                  <small style="color: #64748b;">Return Deadline Was: ${timeDetails.dueStr}</small>
+                </div>
+                <p style="margin-bottom: 8px;">
+                  📧 <b>Urgent Overdue Reminder Email Dispatched To:</b> <code>${cutterEmail}</code>
+                </p>
+                <p style="margin-bottom: 0; font-size: 0.85rem; color: #991b1b; font-weight: bold;">
+                  Please submit and return this equipment to the Municipal Property Depot immediately to prevent penalty locks on your account.
+                </p>
+              </div>
+            `,
+            confirmButtonText: 'Return Tool Now',
+            confirmButtonColor: '#ef4444'
+          });
+
+          // Dispatch Email to Backend API
+          fetch(`${API_URL}/api/notifications/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: cutterEmail,
+              subject: `🚨 OVERDUE URGENT: Return Required for Municipal Equipment - ${item.name}`,
+              body: `DEPT NOTICE - URGENT OVERDUE\n\nDear ${cutterName},\n\nYour borrowed equipment "${item.name}" has EXPIRED its 24-hour return deadline (${timeDetails.dueStr}).\n\nPlease submit and return the tool back to Municipal Equipment Depot immediately.\n\nCanopyGuard Municipal Management System`
+            })
+          }).then(res => res.json()).then(data => {
+            console.log('Overdue reminder email dispatched:', data);
+          }).catch(e => console.log('Overdue email send note:', e.message));
+        }
+      }
+
+      // 2. 1-HOUR WARNING EMAIL & ALERT DISPATCH
+      else if (timeDetails.isWarning1Hour) {
+        const notifKey = `cutter_warn_notif_${item._id || item.id}_${cutterName}`;
         const alreadyNotified = localStorage.getItem(notifKey);
 
         if (!alreadyNotified) {
           localStorage.setItem(notifKey, new Date().toISOString());
-          const cutterEmail = currentUser.email || `${currentUserNameLower}@udupimunicipal.gov.in`;
 
-          // 1. Trigger Pop-Up Alert Modal for Tree Cutter
           Swal.fire({
             icon: 'warning',
             title: '⚠️ EQUIPMENT RETURN DEADLINE (1 HOUR LEFT)',
             html: `
               <div style="text-align: left; font-size: 0.92rem; line-height: 1.5; color: #1e293b;">
                 <p style="margin-top:0;">Attention Arborist <b>${cutterName}</b>,</p>
-                <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 14px; border-radius: 10px; margin-bottom: 12px;">
-                  <b style="color: #991b1b; font-size: 1rem;">Borrowed Tool: ${item.name}</b><br/>
-                  <span style="color: #dc2626; font-weight: 800;">Time Remaining: ${timeDetails.diffMins} minutes ${timeDetails.diffSecs} seconds</span><br/>
+                <div style="background: #fffbebfb; border: 1px solid #fcd34d; padding: 14px; border-radius: 10px; margin-bottom: 12px;">
+                  <b style="color: #92400e; font-size: 1rem;">Borrowed Tool: ${item.name}</b><br/>
+                  <span style="color: #d97706; font-weight: 800;">Time Remaining: ${timeDetails.diffMins} minutes ${timeDetails.diffSecs} seconds</span><br/>
                   <small style="color: #64748b;">Return Deadline: ${timeDetails.dueStr}</small>
                 </div>
                 <p style="margin-bottom: 8px;">
@@ -12954,10 +13392,10 @@ export function PurchaseEquipmentPage() {
               </div>
             `,
             confirmButtonText: 'I Will Return Equipment Now',
-            confirmButtonColor: '#dc2626'
+            confirmButtonColor: '#d97706'
           });
 
-          // 2. Dispatch Automated Email Notification
+          // Dispatch Email to Backend API
           fetch(`${API_URL}/api/notifications/send-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -12966,7 +13404,9 @@ export function PurchaseEquipmentPage() {
               subject: `⚠️ URGENT: Equipment Return Deadline in 1 Hour - ${item.name}`,
               body: `Dear ${cutterName},\n\nYour borrowed equipment "${item.name}" must be returned within 1 hour (Deadline: ${timeDetails.dueStr}).\n\nPlease submit and return the tool to the Municipal Equipment Depot immediately.\n\nCanopyGuard Municipal System`
             })
-          }).catch(e => console.log('Email dispatched:', e));
+          }).then(res => res.json()).then(data => {
+            console.log('1-Hour warning email dispatched:', data);
+          }).catch(e => console.log('Email dispatched note:', e.message));
         }
       }
     });

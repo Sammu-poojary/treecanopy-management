@@ -40,7 +40,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
-  const [filter, setFilter] = useState('all'); // 'all' | 'unread'
+  const [filter, setFilter] = useState('unread'); // 'unread' | 'all'
   const [isClearing, setIsClearing] = useState(false);
   const panelRef = useRef(null);
 
@@ -126,6 +126,22 @@ export default function NotificationBell() {
         body: JSON.stringify({ userId: currentUser.id, role: currentUser.role }),
       });
       setNotifications(prev => prev.filter(n => !n.isRead));
+    } catch (_) {}
+    finally {
+      setIsClearing(false);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    setIsClearing(true);
+    try {
+      await fetch(`${API_URL}/api/notifications/clear-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id, role: currentUser.role }),
+      });
+      setNotifications([]);
+      setUnreadCount(0);
     } catch (_) {}
     finally {
       setIsClearing(false);
@@ -326,27 +342,50 @@ export default function NotificationBell() {
               </button>
             </div>
 
-            {notifications.some(n => n.isRead) && (
-              <button
-                onClick={clearReadNotifications}
-                disabled={isClearing}
-                title="Remove all read notifications"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#ef4444',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-                type="button"
-              >
-                <Trash2 size={13} /> Clear Read
-              </button>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {notifications.some(n => n.isRead) && (
+                <button
+                  onClick={clearReadNotifications}
+                  disabled={isClearing}
+                  title="Remove all read notifications"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ef4444',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                  type="button"
+                >
+                  <Trash2 size={13} /> Clear Read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={clearAllNotifications}
+                  disabled={isClearing}
+                  title="Clear all notifications"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                  type="button"
+                >
+                  <Trash2 size={13} /> Clear All
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Notification List */}

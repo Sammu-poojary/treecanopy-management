@@ -260,7 +260,7 @@ export default function TreeCutterAttendancePage() {
       startDate: leaveForm.startDate,
       endDate: leaveForm.endDate,
       totalDays: diffDays,
-      reason: leaveForm.reason || `${leaveForm.leaveType} requested by tree cutter.`,
+      reason: leaveForm.reason.trim() || `${leaveForm.leaveType} application for ${cutterName}`,
       status: 'Approved', // Auto-activated for field cutters so assignment blocking is instant
       createdAt: new Date().toISOString()
     };

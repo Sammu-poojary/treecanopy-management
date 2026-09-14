@@ -5,7 +5,7 @@ import {
   UserCheck, Sparkles, CheckCircle2, ChevronRight, X, Clock, HelpCircle,
   FileText, Calendar, Database, Crosshair, Layers, ExternalLink, Compass, Navigation2
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import Swal from 'sweetalert2';
 
@@ -48,10 +48,21 @@ function LocationMarker({ position, setPosition }) {
   ) : null;
 }
 
+// MapFlyTo: auto-pans map to real location at zoom 15 when GPS resolves
+function MapFlyTo({ position }) {
+  const map = useMap();
+  useEffect(() => { map.flyTo(position, 15); }, [position[0], position[1]]);
+  return null;
+}
+
 // Leaflet Directions & In-App Turn-by-Turn Navigation Modal Component
 function LeafletDirectionsModal({ viewMapModal, setViewMapModal, theme, darkMode }) {
   const [userPos, setUserPos] = useState([13.3500, 74.7500]);
   const [gettingLocation, setGettingLocation] = useState(true);
+  const [gpsReady, setGpsReady] = useState(false);
+  const [gpsError, setGpsError] = useState(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [gpsSource, setGpsSource] = useState(null);
   const [routePolyline, setRoutePolyline] = useState([]);
   const [navigationSteps, setNavigationSteps] = useState([]);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
@@ -65,21 +76,44 @@ function LeafletDirectionsModal({ viewMapModal, setViewMapModal, theme, darkMode
   const destLng = viewMapModal.lng || 74.7421;
   const destPos = useMemo(() => [destLat, destLng], [destLat, destLng]);
 
+  const startGPS = async () => {
+    if (!('geolocation' in navigator)) {
+      setGpsError('HTML5 Geolocation not supported by browser.');
+      setGettingLocation(false);
+      return null;
+    }
+    setGpsError(null);
+    const onSuccess = (pos) => {
+      setUserPos([pos.coords.latitude, pos.coords.longitude]);
+      setGpsAccuracy(Math.round(pos.coords.accuracy));
+      setGpsReady(true);
+      setGpsSource('device');
+      setGpsError(null);
+      setGettingLocation(false);
+    };
+    const onError = (err) => {
+      let msg = 'Using field destination target view.';
+      if (err.code === 1) msg = 'Location permission denied by browser.';
+      else if (err.code === 2) msg = 'GPS signal unavailable.';
+      else if (err.code === 3) msg = 'GPS request timed out.';
+      setGpsError(msg);
+      setGettingLocation(false);
+    };
+    const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, opts);
+    const watchId = navigator.geolocation.watchPosition(onSuccess, (err) => {
+      if (err.code === 1) setGpsError('Location permission denied.');
+    }, opts);
+    return watchId;
+  };
+
   // Geolocation detection
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserPos([pos.coords.latitude, pos.coords.longitude]);
-          setGettingLocation(false);
-        },
-        () => {
-          setGettingLocation(false);
-        }
-      );
-    } else {
-      setGettingLocation(false);
-    }
+    let watchId = null;
+    startGPS().then(id => { watchId = id; });
+    return () => {
+      if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   // Fetch real road route from OpenSource OSRM Routing Engine
@@ -320,18 +354,39 @@ function LeafletDirectionsModal({ viewMapModal, setViewMapModal, theme, darkMode
           gap: '16px', minHeight: '380px'
         }}>
           {/* Leaflet Map Canvas */}
-          <div style={{ height: '400px', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${theme.border}`, position: 'relative' }}>
+          <div style={{ height: '420px', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${theme.border}`, position: 'relative' }}>
+            {gpsError && (
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000,
+                padding: '8px 14px',
+                background: gpsSource === 'ip' ? 'rgba(30,58,95,0.95)' : 'rgba(127,29,29,0.95)',
+                color: gpsSource === 'ip' ? '#93c5fd' : '#fca5a5',
+                fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', gap: '8px'
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertTriangle size={14} color={gpsSource === 'ip' ? '#60a5fa' : '#f87171'} />
+                  {gpsError}
+                </span>
+                <button
+                  onClick={() => startGPS()}
+                  style={{ padding: '3px 10px', borderRadius: '6px', background: gpsSource === 'ip' ? '#2563eb' : '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
+                >
+                  <RefreshCw size={11} /> Retry GPS
+                </button>
+              </div>
+            )}
             <MapContainer
               bounds={routePolyline.length > 0 ? routePolyline : [userPos, destPos]}
-              padding={[40, 40]}
-              style={{ width: '100%', height: '100%' }}
+              padding={[50, 50]}
+              style={{ width: '100%', height: '420px' }}
             >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              
-              {/* Current User Marker */}
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+              {gpsReady && <MapFlyTo position={userPos} />}
               <Marker position={userPos}>
-                <Popup>📍 Current Starting Location</Popup>
+                <Popup>📍 Current Starting Location ({gpsSource === 'ip' ? 'Approximate IP' : 'GPS'}) — {userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}</Popup>
               </Marker>
+              {gpsReady && gpsAccuracy && <Circle center={userPos} radius={gpsAccuracy} color={gpsSource === 'ip' ? '#3b82f6' : '#10b981'} fillOpacity={0.1} weight={1} />}
 
               {/* Destination Marker */}
               <Marker position={destPos} ref={(r) => r && setTimeout(() => r.openPopup(), 300)}>
@@ -1088,11 +1143,37 @@ export function CommunicationHub({ defaultRole }) {
                     const cType = m.contextType;
 
                     const openMapModalForMessage = () => {
+                      let lat = Number(m.locationLat || m.lat || m.latitude);
+                      let lng = Number(m.locationLng || m.lng || m.longitude);
+
+                      // Parse regex coordinates from text if direct fields missing
+                      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+                        const fullText = `${m.message || ''} ${m.locationAddress || ''} ${m.relatedTaskLocation || ''}`;
+                        const match = fullText.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+                        if (match) {
+                          lat = parseFloat(match[1]);
+                          lng = parseFloat(match[2]);
+                        }
+                      }
+
+                      // Check related task if coordinates still not resolved
+                      if ((isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) && m.relatedTaskId) {
+                        const allTasks = partners.flatMap(p => p.tasks || []);
+                        const rel = allTasks.find(t => String(t.id || t._id) === String(m.relatedTaskId));
+                        if (rel) {
+                          lat = Number(rel.locationLat || rel.lat || rel.latitude || rel.beforeGps?.lat);
+                          lng = Number(rel.locationLng || rel.lng || rel.longitude || rel.beforeGps?.lng);
+                        }
+                      }
+
+                      const finalLat = !isNaN(lat) && lat !== 0 ? lat : 13.3409;
+                      const finalLng = !isNaN(lng) && lng !== 0 ? lng : 74.7421;
+
                       setViewMapModal({
-                        lat: m.locationLat || 13.3409,
-                        lng: m.locationLng || 74.7421,
-                        address: m.locationAddress || m.message,
-                        title: m.senderName
+                        lat: finalLat,
+                        lng: finalLng,
+                        address: m.locationAddress || m.relatedTaskLocation || m.message || 'Shared Location',
+                        title: m.relatedTaskTitle || m.senderName || 'Location Details'
                       });
                     };
 

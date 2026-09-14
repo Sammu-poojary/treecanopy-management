@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import Swal from 'sweetalert2';
 import { Topbar, Sidebar } from './CanopyPages';
@@ -26,7 +26,9 @@ import {
   Zap,
   Truck,
   Target,
-  Wrench
+  Wrench,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 
 // Fix Leaflet default marker icon issue safely
@@ -96,28 +98,44 @@ function GeoTaggedImageProof({ imageUrl, gps, locationText, altText, proofLabel 
   });
 
   return (
-    <div className="photo-proof-card" style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(16,185,129,0.35)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', background: '#051d18' }}>
+    <div className="photo-proof-card" style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(16,185,129,0.35)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', background: '#020f0d' }}>
       {/* Top Header Watermark Badge */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-        background: 'linear-gradient(180deg, rgba(5,29,24,0.9) 0%, rgba(5,29,24,0) 100%)',
-        padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        backdropFilter: 'blur(4px)'
+        background: 'linear-gradient(180deg, rgba(2,15,13,0.88) 0%, rgba(2,15,13,0) 100%)',
+        padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        pointerEvents: 'none'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', fontWeight: 800, color: '#34d399', letterSpacing: '0.04em' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', fontWeight: 800, color: '#34d399', letterSpacing: '0.04em' }}>
           <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
           CANOPYGUARD FIELD TELEMETRY
         </div>
-        <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace', fontWeight: 700, background: 'rgba(0,0,0,0.65)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.18)' }}>
+        <span style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace', fontWeight: 700, background: 'rgba(0,0,0,0.65)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.18)' }}>
           VERIFIED RECORD #GPS-AUDIT
         </span>
       </div>
 
+      {/* Ambient Blurred Background (to fill aspect ratio gaps seamlessly) */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', filter: 'blur(20px) brightness(0.35)',
+          transform: 'scale(1.2)', pointerEvents: 'none'
+        }}
+      />
+
+      {/* Full Crisp Uncropped Image */}
       <img
         src={src}
         alt={altText || 'Geo-tagged field proof'}
         className="photo-proof-img"
-        style={{ width: '100%', height: '240px', objectFit: 'cover', display: 'block' }}
+        style={{
+          position: 'relative', zIndex: 2, width: '100%', height: 'auto',
+          maxHeight: '520px', minHeight: '260px', objectFit: 'contain', display: 'block', margin: '0 auto'
+        }}
         onError={(e) => {
           if (imageUrl && !e.target.dataset.triedFallback) {
             e.target.dataset.triedFallback = 'true';
@@ -129,36 +147,36 @@ function GeoTaggedImageProof({ imageUrl, gps, locationText, altText, proofLabel 
       {/* Bottom HUD Overlay */}
       <div className="photo-proof-overlay" style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
-        background: 'linear-gradient(0deg, rgba(6,26,20,0.96) 0%, rgba(6,26,20,0.75) 75%, rgba(6,26,20,0) 100%)',
-        padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px',
-        backdropFilter: 'blur(6px)', borderTop: '1px solid rgba(52,211,153,0.2)'
+        background: 'linear-gradient(0deg, rgba(2,15,13,0.95) 0%, rgba(2,15,13,0.7) 70%, rgba(2,15,13,0) 100%)',
+        padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '6px',
+        borderTop: '1px solid rgba(52,211,153,0.15)'
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
           <span className="geo-tag-pill" style={{
             display: 'inline-flex', alignItems: 'center', gap: '5px',
             background: 'rgba(16,185,129,0.25)', border: '1px solid #10b981', color: '#34d399',
-            padding: '4px 12px', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 800
+            padding: '3px 10px', borderRadius: '999px', fontSize: '0.76rem', fontWeight: 800
           }}>
-            <MapPin size={13} color="#10b981" /> {lat}° N, {lng}° E
+            <MapPin size={12} color="#10b981" /> {lat}° N, {lng}° E
           </span>
           <span style={{
-            fontSize: '0.76rem', background: 'rgba(15,23,42,0.85)', color: '#f1f5f9',
-            padding: '4px 12px', borderRadius: '999px', backdropFilter: 'blur(4px)',
+            fontSize: '0.74rem', background: 'rgba(15,23,42,0.85)', color: '#f1f5f9',
+            padding: '3px 10px', borderRadius: '999px', backdropFilter: 'blur(4px)',
             border: '1px solid rgba(255,255,255,0.18)', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600
           }}>
-            <Building size={13} color="#94a3b8" /> {locationText || 'Udupi Field Location'}
+            <Building size={12} color="#94a3b8" /> {locationText || 'Udupi Field Location'}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '2px' }}>
-          <span style={{ fontSize: '0.74rem', color: '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
-            <Clock size={13} color="#60a5fa" /> {timestamp}
+          <span style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
+            <Clock size={12} color="#60a5fa" /> {timestamp}
           </span>
           <span className="proof-status-pill" style={{
             display: 'inline-flex', alignItems: 'center', gap: '5px',
             background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.4)',
-            padding: '3px 10px', borderRadius: '999px', fontSize: '0.74rem', fontWeight: 800
+            padding: '2px 8px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 800
           }}>
-            <CheckCircle2 size={13} color="#10b981" /> {proofLabel || 'GPS Verified Proof'}
+            <CheckCircle2 size={12} color="#10b981" /> {proofLabel || 'GPS Verified Proof'}
           </span>
         </div>
       </div>
@@ -167,8 +185,18 @@ function GeoTaggedImageProof({ imageUrl, gps, locationText, altText, proofLabel 
 }
 
 // ── Leaflet Turn-by-Turn GPS Navigation Modal Component ──
+function MapFlyTo({ position }) {
+  const map = useMap();
+  useEffect(() => { map.flyTo(position, 15); }, [position[0], position[1]]);
+  return null;
+}
+
 function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
   const [userPos, setUserPos] = useState([13.3500, 74.7500]);
+  const [gpsReady, setGpsReady] = useState(false);
+  const [gpsError, setGpsError] = useState(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [gpsSource, setGpsSource] = useState(null); // 'device' | 'ip'
   const [routePolyline, setRoutePolyline] = useState([]);
   const [navigationSteps, setNavigationSteps] = useState([]);
   const [activeStepIndex] = useState(0);
@@ -180,17 +208,48 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
   const destLng = Number(navTarget?.lng) || 74.7421;
   const destPos = useMemo(() => [destLat, destLng], [destLat, destLng]);
 
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      const watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          setUserPos([pos.coords.latitude, pos.coords.longitude]);
-        },
-        () => {},
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-      return () => navigator.geolocation.clearWatch(watchId);
+  // Reliable HTML5 Geolocation with graceful fallback
+  const startGPS = async () => {
+    if (!('geolocation' in navigator)) {
+      setGpsError('Browser does not support HTML5 Geolocation.');
+      setGpsReady(false);
+      return null;
     }
+
+    setGpsError(null);
+
+    const onSuccess = (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      setUserPos([lat, lng]);
+      setGpsAccuracy(Math.round(pos.coords.accuracy));
+      setGpsReady(true);
+      setGpsSource('device');
+      setGpsError(null);
+    };
+
+    const onError = (err) => {
+      let msg = 'Using current/default field location.';
+      if (err.code === 1) msg = 'Location permission denied in browser. Click "Retry GPS" after enabling permission.';
+      else if (err.code === 2) msg = 'GPS signal unavailable. Please ensure location services are enabled.';
+      else if (err.code === 3) msg = 'GPS request timed out. Retrying device position...';
+      setGpsError(msg);
+    };
+
+    const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, opts);
+    const watchId = navigator.geolocation.watchPosition(onSuccess, (err) => {
+      if (err.code === 1) setGpsError('Location permission denied.');
+    }, opts);
+    return watchId;
+  };
+
+  useEffect(() => {
+    let watchId = null;
+    startGPS().then(id => { watchId = id; });
+    return () => {
+      if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   useEffect(() => {
@@ -273,12 +332,19 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {navTarget.type === 'disposal' ? <Truck size={20} /> : <Navigation size={20} />}
+                {navTarget.type === 'disposal' ? <Truck size={18} /> : <Navigation size={18} />}
                 {navTarget.type === 'disposal' ? 'Live Route to Government Disposal Yard' : 'Live GPS Route to Assigned Task Site'}
               </h3>
-              <span style={{ fontSize: '0.82rem', color: darkMode ? '#95d5b2' : '#64748b' }}>
-                Target: {navTarget.title} ({navTarget.address})
-              </span>
+              {/* FROM → TO Route Labels */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#10b981', fontWeight: 700 }}>
+                  <MapPin size={13} /> FROM: Your Current GPS Location
+                </span>
+                <ArrowRight size={13} color={darkMode ? '#6b7280' : '#9ca3af'} />
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#3b82f6', fontWeight: 700 }}>
+                  <Target size={13} /> TO: {navTarget.title} — {navTarget.address}
+                </span>
+              </div>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: darkMode ? '#fff' : '#64748b', cursor: 'pointer', padding: '6px' }}>
@@ -286,13 +352,41 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
           </button>
         </div>
 
+        {/* GPS Status Banner */}
+        {gpsError && (
+          <div style={{
+            padding: '10px 20px',
+            background: gpsSource === 'ip' ? '#1e3a5f' : '#7f1d1d',
+            color: gpsSource === 'ip' ? '#93c5fd' : '#fca5a5',
+            fontSize: '0.83rem', fontWeight: 600, display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: '12px'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={16} color={gpsSource === 'ip' ? '#60a5fa' : '#f87171'} />
+              {gpsError}
+              {gpsSource === 'ip' && <span style={{ opacity: 0.75, fontSize: '0.78rem' }}>(~2km accuracy — enable device GPS for precise routing)</span>}
+            </span>
+            <button
+              onClick={() => startGPS()}
+              style={{
+                padding: '4px 12px', borderRadius: '6px',
+                background: gpsSource === 'ip' ? '#2563eb' : '#dc2626',
+                color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
+                display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0
+              }}
+            >
+              <RefreshCw size={13} /> Retry GPS
+            </button>
+          </div>
+        )}
+
         {/* Info stats bar */}
         <div style={{
           padding: '12px 20px', background: darkMode ? '#09221b' : '#ecfdf5',
           display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: `1px solid ${darkMode ? 'rgba(52,211,153,0.2)' : '#a7f3d0'}`
         }}>
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
               <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Distance</span>
               <strong style={{ fontSize: '1.15rem', color: '#10b981', fontWeight: 900 }}>{totalDistance ? `${totalDistance} km` : 'Calculating...'}</strong>
@@ -302,10 +396,19 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
               <strong style={{ fontSize: '1.15rem', color: '#3b82f6', fontWeight: 900 }}>{totalDuration ? `${totalDuration} mins` : 'Calculating...'}</strong>
             </div>
             <div>
-              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Live GPS Tracking</span>
-              <strong style={{ fontSize: '0.85rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span> Active Positioning
-              </strong>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Your GPS Position</span>
+              {gpsReady ? (
+                <strong style={{ fontSize: '0.78rem', color: gpsSource === 'ip' ? '#60a5fa' : '#059669', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'monospace' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: gpsSource === 'ip' ? '#3b82f6' : '#10b981', display: 'inline-block', boxShadow: `0 0 6px ${gpsSource === 'ip' ? '#3b82f6' : '#10b981'}` }}></span>
+                  {userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}
+                  {gpsAccuracy && <span style={{ fontSize: '0.7rem', opacity: 0.7, fontFamily: 'inherit' }}> (±{gpsAccuracy}m {gpsSource === 'ip' ? 'IP' : 'GPS'})</span>}
+                </strong>
+              ) : (
+                <strong style={{ fontSize: '0.78rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}></span>
+                  Acquiring GPS...
+                </strong>
+              )}
             </div>
           </div>
           <button
@@ -321,13 +424,15 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
         </div>
 
         {/* Map & Turn-by-Turn Grid */}
-        <div className="modal-map-grid" style={{ flex: 1, minHeight: '420px' }}>
-          <div style={{ position: 'relative', height: '100%', minHeight: '420px' }}>
-            <MapContainer center={userPos} zoom={14} style={{ height: '100%', width: '100%' }}>
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <Marker position={userPos}><Popup>My Current Live GPS Location</Popup></Marker>
-              <Marker position={destPos}><Popup>Destination: {navTarget.title}</Popup></Marker>
-              {routePolyline.length > 0 && <Polyline positions={routePolyline} color="#3b82f6" weight={6} opacity={0.85} />}
+        <div className="modal-map-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', minHeight: '450px' }}>
+          <div style={{ position: 'relative', height: '450px' }}>
+            <MapContainer center={userPos} zoom={14} style={{ height: '450px', width: '100%' }}>
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+              {gpsReady && <MapFlyTo position={userPos} />}
+              <Marker position={userPos}><Popup>FROM: {gpsSource === 'ip' ? 'Your Approximate IP Location' : 'Your Current GPS Location'}<br/>{userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}</Popup></Marker>
+              <Marker position={destPos}><Popup>TO: {navTarget.title} — {navTarget.address}</Popup></Marker>
+              {gpsReady && gpsAccuracy && <Circle center={userPos} radius={gpsAccuracy} color={gpsSource === 'ip' ? '#3b82f6' : '#10b981'} fillOpacity={0.08} weight={1} />}
+              {routePolyline.length > 0 && <Polyline positions={routePolyline} color="#3b82f6" weight={6} opacity={0.85} dashArray="10, 5" />}
             </MapContainer>
           </div>
 
@@ -388,6 +493,7 @@ export default function TreeCutterTaskPage() {
         const data = await res.json();
         const props = Array.isArray(data) ? data : (data.properties || []);
         const userId = currentUser.id || currentUser._id || 'snow-id';
+        const cutterNameLower = cutterName.toLowerCase();
         
         const localList = (() => {
           try { return JSON.parse(localStorage.getItem(`cutter_borrowed_tools_${userId}`) || '[]'); }
@@ -420,46 +526,6 @@ export default function TreeCutterTaskPage() {
             if (matched) {
               map.set(p._id, p);
             }
-          }
-        });
-
-        // 3. Default arborist tools
-        const defaultTools = [
-          {
-            _id: 'prop-stihl-500i',
-            name: 'STIHL MS 500i Heavy Duty Chainsaw',
-            category: 'Power Equipment',
-            status: 'Checked Out',
-            serialNumber: 'EQ-STL-8821',
-            imageUrl: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600&auto=format&fit=crop&q=80',
-            purchaseRequests: [
-              {
-                userId: userId,
-                username: cutterName,
-                requestedAt: new Date(Date.now() - 3.5 * 3600 * 1000).toISOString()
-              }
-            ]
-          },
-          {
-            _id: 'prop-harness-kit',
-            name: 'Arborist Safety Harness & Climbing Helmet',
-            category: 'Safety Equipment',
-            status: 'Checked Out',
-            serialNumber: 'EQ-SAF-4402',
-            imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=600&auto=format&fit=crop&q=80',
-            purchaseRequests: [
-              {
-                userId: userId,
-                username: cutterName,
-                requestedAt: new Date(Date.now() - 2.1 * 3600 * 1000).toISOString()
-              }
-            ]
-          }
-        ];
-
-        defaultTools.forEach(t => {
-          if (!returnedList.includes(t._id) && !map.has(t._id)) {
-            map.set(t._id, t);
           }
         });
 

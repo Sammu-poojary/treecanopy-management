@@ -156,6 +156,22 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// @route   PATCH /api/complaints/:id
+// @desc    Generic update for a complaint (status, priority, assignedTo, etc.)
+// @access  Public
+router.patch('/:id', async (req, res) => {
+  try {
+    const complaint = await Complaint.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!complaint) {
+      return res.status(404).json({ msg: 'Complaint not found' });
+    }
+    res.json({ msg: 'Complaint updated successfully', complaint });
+  } catch (error) {
+    console.error('Update complaint error:', error.message);
+    res.status(500).json({ msg: 'Failed to update complaint', error: error.message });
+  }
+});
+
 // @route   PATCH /api/complaints/:id/status
 // @desc    Update a complaint's status
 // @access  Official / Admin
@@ -163,12 +179,13 @@ router.patch('/:id/status', async (req, res) => {
   try {
     const { status, officialName, assignedTo, rejectionReason, replantationStatus } = req.body;
     const validStatuses = [
-      'Pending', 'In Review', 'Scheduled', 'In Progress',
-      'Reached Location', 'Work Completed', 'Waste Disposed', 'Resolved',
+      'Pending', 'In Review', 'Scheduled', 'Assigned', 'In Progress',
+      'Reached Location', 'Work Completed', 'Waste Disposed', 'Ready for Closure',
+      'Completed', 'Resolved', 'Closed'
     ];
 
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ msg: 'Invalid status value' });
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ msg: `Invalid status value: ${status}` });
     }
 
     const complaintCheck = await Complaint.findById(req.params.id);
@@ -176,7 +193,8 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(404).json({ msg: 'Complaint not found' });
     }
 
-    const updateData = { status };
+    const updateData = {};
+    if (status) updateData.status = status;
     if (assignedTo) updateData.assignedTo = assignedTo;
     if (rejectionReason) updateData.rejectionReason = rejectionReason;
     if (replantationStatus) updateData.replantationStatus = replantationStatus;

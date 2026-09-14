@@ -44,26 +44,34 @@ function TreeCutterNavigationModal({ activeTask, onClose, theme, darkMode }) {
   const [totalDuration, setTotalDuration] = useState(null);
   const [loadingRoute, setLoadingRoute] = useState(true);
   const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [gpsReady, setGpsReady] = useState(false);
+  const [gpsError, setGpsError] = useState(null);
 
-  const destLat = Number(activeTask.locationLat) || 13.3409;
-  const destLng = Number(activeTask.locationLng) || 74.7421;
+  const destLat = Number(activeTask?.locationLat || activeTask?.lat || activeTask?.latitude || activeTask?.beforeGps?.lat) || 13.3409;
+  const destLng = Number(activeTask?.locationLng || activeTask?.lng || activeTask?.longitude || activeTask?.beforeGps?.lng) || 74.7421;
   const destPos = useMemo(() => [destLat, destLng], [destLat, destLng]);
 
-  // Live Geolocation Watch Position
+  // Live Geolocation Current & Watch Position
   useEffect(() => {
     let watchId;
     if ('geolocation' in navigator && isLiveTracking) {
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          setUserPos([pos.coords.latitude, pos.coords.longitude]);
-          setGpsAccuracy(Math.round(pos.coords.accuracy));
-        },
-        () => {},
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 2000 }
-      );
+      const onSuccess = (pos) => {
+        setUserPos([pos.coords.latitude, pos.coords.longitude]);
+        setGpsAccuracy(Math.round(pos.coords.accuracy));
+        setGpsReady(true);
+        setGpsError(null);
+      };
+      const onError = (err) => {
+        if (err.code === 1) setGpsError('Browser location permission denied.');
+        else if (err.code === 2) setGpsError('GPS signal unavailable.');
+        else if (err.code === 3) setGpsError('GPS timeout.');
+      };
+      const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
+      navigator.geolocation.getCurrentPosition(onSuccess, onError, opts);
+      watchId = navigator.geolocation.watchPosition(onSuccess, () => {}, opts);
     }
     return () => {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
+      if (watchId && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
     };
   }, [isLiveTracking]);
 
@@ -459,34 +467,6 @@ export default function TreeCutterDashboard() {
         });
       }
 
-      // 3. Merge default arborist tools unless returned
-      const defaults = [
-        {
-          property: {
-            _id: 'prop-stihl-500i',
-            name: 'STIHL MS 500i Heavy Duty Chainsaw',
-            category: 'Power Equipment'
-          },
-          req: { _id: 'req-1' },
-          checkoutDate: '3.5 hrs ago'
-        },
-        {
-          property: {
-            _id: 'prop-harness-kit',
-            name: 'Arborist Safety Harness & Climbing Helmet',
-            category: 'Safety Equipment'
-          },
-          req: { _id: 'req-2' },
-          checkoutDate: '2.1 hrs ago'
-        }
-      ];
-
-      defaults.forEach(d => {
-        if (!returnedList.includes(d.property._id) && !map.has(d.property._id)) {
-          map.set(d.property._id, d);
-        }
-      });
-
       setBorrowedInventory(Array.from(map.values()));
     } catch (err) {
       console.error('Error fetching inventory:', err);
@@ -502,6 +482,121 @@ export default function TreeCutterDashboard() {
   useEffect(() => {
     loadAllData();
   }, [cutterId, cutterName]);
+
+  // ── Automatic 1-Hour & Overdue Return Deadline Pop-Up Alert & Email Dispatcher ──
+  useEffect(() => {
+    if (!borrowedInventory || borrowedInventory.length === 0) return;
+
+    const cutterEmail = currentUser?.email || currentUser?.emailId || localStorage.getItem('userEmail') || (cutterName.toLowerCase().includes('snow') ? 'neelanjanv8@gmail.com' : `${cutterName.toLowerCase()}@gmail.com`);
+
+    borrowedInventory.forEach(item => {
+      const prop = item.property || item;
+      const req = item.req || prop.purchaseRequests?.[0] || { requestedAt: new Date(Date.now() - 24.5 * 3600 * 1000).toISOString() };
+
+      let requestedAtMs = Date.now() - 23.5 * 3600 * 1000;
+      if (req.requestedAt) {
+        const d = new Date(req.requestedAt).getTime();
+        if (!isNaN(d)) requestedAtMs = d;
+      }
+
+      const dueMs = requestedAtMs + 24 * 3600 * 1000;
+      const diffMs = dueMs - Date.now();
+      const isOverdue = diffMs <= 0;
+      const isWarning1Hour = diffMs <= 3600 * 1000 && diffMs > 0;
+      const dueStr = new Date(dueMs).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+      // 1. OVERDUE EMAIL DISPATCH
+      if (isOverdue) {
+        const overdueNotifKey = `cutter_overdue_notif_${prop._id || prop.id}_${cutterName}`;
+        const alreadyNotifiedOverdue = localStorage.getItem(overdueNotifKey);
+
+        if (!alreadyNotifiedOverdue) {
+          localStorage.setItem(overdueNotifKey, new Date().toISOString());
+
+          Swal.fire({
+            icon: 'error',
+            title: '🚨 EQUIPMENT OVERDUE - IMMEDIATE RETURN REQUIRED!',
+            html: `
+              <div style="text-align: left; font-size: 0.92rem; line-height: 1.5; color: #1e293b;">
+                <p style="margin-top:0;">Urgent Notice for Arborist <b>${cutterName}</b>,</p>
+                <div style="background: #fef2f2; border: 2px solid #ef4444; padding: 14px; border-radius: 10px; margin-bottom: 12px;">
+                  <b style="color: #991b1b; font-size: 1rem;">Overdue Tool: ${prop.name}</b><br/>
+                  <span style="color: #dc2626; font-weight: 800;">Status: EXPIRED 24-HOUR RETURN DEADLINE</span><br/>
+                  <small style="color: #64748b;">Return Deadline Was: ${dueStr}</small>
+                </div>
+                <p style="margin-bottom: 8px;">
+                  📧 <b>Urgent Overdue Reminder Email Dispatched To:</b> <code>${cutterEmail}</code>
+                </p>
+                <p style="margin-bottom: 0; font-size: 0.85rem; color: #991b1b; font-weight: bold;">
+                  Please submit and return this equipment to the Municipal Property Depot immediately.
+                </p>
+              </div>
+            `,
+            confirmButtonText: 'I Will Return Tool Now',
+            confirmButtonColor: '#ef4444'
+          });
+
+          // Dispatch Email to Backend API
+          fetch(`${API_URL}/api/notifications/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: cutterEmail,
+              subject: `🚨 OVERDUE URGENT: Return Required for Municipal Equipment - ${prop.name}`,
+              body: `DEPT NOTICE - URGENT OVERDUE\n\nDear ${cutterName},\n\nYour borrowed equipment "${prop.name}" has EXPIRED its 24-hour return deadline.\n\nPlease submit and return the tool back to Municipal Equipment Depot immediately.\n\nCanopyGuard Municipal Management System`
+            })
+          }).then(r => r.json()).then(data => {
+            console.log('Overdue reminder email dispatched:', data);
+          }).catch(e => console.log('Overdue email send note:', e.message));
+        }
+      }
+
+      // 2. 1-HOUR WARNING EMAIL DISPATCH
+      else if (isWarning1Hour) {
+        const warnNotifKey = `cutter_warn_notif_${prop._id || prop.id}_${cutterName}`;
+        const alreadyNotifiedWarn = localStorage.getItem(warnNotifKey);
+
+        if (!alreadyNotifiedWarn) {
+          localStorage.setItem(warnNotifKey, new Date().toISOString());
+
+          Swal.fire({
+            icon: 'warning',
+            title: '⚠️ EQUIPMENT RETURN DEADLINE (1 HOUR LEFT)',
+            html: `
+              <div style="text-align: left; font-size: 0.92rem; line-height: 1.5; color: #1e293b;">
+                <p style="margin-top:0;">Attention Arborist <b>${cutterName}</b>,</p>
+                <div style="background: #fffbebfb; border: 1px solid #fcd34d; padding: 14px; border-radius: 10px; margin-bottom: 12px;">
+                  <b style="color: #92400e; font-size: 1rem;">Borrowed Tool: ${prop.name}</b><br/>
+                  <span style="color: #d97706; font-weight: 800;">Deadline: 1 Hour Remaining</span><br/>
+                  <small style="color: #64748b;">Return Deadline: ${dueStr}</small>
+                </div>
+                <p style="margin-bottom: 8px;">
+                  📧 <b>Automated Warning Email Sent To:</b> <code>${cutterEmail}</code>
+                </p>
+                <p style="margin-bottom: 0; font-size: 0.85rem; color: #475569;">
+                  Please submit and return this equipment back to the Municipal Property Depot immediately.
+                </p>
+              </div>
+            `,
+            confirmButtonText: 'I Will Return Equipment Now',
+            confirmButtonColor: '#d97706'
+          });
+
+          fetch(`${API_URL}/api/notifications/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: cutterEmail,
+              subject: `⚠️ URGENT: Equipment Return Deadline in 1 Hour - ${prop.name}`,
+              body: `Dear ${cutterName},\n\nYour borrowed equipment "${prop.name}" must be returned within 1 hour.\n\nPlease submit and return the tool to the Municipal Equipment Depot immediately.\n\nCanopyGuard Municipal System`
+            })
+          }).then(r => r.json()).then(data => {
+            console.log('1-Hour warning email dispatched:', data);
+          }).catch(e => console.log('Warning email send note:', e.message));
+        }
+      }
+    });
+  }, [borrowedInventory, cutterName]);
 
   // Strictly filter tasks for logged in Tree Cutter only
   const myAssignedTasks = useMemo(() => {
@@ -521,20 +616,100 @@ export default function TreeCutterDashboard() {
     });
   }, [tasks, cutterId, cutterName]);
 
+  // Stage & Progress Pipeline Helper
+  const getStageInfo = (status) => {
+    switch (status) {
+      case 'Scheduled':
+      case 'Assigned':
+        return {
+          label: 'Scheduled',
+          progress: 25,
+          color: '#3b82f6',
+          bg: 'rgba(59, 130, 246, 0.15)',
+          border: 'rgba(59, 130, 246, 0.3)',
+          nextStatus: 'Reached Location',
+          nextActionLabel: '📍 Reached Location'
+        };
+      case 'Reached Location':
+        return {
+          label: 'Reached Site',
+          progress: 45,
+          color: '#06b6d4',
+          bg: 'rgba(6, 182, 212, 0.15)',
+          border: 'rgba(6, 182, 212, 0.3)',
+          nextStatus: 'In Progress',
+          nextActionLabel: '⚡ Start Cutting'
+        };
+      case 'In Progress':
+        return {
+          label: 'Cutting In Progress',
+          progress: 65,
+          color: '#f59e0b',
+          bg: 'rgba(245, 158, 11, 0.15)',
+          border: 'rgba(245, 158, 11, 0.3)',
+          nextStatus: 'Work Completed',
+          nextActionLabel: '✂️ Work Completed'
+        };
+      case 'Work Completed':
+        return {
+          label: 'Work Completed',
+          progress: 85,
+          color: '#8b5cf6',
+          bg: 'rgba(139, 92, 246, 0.15)',
+          border: 'rgba(139, 92, 246, 0.3)',
+          nextStatus: 'Waste Disposed',
+          nextActionLabel: '🚛 Waste Disposed'
+        };
+      case 'Waste Disposed':
+        return {
+          label: 'Waste Disposed',
+          progress: 95,
+          color: '#10b981',
+          bg: 'rgba(16, 185, 129, 0.15)',
+          border: 'rgba(16, 185, 129, 0.3)',
+          nextStatus: 'Resolved',
+          nextActionLabel: '✓ Resolve Work Order'
+        };
+      case 'Resolved':
+      case 'Closed':
+      case 'Completed':
+        return {
+          label: 'Fully Resolved',
+          progress: 100,
+          color: '#10b981',
+          bg: 'rgba(16, 185, 129, 0.2)',
+          border: 'rgba(16, 185, 129, 0.4)',
+          nextStatus: null,
+          nextActionLabel: null
+        };
+      default:
+        return {
+          label: status || 'Pending',
+          progress: 15,
+          color: '#94a3b8',
+          bg: 'rgba(148, 163, 184, 0.15)',
+          border: 'rgba(148, 163, 184, 0.3)',
+          nextStatus: 'Scheduled',
+          nextActionLabel: 'Schedule Task'
+        };
+    }
+  };
+
   const stats = useMemo(() => {
     const total = myAssignedTasks.length;
-    const completed = myAssignedTasks.filter(t => t.status === 'Completed' || t.status === 'Resolved').length;
-    const inProgress = myAssignedTasks.filter(t => t.status === 'In Progress' || t.status === 'Assigned' || !t.status).length;
+    const completed = myAssignedTasks.filter(t => ['Work Completed', 'Waste Disposed', 'Completed', 'Resolved', 'Closed'].includes(t.status)).length;
+    const inProgress = myAssignedTasks.filter(t => ['Scheduled', 'Assigned', 'Reached Location', 'In Progress', 'Pending'].includes(t.status)).length;
     const emergency = myAssignedTasks.filter(t => t.priority === 'High' || t.issueType === 'damaged' || t.issueType === 'fallen').length;
     return { total, completed, inProgress, emergency };
   }, [myAssignedTasks]);
 
   const filteredTasks = useMemo(() => {
     return myAssignedTasks.filter(t => {
+      const isFinished = ['Work Completed', 'Waste Disposed', 'Completed', 'Resolved', 'Closed'].includes(t.status);
       if (filterStatus === 'pending') {
-        if (t.status === 'Completed' || t.status === 'Resolved') return false;
+        if (isFinished) return false;
       } else if (filterStatus === 'completed') {
-        if (t.status !== 'Completed' && t.status !== 'Resolved') return false;
+        if (!isFinished) return false;
       } else if (filterStatus === 'high') {
         if (t.priority !== 'High') return false;
       }
@@ -560,24 +735,39 @@ export default function TreeCutterDashboard() {
 
   const handleUpdateStatus = async (taskId, newStatus) => {
     try {
-      const res = await fetch(`${API_URL}/api/complaints/${taskId}`, {
+      // Primary: PATCH /api/complaints/:id/status
+      let res = await fetch(`${API_URL}/api/complaints/${taskId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
+
+      // Fallback: PATCH /api/complaints/:id
+      if (!res.ok) {
+        res = await fetch(`${API_URL}/api/complaints/${taskId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+      }
+
       if (res.ok) {
         Swal.fire({
           icon: 'success',
-          title: `Task Marked as ${newStatus}!`,
+          title: `Stage Updated to: ${newStatus}`,
+          text: `Task #${String(taskId).slice(-6).toUpperCase()} status successfully updated.`,
           toast: true,
           position: 'top-end',
-          timer: 2000,
+          timer: 2500,
           showConfirmButton: false
         });
         fetchTasks();
+      } else {
+        throw new Error('Failed to update stage on backend');
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Could not update task status' });
+      console.error('Update status error:', err);
+      Swal.fire({ icon: 'error', title: 'Could not update task status', text: err.message });
     }
   };
 
@@ -899,13 +1089,15 @@ export default function TreeCutterDashboard() {
                 </tr>
               ) : (
                 filteredTasks.map(t => {
-                  const isDone = t.status === 'Completed' || t.status === 'Resolved';
+                  const info = getStageInfo(t.status);
+                  const isDone = ['Work Completed', 'Waste Disposed', 'Completed', 'Resolved', 'Closed'].includes(t.status);
                   const isHigh = t.priority === 'High';
+                  const taskId = t._id || t.id;
 
                   return (
-                    <tr key={t._id || t.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                    <tr key={taskId} style={{ borderBottom: `1px solid ${theme.border}` }}>
                       <td style={{ padding: '12px', fontWeight: 800, color: theme.title }}>
-                        #{String(t._id || t.id).slice(-6).toUpperCase()}
+                        #{String(taskId).slice(-6).toUpperCase()}
                       </td>
                       <td style={{ padding: '12px', fontWeight: 700, color: theme.title }}>
                         {t.title || t.treeSpecies || t.issueType || 'Tree Cutting Task'}
@@ -923,26 +1115,44 @@ export default function TreeCutterDashboard() {
                           {t.priority || 'Medium'}
                         </span>
                       </td>
+
+                      {/* CLEAN STATUS BADGE */}
                       <td style={{ padding: '12px' }}>
                         <span style={{
-                          background: isDone ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                          color: isDone ? '#34d399' : '#60a5fa',
-                          border: isDone ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
-                          padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800
+                          background: info.bg,
+                          color: info.color,
+                          border: `1px solid ${info.border}`,
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          display: 'inline-block'
                         }}>
-                          {t.status || 'In Progress'}
+                          {t.status || 'Scheduled'}
                         </span>
                       </td>
+
                       <td style={{ padding: '12px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          
+                          {/* STEP ACTION BUTTON */}
                           {!isDone && (
                             <button
-                              onClick={() => handleUpdateStatus(t._id || t.id, 'Completed')}
+                              onClick={() => handleUpdateStatus(taskId, info.nextStatus || 'Completed')}
                               style={{
-                                background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)',
-                                borderRadius: '8px', padding: '6px 10px', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer',
-                                display: 'inline-flex', alignItems: 'center', gap: '4px'
+                                background: 'rgba(16, 185, 129, 0.15)',
+                                color: '#34d399',
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                borderRadius: '8px',
+                                padding: '6px 10px',
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
                               }}
+                              title={`Mark task as ${info.nextStatus || 'Completed'}`}
                             >
                               ✓ Complete
                             </button>
