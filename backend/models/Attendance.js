@@ -29,6 +29,18 @@ const attendanceSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    checkInTime: {
+      type: String,
+      default: '',
+    },
+    checkOutTime: {
+      type: String,
+      default: '',
+    },
+    status: {
+      type: String,
+      default: 'Present',
+    },
     location: {
       type: String,
       default: '',

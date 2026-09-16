@@ -114,15 +114,14 @@ export default function TreeCutterAttendancePage() {
       const resAtt = await fetch(`${API_URL}/api/attendance/me?userId=${cutterId}`);
       if (resAtt.ok) {
         const dataAtt = await resAtt.json();
-        if (dataAtt.attendances && dataAtt.attendances.length > 0) {
-          setAttendanceHistory(dataAtt.attendances);
+        const recs = dataAtt.records || dataAtt.attendances;
+        if (recs && recs.length > 0) {
+          setAttendanceHistory(recs);
         } else {
-          const savedHistory = JSON.parse(localStorage.getItem(`attendance_history_${cutterId}`) || '[]');
-          setAttendanceHistory(savedHistory);
+          setAttendanceHistory([]);
         }
       } else {
-        const savedHistory = JSON.parse(localStorage.getItem(`attendance_history_${cutterId}`) || '[]');
-        setAttendanceHistory(savedHistory);
+        setAttendanceHistory([]);
       }
     } catch (err) {
       console.error('Error fetching records:', err);
@@ -165,6 +164,7 @@ export default function TreeCutterAttendancePage() {
       _id: `att-${Date.now()}`,
       userId: cutterId,
       userName: cutterName,
+      role: 'Tree Cutter',
       userRole: 'Tree Cutter',
       date: timeNow.toISOString().slice(0, 10),
       shift: selectedShift,
@@ -184,6 +184,8 @@ export default function TreeCutterAttendancePage() {
         const data = await res.json();
         setTodayAttendance(data.attendance || checkInRecord);
       } else {
+        const errData = await res.json().catch(() => ({}));
+        console.warn('Attendance mark note:', errData.msg);
         setTodayAttendance(checkInRecord);
       }
     } catch {
@@ -208,16 +210,32 @@ export default function TreeCutterAttendancePage() {
   };
 
   // Mark Shift Check-Out
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
     if (!todayAttendance) return;
+    const checkOutTimeStr = timeNow.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
     const updated = {
       ...todayAttendance,
-      checkOutTime: timeNow.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      checkOutTime: checkOutTimeStr,
       status: 'Completed Shift'
     };
     setTodayAttendance(updated);
     localStorage.setItem(`attendance_${cutterId}_${todayAttendance.date}`, JSON.stringify(updated));
     
+    try {
+      await fetch(`${API_URL}/api/attendance/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: cutterId,
+          date: todayAttendance.date || timeNow.toISOString().slice(0, 10),
+          shift: selectedShift,
+          checkOutTime: checkOutTimeStr
+        })
+      });
+    } catch (err) {
+      console.error('Error recording checkout:', err);
+    }
+
     setAttendanceHistory(prev => {
       const updatedList = prev.map(a => a.date === updated.date ? updated : a);
       localStorage.setItem(`attendance_history_${cutterId}`, JSON.stringify(updatedList));

@@ -202,12 +202,19 @@ router.patch('/:id/status', async (req, res) => {
       updateData.verifiedBy = officialName;
       updateData.verifiedAt = new Date();
     }
-    if (status === 'Resolved') {
-      updateData.closedBy = officialName || 'Official';
-      updateData.closedAt = new Date();
+    if (status === 'Resolved' || status === 'Waste Disposed' || status === 'Work Completed') {
+      if (status === 'Resolved') {
+        updateData.closedBy = officialName || 'Official';
+        updateData.closedAt = new Date();
+      }
       if (complaintCheck.issueType === 'dead') {
         updateData.requiresReplantation = true;
-        updateData.replantationStatus = 'Pending';
+        if (complaintCheck.replantationStatus !== 'Planted') {
+          updateData.replantationStatus = 'Pending';
+        }
+        if (!updateData.assignedTo && complaintCheck.assignedTo) {
+          updateData.assignedTo = complaintCheck.assignedTo;
+        }
       }
     }
 
@@ -226,7 +233,7 @@ router.patch('/:id/status', async (req, res) => {
     }
 
     // Notify cutter when assigned
-    if (status === 'Scheduled' && assignedTo) {
+    if ((status === 'Scheduled' || status === 'Assigned') && (assignedTo || complaint.assignedTo)) {
       await notify(
         'Tree Cutter',
         null,
@@ -238,13 +245,21 @@ router.patch('/:id/status', async (req, res) => {
     }
 
     // Auto-notify on Replantation Triggered
-    if (status === 'Resolved' && complaintCheck.issueType === 'dead') {
+    if ((status === 'Resolved' || status === 'Waste Disposed' || status === 'Work Completed') && complaintCheck.issueType === 'dead') {
+      await notify(
+        'Tree Cutter',
+        null,
+        'replantation_assigned',
+        '🌱 Eco-Restore Replantation Assigned',
+        `Dead tree removal is complete. You are assigned to plant a replacement sapling at ${complaint.location || 'site'}.`,
+        complaint._id.toString()
+      );
       await notify(
         'Official',
         null,
         'replantation_needed',
         'Replantation Triggered',
-        `A dead tree has been removed at ${complaint.location}. Replantation is now pending.`,
+        `A dead tree has been removed at ${complaint.location || 'site'}. Replantation is now assigned to ${complaint.assignedTo || 'Tree Cutter'}.`,
         complaint._id.toString()
       );
     }
@@ -379,41 +394,59 @@ router.post('/:id/replant', async (req, res) => {
     }
 
     // 1. Create a new Tree document
+    const locationStr = complaint.location ? `${complaint.location}, Udupi` : 'Ajjarkadu Sector, Udupi';
+    const treeLat = lat ? parseFloat(lat) : (complaint.locationCoordinates?.lat ? parseFloat(complaint.locationCoordinates.lat) : 13.3409);
+    const treeLng = lng ? parseFloat(lng) : (complaint.locationCoordinates?.lng ? parseFloat(complaint.locationCoordinates.lng) : 74.7421);
+
     const newTree = await Tree.create({
       name: name || 'Indian Beech Sapling',
       scientificName: scientificName || 'Pongamia pinnata',
       family: family || 'Fabaceae',
-      origin: origin || 'Native',
-      category: category || 'Evergreen Tree',
-      lifespan: lifespan || '',
+      origin: origin || locationStr,
+      category: category || 'Eco-Restore Replanted Sapling',
+      lifespan: lifespan || '100+ years',
       height: height || '0.5 – 1.5 m',
-      ageRange: ageRange || '',
-      canopySpread: canopySpread || '',
-      description: description || 'Sapling planted under Eco-Restore initiative replacing a dead tree.',
-      climate: climate || '',
-      soilType: soilType || '',
-      sunlight: sunlight || '',
-      growthRate: growthRate || '',
-      leafType: leafType || '',
-      floweringSeason: floweringSeason || '',
-      fruitingSeason: fruitingSeason || '',
-      carbonSequestration: carbonSequestration || '',
-      notes: notes || '',
+      ageRange: ageRange || 'Young Sapling (0-1 yr)',
+      canopySpread: canopySpread || '2 m',
+      description: description || `Native sapling (${name || 'Sapling'}) planted under Municipal Eco-Restore initiative replacing a removed dead tree at ${locationStr}.`,
+      climate: climate || 'Tropical monsoonal',
+      soilType: soilType || 'Loamy soil',
+      sunlight: sunlight || 'Full Sun',
+      growthRate: growthRate || 'Moderate',
+      leafType: leafType || 'Glossy green foliage',
+      floweringSeason: floweringSeason || 'Mar – May',
+      fruitingSeason: fruitingSeason || 'Jun – Sep',
+      carbonSequestration: carbonSequestration || 'Estimated 0.5 tons CO2 annually',
+      notes: notes || `Replanted under Eco-Restore for dead tree complaint #${complaint._id} at ${locationStr}. Monitored for initial establishment.`,
       healthScore: healthScore ? parseInt(healthScore) : 100,
-      canopyCoverage: canopyCoverage ? parseInt(canopyCoverage) : 10,
+      canopyCoverage: canopyCoverage ? parseInt(canopyCoverage) : 20,
       waterRequirement: waterRequirement || 'Medium',
-      benefits: Array.isArray(benefits) ? benefits : benefits ? benefits.split(',').map(s => s.trim()) : [],
+      benefits: Array.isArray(benefits) ? benefits : benefits ? benefits.split(',').map(s => s.trim()) : ['Urban Cooling', 'Carbon Capture', 'Eco-Restore Replacement'],
       diseases: Array.isArray(diseases) ? diseases : diseases ? diseases.split(',').map(s => s.trim()) : [],
       pests: Array.isArray(pests) ? pests : pests ? pests.split(',').map(s => s.trim()) : [],
-      lat: lat ? parseFloat(lat) : 13.3409,
-      lng: lng ? parseFloat(lng) : 74.7421,
-      image: image || '',
+      lat: treeLat,
+      lng: treeLng,
+      image: image || complaint.replantedSaplingImage || '',
       addedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
     });
 
     // 2. Update the complaint with replanted tree details
+    complaint.requiresReplantation = true;
     complaint.replantationStatus = 'Planted';
     complaint.replantedTreeId = newTree._id;
+    complaint.replantedSaplingName = newTree.name;
+    complaint.replantedScientificName = newTree.scientificName;
+    complaint.replantedSaplingImage = newTree.image || image || '';
+    complaint.replantedBy = req.body.cutterName || req.body.replantedBy || complaint.assignedTo || 'Tree Cutter';
+    complaint.replantedAt = new Date();
+    complaint.replantedGps = {
+      lat: String(newTree.lat || 13.3409),
+      lng: String(newTree.lng || 74.7421),
+      capturedAt: new Date(),
+    };
+    complaint.status = 'Resolved';
+    complaint.closedAt = new Date();
+    complaint.closedBy = req.body.cutterName || complaint.assignedTo || 'Tree Cutter';
     await complaint.save();
 
     // 3. Notify Official and Citizen

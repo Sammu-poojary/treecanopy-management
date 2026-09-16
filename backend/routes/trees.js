@@ -12,11 +12,6 @@ const path = require('path');
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    // Remove legacy non-Udupi trees
-    await Tree.deleteMany({
-      origin: { $not: /Udupi|Manipal|Ajjarkad|Malpe|KMC|MGM|Kaup|Brahmavar|Sooda|Barkur|Pajaka/i },
-      notes: { $not: /Udupi|Manipal|Ajjarkad|Malpe|KMC|MGM|Kaup|Brahmavar|Sooda|Barkur|Pajaka/i }
-    });
 
     // Auto-fix legacy placeholder beach images for Gulmohar and Golden Shower trees
     await Tree.updateMany(

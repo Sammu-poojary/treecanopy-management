@@ -130,6 +130,31 @@ const complaintSchema = new mongoose.Schema(
       ref: 'Tree',
       default: null,
     },
+    replantedSaplingName: {
+      type: String,
+      default: '',
+    },
+    replantedScientificName: {
+      type: String,
+      default: '',
+    },
+    replantedSaplingImage: {
+      type: String,
+      default: '',
+    },
+    replantedBy: {
+      type: String,
+      default: '',
+    },
+    replantedAt: {
+      type: Date,
+      default: null,
+    },
+    replantedGps: {
+      lat: { type: String, default: '' },
+      lng: { type: String, default: '' },
+      capturedAt: { type: Date, default: null }
+    },
   },
   { timestamps: true }
 );

@@ -55,7 +55,10 @@ function getTodayIST() {
 // @access  Protected (Official / Tree Cutter)
 router.post('/mark', async (req, res) => {
   try {
-    const { userId, userName, role, location, shiftOverride, bypassTimeCheck } = req.body;
+    const { userId, userName, location, shiftOverride, bypassTimeCheck } = req.body;
+    const role = req.body.role || req.body.userRole;
+    const shift = req.body.shift || shiftOverride || getCurrentShift();
+    const date = req.body.date || getTodayIST();
 
     if (!userId || !userName || !role) {
       return res.status(400).json({ msg: 'userId, userName and role are required' });
@@ -65,7 +68,6 @@ router.post('/mark', async (req, res) => {
       return res.status(403).json({ msg: 'Only Officials and Tree Cutters can mark attendance' });
     }
 
-    const shift = shiftOverride || getCurrentShift();
     if (!shift) {
       return res.status(400).json({
         msg: 'Outside working hours. All shift sessions are closed for today. Shifts: Morning (9 AM–12 PM), Afternoon (12 PM–3 PM), Evening (3 PM–5 PM)',
@@ -79,8 +81,6 @@ router.post('/mark', async (req, res) => {
         msg: `${shiftStatus.reason}. Cannot mark attendance after shift session closing time.`,
       });
     }
-
-    const date = getTodayIST();
 
     // Check for duplicate
     const existing = await Attendance.findOne({ userId, date, shift });
@@ -98,6 +98,8 @@ router.post('/mark', async (req, res) => {
       date,
       shift,
       location: location || '',
+      checkInTime: req.body.checkInTime || '',
+      status: req.body.status || 'Present',
     });
 
     // Notify admins/officials about attendance
@@ -119,6 +121,36 @@ router.post('/mark', async (req, res) => {
     }
     console.error('Attendance mark error:', error.message);
     res.status(500).json({ msg: 'Failed to mark attendance', error: error.message });
+  }
+});
+
+// @route   POST /api/attendance/checkout
+// @desc    Record shift check-out
+// @access  Protected (Official / Tree Cutter)
+router.post('/checkout', async (req, res) => {
+  try {
+    const { userId, date, shift, checkOutTime } = req.body;
+    const recordDate = date || getTodayIST();
+    const filter = { userId, date: recordDate };
+    if (shift) filter.shift = shift;
+
+    const attendance = await Attendance.findOneAndUpdate(
+      filter,
+      {
+        checkOutTime: checkOutTime || new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        status: 'Completed Shift',
+      },
+      { new: true, sort: { createdAt: -1 } }
+    );
+
+    if (!attendance) {
+      return res.status(404).json({ msg: 'Attendance record not found to check out.' });
+    }
+
+    res.json({ msg: 'Shift check-out recorded successfully.', attendance });
+  } catch (error) {
+    console.error('Attendance checkout error:', error.message);
+    res.status(500).json({ msg: 'Failed to record check-out', error: error.message });
   }
 });
 

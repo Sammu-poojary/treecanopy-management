@@ -20,7 +20,8 @@ import {
   User,
   X,
   Camera,
-  Maximize2
+  Maximize2,
+  Sprout
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -647,6 +648,122 @@ export default function TrackReportPage() {
                 </div>
               </div>
             </div>
+
+            {/* 1.5 REPLANTATION ECO-RESTORE CARD (FOR DEAD TREES) */}
+            {(complaint.requiresReplantation || complaint.issueType === 'dead' || complaint.replantationStatus) && (
+              <div style={{
+                background: complaint.replantationStatus === 'Planted' 
+                  ? 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)' 
+                  : 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                borderRadius: '24px',
+                padding: '24px',
+                border: complaint.replantationStatus === 'Planted' ? '2px solid #10b981' : '1px solid #f59e0b',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.04)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '38px', height: '38px', borderRadius: '50%',
+                      background: complaint.replantationStatus === 'Planted' ? '#10b981' : '#f59e0b',
+                      color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                    }}>
+                      <Sprout size={22} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                        Eco-Restore: Municipal Tree Replantation
+                      </h3>
+                      <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                        Compliance with Municipal Urban Forest Protection Bylaws
+                      </span>
+                    </div>
+                  </div>
+
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '999px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    background: complaint.replantationStatus === 'Planted' ? '#dcfce7' : '#fef3c7',
+                    color: complaint.replantationStatus === 'Planted' ? '#15803d' : '#b45309',
+                    border: `1px solid ${complaint.replantationStatus === 'Planted' ? '#86efac' : '#fcd34d'}`
+                  }}>
+                    {complaint.replantationStatus === 'Planted' ? '🌱 Sapling Planted & Registered' : '🌱 Replantation Scheduled'}
+                  </span>
+                </div>
+
+                {complaint.replantationStatus === 'Planted' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <p style={{ margin: 0, fontSize: '0.88rem', color: '#166534', lineHeight: 1.5 }}>
+                      The removed dead tree has been replaced with a healthy native sapling. The newly planted tree is officially registered into the municipal Tree GIS Inventory.
+                    </p>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                      gap: '12px',
+                      background: '#ffffff',
+                      padding: '16px',
+                      borderRadius: '16px',
+                      border: '1px solid #bbf7d0'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Replacement Species</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                          {complaint.replantedSaplingName || 'Indian Beech Sapling'}
+                        </div>
+                        {complaint.replantedScientificName && (
+                          <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#059669' }}>
+                            {complaint.replantedScientificName}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Planted By</div>
+                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+                          {complaint.replantedBy || complaint.assignedTo || 'Tree Cutter'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Planted Date</div>
+                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+                          {complaint.replantedAt ? new Date(complaint.replantedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {complaint.replantedSaplingImage && (
+                      <div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Camera size={16} color="#10b981" /> Replanted Sapling Verified Photo (Cloudinary)
+                        </div>
+                        <div
+                          style={{ position: 'relative', width: '240px', height: '240px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #86efac', boxShadow: '0 6px 16px rgba(16,185,129,0.15)', cursor: 'pointer', background: '#0f172a' }}
+                          onClick={() => setPreviewImage(resolveImageUrl(complaint.replantedSaplingImage))}
+                          title="Click to view full screen"
+                        >
+                          <img
+                            src={resolveImageUrl(complaint.replantedSaplingImage)}
+                            alt="Replanted sapling photo"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80'; }}
+                          />
+                          <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(15, 23, 42, 0.85)', color: '#ffffff', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Maximize2 size={12} /> View Photo
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#92400e', lineHeight: 1.5 }}>
+                    This incident involves a dead tree. The tree cutting team will plant a replacement sapling immediately upon wood clearing and submit geo-tagged photo proof.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* 2. REPORT DETAILS & MAP CARD */}
             <div style={{

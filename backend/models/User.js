@@ -33,6 +33,18 @@ const userSchema = new mongoose.Schema(
       enum: ['Pending', 'Verified', 'Rejected'],
       default: 'Verified',
     },
+    profileImage: {
+      type: String,
+      default: '',
+    },
+    avatar: {
+      type: String,
+      default: '',
+    },
+    address: {
+      type: String,
+      default: '',
+    },
     resetToken: {
       type: String,
       default: null,

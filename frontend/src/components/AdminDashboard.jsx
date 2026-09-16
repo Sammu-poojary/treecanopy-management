@@ -212,6 +212,15 @@ const AdminDashboard = ({ user, activeTab }) => {
     fetchProposals();
     fetchAdminRedemptions();
     fetchCatalogueRewards();
+
+    // Auto-sync live metrics every 8 seconds
+    const interval = setInterval(() => {
+      fetchAttendance();
+      fetchStats();
+      fetchUsers();
+    }, 8000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleApproveProposal = async (proposalId, treeName) => {
@@ -470,7 +479,8 @@ const AdminDashboard = ({ user, activeTab }) => {
               </div>
             </div>
           </div>
-          {/* Pending Citizen Tree Registration Proposals */}
+
+          {/* Pending Citizen Tree Registration Proposals */}
           <div
             className="data-table-container"
             style={{

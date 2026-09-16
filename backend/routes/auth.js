@@ -554,16 +554,56 @@ router.get('/cutters', async (req, res) => {
   }
 });
 
-// @route   DELETE /api/auth/users/:id
-// @desc    Delete a user account (Admin only)
-// @access  Admin
-router.delete('/users/:id', async (req, res) => {
+// @route   PATCH /api/auth/profile/:id
+// @desc    Update user profile (profileImage, avatar, name, phone, address)
+// @access  Public / Protected
+router.patch('/profile/:id', async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const { profileImage, avatar, name, phone, address } = req.body;
+    const updateFields = {};
+    if (profileImage !== undefined) {
+      updateFields.profileImage = profileImage;
+      updateFields.avatar = profileImage;
+    } else if (avatar !== undefined) {
+      updateFields.avatar = avatar;
+      updateFields.profileImage = avatar;
+    }
+    if (name) updateFields.name = name;
+    if (phone) updateFields.phone = phone;
+    if (address) updateFields.address = address;
+
+    const user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true }).select('-password');
     if (!user) return res.status(404).json({ msg: 'User not found' });
-    res.json({ msg: 'User deleted successfully' });
+    res.json({ msg: 'Profile updated successfully', user });
   } catch (error) {
-    res.status(500).json({ msg: 'Failed to delete user', error: error.message });
+    res.status(500).json({ msg: 'Failed to update profile', error: error.message });
+  }
+});
+
+// @route   PATCH /api/auth/users/:id
+// @desc    Update user info (alias for profile update)
+router.patch('/users/:id', async (req, res) => {
+  try {
+    const { profileImage, avatar, name, phone, address, role, status } = req.body;
+    const updateFields = {};
+    if (profileImage !== undefined) {
+      updateFields.profileImage = profileImage;
+      updateFields.avatar = profileImage;
+    } else if (avatar !== undefined) {
+      updateFields.avatar = avatar;
+      updateFields.profileImage = avatar;
+    }
+    if (name) updateFields.name = name;
+    if (phone) updateFields.phone = phone;
+    if (address) updateFields.address = address;
+    if (role) updateFields.role = role;
+    if (status) updateFields.status = status;
+
+    const user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true }).select('-password');
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+    res.json({ msg: 'User updated successfully', user });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to update user', error: error.message });
   }
 });
 

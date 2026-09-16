@@ -27,6 +27,7 @@ if (L && L.Icon && L.Icon.Default && L.Icon.Default.prototype) {
 import { CommunicationHub } from '../components/CommunicationHub';
 import TreeCutterDashboard from '../components/TreeCutterDashboard';
 import TreeCutterAttendancePage from './TreeCutterAttendancePage';
+import TreeLocationPickerModal, { reverseGeocodeUdupi } from '../components/TreeLocationPickerModal';
 
 import {
   AlertTriangle,
@@ -198,20 +199,20 @@ const ROLE_NAV = {
     {
       section: 'Citizen Dashboard',
       items: [
-        { label: 'Overview',                href: '/citizen-dashboard?tab=overview', Icon: Home,         desc: 'Overview & stats' },
-        { label: 'Green Rewards & My Trees',href: '/citizen-dashboard?tab=rewards',  Icon: Gift,         desc: 'Eco points, streaks & my trees' },
-        { label: 'Report New Issue',        href: '/citizen-dashboard?tab=report',   Icon: AlertTriangle,desc: 'Report a tree issue' },
-        { label: 'My Reported Tickets',     href: '/citizen-dashboard?tab=tickets',  Icon: FileText,     desc: 'Track status of your tickets' },
-        { label: 'Citizen Profile',         href: '/citizen-dashboard?tab=profile',  Icon: UserRound,    desc: 'View & edit profile settings' },
+        { label: 'Overview', href: '/citizen-dashboard?tab=overview', Icon: Home, desc: 'Overview & stats' },
+        { label: 'Green Rewards & My Trees', href: '/citizen-dashboard?tab=rewards', Icon: Gift, desc: 'Eco points, streaks & my trees' },
+        { label: 'Report New Issue', href: '/citizen-dashboard?tab=report', Icon: AlertTriangle, desc: 'Report a tree issue' },
+        { label: 'My Reported Tickets', href: '/citizen-dashboard?tab=tickets', Icon: FileText, desc: 'Track status of your tickets' },
+        { label: 'Citizen Profile', href: '/citizen-dashboard?tab=profile', Icon: UserRound, desc: 'View & edit profile settings' },
       ],
     },
     {
       section: 'Community & Trees',
       items: [
-        { label: 'Home Page',               href: '/home',                           Icon: Globe,        desc: 'Main landing page' },
-        { label: 'Track Report',            href: '/track',                          Icon: Crosshair,    desc: 'Follow up on complaints' },
-        { label: 'Tree Database',           href: '/view-tree',                      Icon: TreePine,     desc: 'Browse tree records' },
-        { label: 'Tree Encyclopedia',       href: '/tree-encyclopedia',              Icon: BookOpen,     desc: 'Species info & guides' },
+        { label: 'Home Page', href: '/home', Icon: Globe, desc: 'Main landing page' },
+        { label: 'Track Report', href: '/track', Icon: Crosshair, desc: 'Follow up on complaints' },
+        { label: 'Tree Database', href: '/view-tree', Icon: TreePine, desc: 'Browse tree records' },
+        { label: 'Tree Encyclopedia', href: '/tree-encyclopedia', Icon: BookOpen, desc: 'Species info & guides' },
       ],
     },
   ],
@@ -220,18 +221,18 @@ const ROLE_NAV = {
     {
       section: 'Work',
       items: [
-        { label: 'Dashboard',         href: '/treecutter/dashboard',         Icon: Home,        desc: 'Monitoring overview' },
-        { label: 'Task Board',        href: '/treecutter/task',              Icon: FileText,    desc: 'Assigned work orders' },
-        { label: 'Communication',     href: '/treecutter/communication',     Icon: MessageSquare,desc: 'Chat & ask doubts' },
-        { label: 'Attendance',        href: '/treecutter/attendance',        Icon: Fingerprint, desc: 'Clock in / out' },
+        { label: 'Dashboard', href: '/treecutter/dashboard', Icon: Home, desc: 'Monitoring overview' },
+        { label: 'Task Board', href: '/treecutter/task', Icon: FileText, desc: 'Assigned work orders' },
+        { label: 'Communication', href: '/treecutter/communication', Icon: MessageSquare, desc: 'Chat & ask doubts' },
+        { label: 'Attendance', href: '/treecutter/attendance', Icon: Fingerprint, desc: 'Clock in / out' },
       ],
     },
     {
       section: 'Trees & Assets',
       items: [
-        { label: 'View Tree',         href: '/treecutter/view-tree',         Icon: TreePine,    desc: 'Tree records' },
-        { label: 'Tree Inventory',    href: '/treecutter/tree-inventory',    Icon: Layers,      desc: 'Full inventory' },
-        { label: 'Property Inventory',href: '/treecutter/property-inventory',Icon: Database,    desc: 'Equipment & tools' },
+        { label: 'View Tree', href: '/treecutter/view-tree', Icon: TreePine, desc: 'Tree records' },
+        { label: 'Tree Inventory', href: '/treecutter/tree-inventory', Icon: Layers, desc: 'Full inventory' },
+        { label: 'Property Inventory', href: '/treecutter/property-inventory', Icon: Database, desc: 'Equipment & tools' },
       ],
     },
   ],
@@ -240,21 +241,21 @@ const ROLE_NAV = {
     {
       section: 'Overview',
       items: [
-        { label: 'Dashboard',         href: '/official/dashboard',         Icon: Home,        desc: 'Zone monitoring' },
-        { label: 'Work Schedules',    href: '/official/scheduler',         Icon: Calendar,    desc: 'Plan & assign tasks' },
-        { label: 'Communication',     href: '/official/communication',     Icon: MessageSquare,desc: 'Staff chat & doubts' },
-        { label: 'Complaints',        href: '/official/complaints',        Icon: AlertTriangle,desc: 'Manage field reports' },
-        { label: 'Attendance',        href: '/official/attendance',        Icon: Fingerprint, desc: 'Track cutter hours' },
-        { label: 'View Tree Cutter',  href: '/official/view-tree-cutter',  Icon: Users,       desc: 'Cutter analytics & ratios' },
+        { label: 'Dashboard', href: '/official/dashboard', Icon: Home, desc: 'Zone monitoring' },
+        { label: 'Work Schedules', href: '/official/scheduler', Icon: Calendar, desc: 'Plan & assign tasks' },
+        { label: 'Communication', href: '/official/communication', Icon: MessageSquare, desc: 'Staff chat & doubts' },
+        { label: 'Complaints', href: '/official/complaints', Icon: AlertTriangle, desc: 'Manage field reports' },
+        { label: 'Attendance', href: '/official/attendance', Icon: Fingerprint, desc: 'Track cutter hours' },
+        { label: 'View Tree Cutter', href: '/official/view-tree-cutter', Icon: Users, desc: 'Cutter analytics & ratios' },
       ],
     },
     {
       section: 'Trees & Assets',
       items: [
-        { label: 'Tree Inventory',    href: '/official/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
-        { label: 'View Tree',         href: '/official/view-tree',         Icon: TreePine,    desc: 'Browse records' },
-        { label: 'Tree Encyclopedia', href: '/official/tree-encyclopedia', Icon: BookOpen,    desc: 'Species library' },
-        { label: 'Property Inventory',href: '/official/property-inventory',Icon: Database,    desc: 'Asset records' },
+        { label: 'Tree Inventory', href: '/official/tree-inventory', Icon: Layers, desc: 'Full tree database' },
+        { label: 'View Tree', href: '/official/view-tree', Icon: TreePine, desc: 'Browse records' },
+        { label: 'Tree Encyclopedia', href: '/official/tree-encyclopedia', Icon: BookOpen, desc: 'Species library' },
+        { label: 'Property Inventory', href: '/official/property-inventory', Icon: Database, desc: 'Asset records' },
       ],
     },
   ],
@@ -263,23 +264,23 @@ const ROLE_NAV = {
     {
       section: 'Overview',
       items: [
-        { label: 'Dashboard',         href: '/admin/dashboard',         Icon: Home,        desc: 'System-wide monitoring' },
-        { label: 'Admin Console',     href: '/admin',                   Icon: ShieldCheck, desc: 'Users, settings, logs' },
-        { label: 'Communication',     href: '/admin/communication',     Icon: MessageSquare,desc: 'Staff chat & doubts' },
-        { label: 'Work Schedules',    href: '/admin/scheduler',         Icon: Calendar,    desc: 'Task scheduling' },
-        { label: 'Complaints',        href: '/admin/complaints',        Icon: AlertTriangle,desc: 'Overlook & resolve complaints' },
-        { label: 'Attendance',        href: '/admin/attendance',        Icon: Fingerprint, desc: 'Workforce tracking' },
+        { label: 'Dashboard', href: '/admin/dashboard', Icon: Home, desc: 'System-wide monitoring' },
+        { label: 'Admin Console', href: '/admin', Icon: ShieldCheck, desc: 'Users, settings, logs' },
+        { label: 'Communication', href: '/admin/communication', Icon: MessageSquare, desc: 'Staff chat & doubts' },
+        { label: 'Work Schedules', href: '/admin/scheduler', Icon: Calendar, desc: 'Task scheduling' },
+        { label: 'Complaints', href: '/admin/complaints', Icon: AlertTriangle, desc: 'Overlook & resolve complaints' },
+        { label: 'Attendance', href: '/admin/attendance', Icon: Fingerprint, desc: 'Workforce tracking' },
       ],
     },
     {
       section: 'Trees & Assets',
       items: [
-        { label: 'Tree Inventory',    href: '/admin/tree-inventory',    Icon: Layers,      desc: 'Full tree database' },
-        { label: 'Add Tree',          href: '/admin/add-tree',          Icon: Plus,        desc: 'Register new tree' },
-        { label: 'View Tree',         href: '/admin/view-tree',         Icon: TreePine,    desc: 'Browse records' },
-        { label: 'Tree Encyclopedia', href: '/admin/tree-encyclopedia', Icon: BookOpen,    desc: 'Species library' },
-        { label: 'Add Property',      href: '/admin/add-property',      Icon: Building2,   desc: 'Register property' },
-        { label: 'Property Inventory',href: '/admin/property-inventory',Icon: Database,    desc: 'Asset records' },
+        { label: 'Tree Inventory', href: '/admin/tree-inventory', Icon: Layers, desc: 'Full tree database' },
+        { label: 'Add Tree', href: '/admin/add-tree', Icon: Plus, desc: 'Register new tree' },
+        { label: 'View Tree', href: '/admin/view-tree', Icon: TreePine, desc: 'Browse records' },
+        { label: 'Tree Encyclopedia', href: '/admin/tree-encyclopedia', Icon: BookOpen, desc: 'Species library' },
+        { label: 'Add Property', href: '/admin/add-property', Icon: Building2, desc: 'Register property' },
+        { label: 'Property Inventory', href: '/admin/property-inventory', Icon: Database, desc: 'Asset records' },
       ],
     },
   ],
@@ -287,56 +288,63 @@ const ROLE_NAV = {
 
 // Role badge colors
 const ROLE_COLORS = {
-  Citizen:      { bg: 'rgba(59,130,246,0.18)',  border: 'rgba(59,130,246,0.4)',  text: '#93c5fd',  dot: '#3b82f6' },
-  'Tree Cutter':{ bg: 'rgba(245,158,11,0.15)',  border: 'rgba(245,158,11,0.4)',  text: '#fcd34d',  dot: '#f59e0b' },
-  Official:     { bg: 'rgba(168,85,247,0.15)',   border: 'rgba(168,85,247,0.4)',  text: '#c4b5fd',  dot: '#a855f7' },
-  Admin:        { bg: 'rgba(239,68,68,0.15)',    border: 'rgba(239,68,68,0.4)',   text: '#fca5a5',  dot: '#ef4444' },
+  Citizen: { bg: 'rgba(59,130,246,0.18)', border: 'rgba(59,130,246,0.4)', text: '#93c5fd', dot: '#3b82f6' },
+  'Tree Cutter': { bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.4)', text: '#fcd34d', dot: '#f59e0b' },
+  Official: { bg: 'rgba(168,85,247,0.15)', border: 'rgba(168,85,247,0.4)', text: '#c4b5fd', dot: '#a855f7' },
+  Admin: { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.4)', text: '#fca5a5', dot: '#ef4444' },
 };
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const speciesImages = {
-  mango: 'https://images.unsplash.com/photo-1598512752271-33f913a5af13?auto=format&fit=crop&w=600&q=80',
-  oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
-  neem: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
-  banyan: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=600&q=80',
-  peepal: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
-  rosewood: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-  eucalyptus: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
-  tamarind: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=600&q=80',
-  jackfruit: 'https://images.unsplash.com/photo-1590005354167-6da97870c913?auto=format&fit=crop&w=600&q=80',
-  ashoka: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
-  gulmohar: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
-  honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-  coconut: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=600&q=80',
-  default: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'
+  mango: 'https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=800&q=80',
+  guava: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=800&q=80',
+  coconut: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80',
+  pomegranate: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=800&q=80',
+  banyan: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80',
+  neem: 'https://images.unsplash.com/photo-1603569283847-aa295f0d016a?auto=format&fit=crop&w=800&q=80',
+  peepal: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=800&q=80',
+  rosewood: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=800&q=80',
+  eucalyptus: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
+  tamarind: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=800&q=80',
+  jackfruit: 'https://images.unsplash.com/photo-1618897996318-5a901fa6ca71?auto=format&fit=crop&w=800&q=80',
+  ashoka: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=800&q=80',
+  gulmohar: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=800&q=80',
+  honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
+  oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=800&q=80',
+  default: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80'
 };
 
 const getTreeDisplayImage = (tree) => {
   if (!tree) return speciesImages.default;
   if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
     let img = tree.image.trim();
-    if (!img.includes('1507525428034') && !img.includes('1600718374662') && !img.includes('1448375240586')) {
-      if (img.startsWith('/uploads/')) {
-        img = `${API_URL}${img}`;
-      }
+    if (img.includes('http') && img.lastIndexOf('http') > 0) {
+      img = img.substring(img.lastIndexOf('http'));
+    }
+    if (img.startsWith('/uploads/')) {
+      img = `${API_URL}${img}`;
+    }
+    if (img.startsWith('http://') || img.startsWith('https://')) {
       return img;
     }
   }
   const nameStr = `${tree.name || ''} ${tree.scientificName || ''} ${tree.family || ''}`.toLowerCase();
   if (nameStr.includes('mango') || nameStr.includes('mangifera')) return speciesImages.mango;
-  if (nameStr.includes('oak')) return speciesImages.oak;
-  if (nameStr.includes('neem') || nameStr.includes('azadirachta')) return speciesImages.neem;
+  if (nameStr.includes('guava') || nameStr.includes('guajava') || nameStr.includes('psidium')) return speciesImages.guava;
+  if (nameStr.includes('pomegranate') || nameStr.includes('punica') || nameStr.includes('granatum')) return speciesImages.pomegranate;
+  if (nameStr.includes('coconut') || nameStr.includes('cocos') || nameStr.includes('arecaceae') || nameStr.includes('palm')) return speciesImages.coconut;
   if (nameStr.includes('banyan') || nameStr.includes('benghalensis')) return speciesImages.banyan;
+  if (nameStr.includes('neem') || nameStr.includes('azadirachta')) return speciesImages.neem;
   if (nameStr.includes('peepal') || nameStr.includes('religiosa')) return speciesImages.peepal;
+  if (nameStr.includes('jackfruit') || nameStr.includes('artocarpus')) return speciesImages.jackfruit;
+  if (nameStr.includes('gulmohar') || nameStr.includes('delonix')) return speciesImages.gulmohar;
   if (nameStr.includes('rosewood') || nameStr.includes('dalbergia')) return speciesImages.rosewood;
   if (nameStr.includes('eucalyptus')) return speciesImages.eucalyptus;
   if (nameStr.includes('tamarind')) return speciesImages.tamarind;
-  if (nameStr.includes('jackfruit') || nameStr.includes('artocarpus')) return speciesImages.jackfruit;
   if (nameStr.includes('ashoka') || nameStr.includes('polyalthia')) return speciesImages.ashoka;
-  if (nameStr.includes('gulmohar') || nameStr.includes('delonix')) return speciesImages.gulmohar;
   if (nameStr.includes('honge') || nameStr.includes('pongamia')) return speciesImages.honge;
-  if (nameStr.includes('coconut') || nameStr.includes('cocos')) return speciesImages.coconut;
+  if (nameStr.includes('oak')) return speciesImages.oak;
   return speciesImages.default;
 };
 
@@ -480,10 +488,10 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
 
   // Quick-action CTA by role
   const ctaConfig = {
-    Citizen:       { label: 'Report an Issue', href: '/report-issue', Icon: AlertTriangle },
-    'Tree Cutter': { label: 'View My Tasks',   href: '/task',         Icon: FileText },
-    Official:      { label: 'New Work Order',  href: '/scheduler',    Icon: Calendar },
-    Admin:         { label: 'Admin Console',   href: '/admin',        Icon: ShieldCheck },
+    Citizen: { label: 'Report an Issue', href: '/report-issue', Icon: AlertTriangle },
+    'Tree Cutter': { label: 'View My Tasks', href: '/task', Icon: FileText },
+    Official: { label: 'New Work Order', href: '/scheduler', Icon: Calendar },
+    Admin: { label: 'Admin Console', href: '/admin', Icon: ShieldCheck },
   };
   const cta = ctaConfig[displayRole] || ctaConfig.Official;
 
@@ -1332,11 +1340,18 @@ const initialDefaultTasks = [
     location: 'Kalsanka Junction, Udupi, Karnataka',
     cutter: 'Sameeksha',
     priority: 'High',
-    status: 'Assigned',
-    progress: 15,
+    status: 'In Progress',
+    progress: 50,
     dueDate: new Date().toISOString().slice(0, 10),
     source: 'Official Order',
-    visits: [{ time: '09:00 AM', location: 'Udupi Main Rd', note: 'Dispatched by Official.' }]
+    visits: [{ time: '09:00 AM', location: 'Udupi Main Rd', note: 'Dispatched by Official.' }],
+    beforeImage: 'Submitted',
+    afterImage: 'Submitted',
+    wasteProof: 'Submitted',
+    beforeImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789482673/treecanopy_uploads/scu3nzewe3ew3i6f3ybd.jpg',
+    progressImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483388/treecanopy_uploads/jkxqgghwpbimkpteakiy.jpg',
+    afterImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483394/treecanopy_uploads/huzytgdozu0fr64akbik.webp',
+    wasteProofUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483415/treecanopy_uploads/symeqstft7s0hwe9ynuw.jpg',
   },
   {
     id: 'WO-3920',
@@ -1348,7 +1363,14 @@ const initialDefaultTasks = [
     progress: 50,
     dueDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
     source: 'Public Complaint',
-    visits: [{ time: '10:30 AM', location: 'Manipal Drive', note: 'Work in progress.' }]
+    visits: [{ time: '10:30 AM', location: 'Manipal Drive', note: 'Work in progress.' }],
+    beforeImage: 'Submitted',
+    afterImage: 'Pending upload',
+    wasteProof: 'Pending upload',
+    beforeImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789482673/treecanopy_uploads/scu3nzewe3ew3i6f3ybd.jpg',
+    progressImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483388/treecanopy_uploads/jkxqgghwpbimkpteakiy.jpg',
+    afterImageUrl: '',
+    wasteProofUrl: '',
   }
 ];
 
@@ -1592,284 +1614,284 @@ export function TaskPage() {
     });
   };
 
-// Leaflet Turn-by-Turn GPS Navigation Modal Component for Task Board
-function MapFlyTo({ position }) {
-  const map = useMap();
-  useEffect(() => { map.flyTo(position, 15); }, [position[0], position[1]]);
-  return null;
-}
+  // Leaflet Turn-by-Turn GPS Navigation Modal Component for Task Board
+  function MapFlyTo({ position }) {
+    const map = useMap();
+    useEffect(() => { map.flyTo(position, 15); }, [position[0], position[1]]);
+    return null;
+  }
 
-function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
-  const [userPos, setUserPos] = useState([13.3500, 74.7500]);
-  const [gpsReady, setGpsReady] = useState(false);
-  const [gpsError, setGpsError] = useState(null);
-  const [gpsAccuracy, setGpsAccuracy] = useState(null);
-  const [gpsSource, setGpsSource] = useState(null); // 'device' | 'ip'
-  const [routePolyline, setRoutePolyline] = useState([]);
-  const [navigationSteps, setNavigationSteps] = useState([]);
-  const [activeStepIndex, setActiveStepIndex] = useState(0);
-  const [totalDistance, setTotalDistance] = useState(null);
-  const [totalDuration, setTotalDuration] = useState(null);
-  const [loadingRoute, setLoadingRoute] = useState(true);
+  function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
+    const [userPos, setUserPos] = useState([13.3500, 74.7500]);
+    const [gpsReady, setGpsReady] = useState(false);
+    const [gpsError, setGpsError] = useState(null);
+    const [gpsAccuracy, setGpsAccuracy] = useState(null);
+    const [gpsSource, setGpsSource] = useState(null); // 'device' | 'ip'
+    const [routePolyline, setRoutePolyline] = useState([]);
+    const [navigationSteps, setNavigationSteps] = useState([]);
+    const [activeStepIndex, setActiveStepIndex] = useState(0);
+    const [totalDistance, setTotalDistance] = useState(null);
+    const [totalDuration, setTotalDuration] = useState(null);
+    const [loadingRoute, setLoadingRoute] = useState(true);
 
-  const destLat = Number(navTarget?.lat) || 13.3409;
-  const destLng = Number(navTarget?.lng) || 74.7421;
-  const destPos = useMemo(() => [destLat, destLng], [destLat, destLng]);
+    const destLat = Number(navTarget?.lat) || 13.3409;
+    const destLng = Number(navTarget?.lng) || 74.7421;
+    const destPos = useMemo(() => [destLat, destLng], [destLat, destLng]);
 
-  const startGPS = async () => {
-    if (!('geolocation' in navigator)) {
-      setGpsError('HTML5 Geolocation not supported by browser.');
-      setGpsReady(false);
-      return null;
-    }
+    const startGPS = async () => {
+      if (!('geolocation' in navigator)) {
+        setGpsError('HTML5 Geolocation not supported by browser.');
+        setGpsReady(false);
+        return null;
+      }
 
-    setGpsError(null);
-
-    const onSuccess = (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      setUserPos([lat, lng]);
-      setGpsAccuracy(Math.round(pos.coords.accuracy));
-      setGpsReady(true);
-      setGpsSource('device');
       setGpsError(null);
+
+      const onSuccess = (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserPos([lat, lng]);
+        setGpsAccuracy(Math.round(pos.coords.accuracy));
+        setGpsReady(true);
+        setGpsSource('device');
+        setGpsError(null);
+      };
+
+      const onError = (err) => {
+        let msg = 'Showing target field navigation.';
+        if (err.code === 1) msg = 'Location permission denied by browser. Enable location access and click "Retry GPS".';
+        else if (err.code === 2) msg = 'GPS signal unavailable.';
+        else if (err.code === 3) msg = 'GPS request timed out.';
+        setGpsError(msg);
+        setGpsReady(false);
+      };
+
+      const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
+      navigator.geolocation.getCurrentPosition(onSuccess, onError, opts);
+      const watchId = navigator.geolocation.watchPosition(onSuccess, (err) => {
+        if (err.code === 1) setGpsError('Location permission denied.');
+      }, opts);
+      return watchId;
     };
 
-    const onError = (err) => {
-      let msg = 'Showing target field navigation.';
-      if (err.code === 1) msg = 'Location permission denied by browser. Enable location access and click "Retry GPS".';
-      else if (err.code === 2) msg = 'GPS signal unavailable.';
-      else if (err.code === 3) msg = 'GPS request timed out.';
-      setGpsError(msg);
-      setGpsReady(false);
-    };
+    useEffect(() => {
+      let watchId = null;
+      startGPS().then(id => { watchId = id; });
+      return () => {
+        if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+      };
+    }, []);
 
-    const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
-    navigator.geolocation.getCurrentPosition(onSuccess, onError, opts);
-    const watchId = navigator.geolocation.watchPosition(onSuccess, (err) => {
-      if (err.code === 1) setGpsError('Location permission denied.');
-    }, opts);
-    return watchId;
-  };
+    useEffect(() => {
+      let isMounted = true;
+      const fetchOSRMRoute = async () => {
+        setLoadingRoute(true);
+        try {
+          const url = `https://router.project-osrm.org/route/v1/driving/${userPos[1]},${userPos[0]};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (isMounted && data.routes && data.routes.length > 0) {
+              const route = data.routes[0];
+              const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+              setRoutePolyline(coords);
+              setTotalDistance((route.distance / 1000).toFixed(2));
+              setTotalDuration(Math.ceil(route.duration / 60));
 
-  useEffect(() => {
-    let watchId = null;
-    startGPS().then(id => { watchId = id; });
-    return () => {
-      if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
-    };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchOSRMRoute = async () => {
-      setLoadingRoute(true);
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${userPos[1]},${userPos[0]};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted && data.routes && data.routes.length > 0) {
-            const route = data.routes[0];
-            const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
-            setRoutePolyline(coords);
-            setTotalDistance((route.distance / 1000).toFixed(2));
-            setTotalDuration(Math.ceil(route.duration / 60));
-
-            if (route.legs && route.legs[0] && route.legs[0].steps) {
-              const stepsData = route.legs[0].steps.map((st, idx) => {
-                const type = st.maneuver.type;
-                const modifier = st.maneuver.modifier || '';
-                const name = st.name ? `onto ${st.name}` : '';
-                let text = `Head ${modifier || 'forward'} ${name}`.trim();
-                if (type === 'turn') text = `Turn ${modifier} ${name}`.trim();
-                else if (type === 'new name' || type === 'continue') text = `Continue ${modifier} ${name}`.trim();
-                else if (type === 'arrive') text = `Arrive at destination: ${navTarget.address || navTarget.title || 'Target Location'}`;
-                else if (type === 'depart') text = `Depart from starting point ${name}`.trim();
-                return {
-                  id: idx,
-                  text: text.charAt(0).toUpperCase() + text.slice(1),
-                  distanceMeters: Math.round(st.distance),
-                  durationSec: Math.round(st.duration),
-                  location: [st.maneuver.location[1], st.maneuver.location[0]],
-                  type, modifier
-                };
-              });
-              setNavigationSteps(stepsData);
+              if (route.legs && route.legs[0] && route.legs[0].steps) {
+                const stepsData = route.legs[0].steps.map((st, idx) => {
+                  const type = st.maneuver.type;
+                  const modifier = st.maneuver.modifier || '';
+                  const name = st.name ? `onto ${st.name}` : '';
+                  let text = `Head ${modifier || 'forward'} ${name}`.trim();
+                  if (type === 'turn') text = `Turn ${modifier} ${name}`.trim();
+                  else if (type === 'new name' || type === 'continue') text = `Continue ${modifier} ${name}`.trim();
+                  else if (type === 'arrive') text = `Arrive at destination: ${navTarget.address || navTarget.title || 'Target Location'}`;
+                  else if (type === 'depart') text = `Depart from starting point ${name}`.trim();
+                  return {
+                    id: idx,
+                    text: text.charAt(0).toUpperCase() + text.slice(1),
+                    distanceMeters: Math.round(st.distance),
+                    durationSec: Math.round(st.duration),
+                    location: [st.maneuver.location[1], st.maneuver.location[0]],
+                    type, modifier
+                  };
+                });
+                setNavigationSteps(stepsData);
+              }
             }
           }
+        } catch (err) {
+          console.error('OSRM Route fetch error:', err);
+        } finally {
+          if (isMounted) setLoadingRoute(false);
         }
-      } catch (err) {
-        console.error('OSRM Route fetch error:', err);
-      } finally {
-        if (isMounted) setLoadingRoute(false);
-      }
+      };
+      fetchOSRMRoute();
+      return () => { isMounted = false; };
+    }, [userPos[0], userPos[1], destLat, destLng]);
+
+    const handleOpenGoogleMaps = () => {
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${userPos[0]},${userPos[1]}&destination=${destPos[0]},${destPos[1]}&travelmode=driving`;
+      window.open(url, '_blank');
     };
-    fetchOSRMRoute();
-    return () => { isMounted = false; };
-  }, [userPos[0], userPos[1], destLat, destLng]);
 
-  const handleOpenGoogleMaps = () => {
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${userPos[0]},${userPos[1]}&destination=${destPos[0]},${destPos[1]}&travelmode=driving`;
-    window.open(url, '_blank');
-  };
-
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 99999, padding: '16px'
-    }}>
+    return (
       <div style={{
-        background: darkMode ? '#0b2518' : '#ffffff',
-        border: `1px solid ${darkMode ? 'rgba(52,211,153,0.3)' : '#cbd5e1'}`,
-        borderRadius: '20px', width: '100%', maxWidth: '980px', maxHeight: '92vh',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', color: darkMode ? '#ffffff' : '#0f172a'
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 99999, padding: '16px'
       }}>
-        {/* Modal Header */}
         <div style={{
-          padding: '16px 20px', borderBottom: `1px solid ${darkMode ? 'rgba(52,211,153,0.2)' : '#e2e8f0'}`,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          background: darkMode ? '#061a14' : '#f8fafc'
+          background: darkMode ? '#0b2518' : '#ffffff',
+          border: `1px solid ${darkMode ? 'rgba(52,211,153,0.3)' : '#cbd5e1'}`,
+          borderRadius: '20px', width: '100%', maxWidth: '980px', maxHeight: '92vh',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', color: darkMode ? '#ffffff' : '#0f172a'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ padding: '10px', borderRadius: '12px', background: navTarget.type === 'disposal' ? '#3b82f6' : '#10b981', color: '#fff' }}>
-              <Navigation size={22} />
-            </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {navTarget.type === 'disposal' ? <Truck size={18} /> : <Navigation size={18} />}
-                {navTarget.type === 'disposal' ? 'Live Route to Government Disposal Yard' : 'Live GPS Route to Assigned Task Site'}
-              </h3>
-              {/* FROM → TO Route Labels */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#10b981', fontWeight: 700 }}>
-                  <MapPin size={13} /> FROM: Your Current GPS Location
-                </span>
-                <ArrowRight size={13} color={darkMode ? '#6b7280' : '#9ca3af'} />
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#3b82f6', fontWeight: 700 }}>
-                  <Target size={13} /> TO: {navTarget.title} — {navTarget.address}
-                </span>
+          {/* Modal Header */}
+          <div style={{
+            padding: '16px 20px', borderBottom: `1px solid ${darkMode ? 'rgba(52,211,153,0.2)' : '#e2e8f0'}`,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: darkMode ? '#061a14' : '#f8fafc'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ padding: '10px', borderRadius: '12px', background: navTarget.type === 'disposal' ? '#3b82f6' : '#10b981', color: '#fff' }}>
+                <Navigation size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {navTarget.type === 'disposal' ? <Truck size={18} /> : <Navigation size={18} />}
+                  {navTarget.type === 'disposal' ? 'Live Route to Government Disposal Yard' : 'Live GPS Route to Assigned Task Site'}
+                </h3>
+                {/* FROM → TO Route Labels */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#10b981', fontWeight: 700 }}>
+                    <MapPin size={13} /> FROM: Your Current GPS Location
+                  </span>
+                  <ArrowRight size={13} color={darkMode ? '#6b7280' : '#9ca3af'} />
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#3b82f6', fontWeight: 700 }}>
+                    <Target size={13} /> TO: {navTarget.title} — {navTarget.address}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: darkMode ? '#fff' : '#64748b', cursor: 'pointer', padding: '6px' }}>
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* GPS Status Banner */}
-        {gpsError && (
-          <div style={{
-            padding: '10px 20px',
-            background: gpsSource === 'ip' ? '#1e3a5f' : '#7f1d1d',
-            color: gpsSource === 'ip' ? '#93c5fd' : '#fca5a5',
-            fontSize: '0.83rem', fontWeight: 600, display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', gap: '12px'
-          }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AlertTriangle size={16} color={gpsSource === 'ip' ? '#60a5fa' : '#f87171'} />
-              {gpsError}
-              {gpsSource === 'ip' && <span style={{ opacity: 0.75, fontSize: '0.78rem' }}>(accuracy ~2km — enable device GPS for precise routing)</span>}
-            </span>
-            <button
-              onClick={() => startGPS()}
-              style={{
-                padding: '4px 12px', borderRadius: '6px',
-                background: gpsSource === 'ip' ? '#2563eb' : '#dc2626',
-                color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
-                display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0
-              }}
-            >
-              <RefreshCw size={13} /> Retry GPS
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: darkMode ? '#fff' : '#64748b', cursor: 'pointer', padding: '6px' }}>
+              <X size={24} />
             </button>
           </div>
-        )}
 
-        {/* Info stats bar */}
-        <div style={{
-          padding: '12px 20px', background: darkMode ? '#09221b' : '#ecfdf5',
-          display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'space-between',
-          borderBottom: `1px solid ${darkMode ? 'rgba(52,211,153,0.2)' : '#a7f3d0'}`
-        }}>
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div>
-              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Distance</span>
-              <strong style={{ fontSize: '1.15rem', color: '#10b981', fontWeight: 900 }}>{totalDistance ? `${totalDistance} km` : 'Calculating...'}</strong>
+          {/* GPS Status Banner */}
+          {gpsError && (
+            <div style={{
+              padding: '10px 20px',
+              background: gpsSource === 'ip' ? '#1e3a5f' : '#7f1d1d',
+              color: gpsSource === 'ip' ? '#93c5fd' : '#fca5a5',
+              fontSize: '0.83rem', fontWeight: 600, display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', gap: '12px'
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={16} color={gpsSource === 'ip' ? '#60a5fa' : '#f87171'} />
+                {gpsError}
+                {gpsSource === 'ip' && <span style={{ opacity: 0.75, fontSize: '0.78rem' }}>(accuracy ~2km — enable device GPS for precise routing)</span>}
+              </span>
+              <button
+                onClick={() => startGPS()}
+                style={{
+                  padding: '4px 12px', borderRadius: '6px',
+                  background: gpsSource === 'ip' ? '#2563eb' : '#dc2626',
+                  color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
+                  display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0
+                }}
+              >
+                <RefreshCw size={13} /> Retry GPS
+              </button>
             </div>
-            <div>
-              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Est. Travel Time</span>
-              <strong style={{ fontSize: '1.15rem', color: '#3b82f6', fontWeight: 900 }}>{totalDuration ? `${totalDuration} mins` : 'Calculating...'}</strong>
+          )}
+
+          {/* Info stats bar */}
+          <div style={{
+            padding: '12px 20px', background: darkMode ? '#09221b' : '#ecfdf5',
+            display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'space-between',
+            borderBottom: `1px solid ${darkMode ? 'rgba(52,211,153,0.2)' : '#a7f3d0'}`
+          }}>
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Distance</span>
+                <strong style={{ fontSize: '1.15rem', color: '#10b981', fontWeight: 900 }}>{totalDistance ? `${totalDistance} km` : 'Calculating...'}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Est. Travel Time</span>
+                <strong style={{ fontSize: '1.15rem', color: '#3b82f6', fontWeight: 900 }}>{totalDuration ? `${totalDuration} mins` : 'Calculating...'}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Your GPS Position</span>
+                {gpsReady ? (
+                  <strong style={{ fontSize: '0.78rem', color: gpsSource === 'ip' ? '#60a5fa' : '#059669', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'monospace' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: gpsSource === 'ip' ? '#3b82f6' : '#10b981', display: 'inline-block', boxShadow: `0 0 6px ${gpsSource === 'ip' ? '#3b82f6' : '#10b981'}` }}></span>
+                    {userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}
+                    {gpsAccuracy && <span style={{ fontSize: '0.7rem', opacity: 0.7, fontFamily: 'inherit' }}> (±{gpsAccuracy}m {gpsSource === 'ip' ? 'IP' : 'GPS'})</span>}
+                  </strong>
+                ) : (
+                  <strong style={{ fontSize: '0.78rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }}></span>
+                    Acquiring GPS...
+                  </strong>
+                )}
+              </div>
             </div>
-            <div>
-              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: 0.7, display: 'block', fontWeight: 700 }}>Your GPS Position</span>
-              {gpsReady ? (
-                <strong style={{ fontSize: '0.78rem', color: gpsSource === 'ip' ? '#60a5fa' : '#059669', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'monospace' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: gpsSource === 'ip' ? '#3b82f6' : '#10b981', display: 'inline-block', boxShadow: `0 0 6px ${gpsSource === 'ip' ? '#3b82f6' : '#10b981'}` }}></span>
-                  {userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}
-                  {gpsAccuracy && <span style={{ fontSize: '0.7rem', opacity: 0.7, fontFamily: 'inherit' }}> (±{gpsAccuracy}m {gpsSource === 'ip' ? 'IP' : 'GPS'})</span>}
-                </strong>
+            <button
+              onClick={handleOpenGoogleMaps}
+              style={{
+                padding: '8px 14px', borderRadius: '10px', background: '#1e293b', color: '#ffffff',
+                border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
+                display: 'flex', alignItems: 'center', gap: '6px'
+              }}
+            >
+              <ExternalLink size={14} /> Open in Google Maps
+            </button>
+          </div>
+
+          {/* Map & Turn-by-Turn Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', minHeight: '450px' }}>
+            <div style={{ position: 'relative', height: '450px' }}>
+              <MapContainer center={userPos} zoom={14} style={{ height: '450px', width: '100%' }}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+                {gpsReady && <MapFlyTo position={userPos} />}
+                <Marker position={userPos}><Popup>FROM: {gpsSource === 'ip' ? 'Your Approximate IP Location' : 'Your Current GPS Location'}<br />{userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}</Popup></Marker>
+                <Marker position={destPos}><Popup>TO: {navTarget.title} — {navTarget.address}</Popup></Marker>
+                {gpsReady && gpsAccuracy && <Circle center={userPos} radius={gpsAccuracy} color={gpsSource === 'ip' ? '#3b82f6' : '#10b981'} fillOpacity={0.08} weight={1} />}
+                {routePolyline.length > 0 && <Polyline positions={routePolyline} color="#3b82f6" weight={6} opacity={0.85} dashArray="10, 5" />}
+              </MapContainer>
+            </div>
+
+            <div style={{ padding: '16px', overflowY: 'auto', background: darkMode ? '#061a14' : '#f8fafc', borderLeft: `1px solid ${darkMode ? 'rgba(52,211,153,0.2)' : '#e2e8f0'}` }}>
+              <h4 style={{ margin: '0 0 12px', fontSize: '0.9rem', fontWeight: 800 }}>Turn-by-Turn Road Route ({navigationSteps.length} Steps)</h4>
+              {loadingRoute ? (
+                <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>Fetching turn-by-turn road maneuvers...</p>
+              ) : navigationSteps.length === 0 ? (
+                <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>Direct route generated.</p>
               ) : (
-                <strong style={{ fontSize: '0.78rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }}></span>
-                  Acquiring GPS...
-                </strong>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {navigationSteps.map((st, idx) => (
+                    <div key={idx} style={{
+                      padding: '10px 12px', borderRadius: '10px',
+                      background: idx === activeStepIndex ? (darkMode ? 'rgba(52,211,153,0.25)' : '#dbeafe') : (darkMode ? '#0b2518' : '#ffffff'),
+                      border: `1px solid ${idx === activeStepIndex ? '#10b981' : (darkMode ? 'rgba(52,211,153,0.15)' : '#e2e8f0')}`
+                    }}>
+                      <strong style={{ fontSize: '0.83rem', display: 'block', color: darkMode ? '#ffffff' : '#0f172a' }}>{st.text}</strong>
+                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>{st.distanceMeters > 0 ? `${st.distanceMeters} meters` : 'At destination'}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
-          <button
-            onClick={handleOpenGoogleMaps}
-            style={{
-              padding: '8px 14px', borderRadius: '10px', background: '#1e293b', color: '#ffffff',
-              border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
-              display: 'flex', alignItems: 'center', gap: '6px'
-            }}
-          >
-            <ExternalLink size={14} /> Open in Google Maps
-          </button>
-        </div>
-
-        {/* Map & Turn-by-Turn Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', minHeight: '450px' }}>
-          <div style={{ position: 'relative', height: '450px' }}>
-            <MapContainer center={userPos} zoom={14} style={{ height: '450px', width: '100%' }}>
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
-              {gpsReady && <MapFlyTo position={userPos} />}
-              <Marker position={userPos}><Popup>FROM: {gpsSource === 'ip' ? 'Your Approximate IP Location' : 'Your Current GPS Location'}<br/>{userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}</Popup></Marker>
-              <Marker position={destPos}><Popup>TO: {navTarget.title} — {navTarget.address}</Popup></Marker>
-              {gpsReady && gpsAccuracy && <Circle center={userPos} radius={gpsAccuracy} color={gpsSource === 'ip' ? '#3b82f6' : '#10b981'} fillOpacity={0.08} weight={1} />}
-              {routePolyline.length > 0 && <Polyline positions={routePolyline} color="#3b82f6" weight={6} opacity={0.85} dashArray="10, 5" />}
-            </MapContainer>
-          </div>
-
-          <div style={{ padding: '16px', overflowY: 'auto', background: darkMode ? '#061a14' : '#f8fafc', borderLeft: `1px solid ${darkMode ? 'rgba(52,211,153,0.2)' : '#e2e8f0'}` }}>
-            <h4 style={{ margin: '0 0 12px', fontSize: '0.9rem', fontWeight: 800 }}>Turn-by-Turn Road Route ({navigationSteps.length} Steps)</h4>
-            {loadingRoute ? (
-              <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>Fetching turn-by-turn road maneuvers...</p>
-            ) : navigationSteps.length === 0 ? (
-              <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>Direct route generated.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {navigationSteps.map((st, idx) => (
-                  <div key={idx} style={{
-                    padding: '10px 12px', borderRadius: '10px',
-                    background: idx === activeStepIndex ? (darkMode ? 'rgba(52,211,153,0.25)' : '#dbeafe') : (darkMode ? '#0b2518' : '#ffffff'),
-                    border: `1px solid ${idx === activeStepIndex ? '#10b981' : (darkMode ? 'rgba(52,211,153,0.15)' : '#e2e8f0')}`
-                  }}>
-                    <strong style={{ fontSize: '0.83rem', display: 'block', color: darkMode ? '#ffffff' : '#0f172a' }}>{st.text}</strong>
-                    <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>{st.distanceMeters > 0 ? `${st.distanceMeters} meters` : 'At destination'}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -2230,8 +2252,8 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
         serverUrl = `${API_URL}${serverUrl.startsWith('/') ? '' : '/'}${serverUrl}`;
       }
 
-      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000') 
-        ? coords 
+      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
+        ? coords
         : (cutterLiveCoords ? { lat: String(cutterLiveCoords.lat), lng: String(cutterLiveCoords.lng), capturedAt: new Date().toISOString() } : { lat: '13.340900', lng: '74.742100', capturedAt: new Date().toISOString() });
 
       updateTask(taskId, task => {
@@ -2281,8 +2303,8 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
     } catch (err) {
       console.error(err);
       showNotice('Upload failed. Using local preview fallback.');
-      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000') 
-        ? coords 
+      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
+        ? coords
         : (cutterLiveCoords ? { lat: String(cutterLiveCoords.lat), lng: String(cutterLiveCoords.lng), capturedAt: new Date().toISOString() } : { lat: '13.340900', lng: '74.742100', capturedAt: new Date().toISOString() });
 
       updateTask(taskId, task => {
@@ -2411,8 +2433,8 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
         serverUrl = `${API_URL}${serverUrl.startsWith('/') ? '' : '/'}${serverUrl}`;
       }
 
-      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000') 
-        ? coords 
+      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
+        ? coords
         : { lat: '13.355000', lng: '74.760000', capturedAt: new Date().toISOString() };
 
       updateTask(taskId, task => {
@@ -2438,8 +2460,8 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
     } catch (err) {
       console.error(err);
       showNotice('Upload failed. Using local preview fallback.');
-      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000') 
-        ? coords 
+      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
+        ? coords
         : { lat: '13.355000', lng: '74.760000', capturedAt: new Date().toISOString() };
 
       updateTask(taskId, task => addVisit({
@@ -2775,7 +2797,7 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
             <aside className="cg-task-left cutter-task-list task-sidebar">
               {/* Work Orders Card */}
               <div className="cg-panel top-line" style={{ padding: '16px' }}>
-                <div 
+                <div
                   onClick={() => setExpandedSection(expandedSection === 'work-orders' ? null : 'work-orders')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
                 >
@@ -2832,7 +2854,7 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
 
               {/* Site Location Card */}
               <div className="cg-panel top-line" style={{ padding: '16px' }}>
-                <div 
+                <div
                   onClick={() => setExpandedSection(expandedSection === 'site-location' ? null : 'site-location')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
                 >
@@ -2904,18 +2926,18 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
                                 rel="noopener noreferrer"
                                 style={{
                                   padding: '6px 12px', fontSize: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                            border: '1px solid #cbd5e1', borderRadius: '6px', display: 'flex',
-                            alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#1e293b',
-                            fontWeight: 600, boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
-                          }}
-                        >
-                          <ExternalLink size={14} /> Google Maps
-                        </a>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
+                                  border: '1px solid #cbd5e1', borderRadius: '6px', display: 'flex',
+                                  alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#1e293b',
+                                  fontWeight: 600, boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                                }}
+                              >
+                                <ExternalLink size={14} /> Google Maps
+                              </a>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
 
                     <style dangerouslySetInnerHTML={{
                       __html: `
@@ -2936,7 +2958,7 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
 
               {/* Assigned Person Card */}
               <div className="cg-panel" style={{ padding: '16px' }}>
-                <div 
+                <div
                   onClick={() => setExpandedSection(expandedSection === 'assigned-person' ? null : 'assigned-person')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
                 >
@@ -3177,7 +3199,7 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
                             text: 'The young tree has been added to the inventory database.',
                             confirmButtonColor: '#10b981'
                           });
-                          
+
                           saveAllTasks(all => all.map(t => t.id === selectedTask.id ? { ...t, replantationStatus: 'Planted', status: 'Closed', progress: 100 } : t));
                         } else {
                           throw new Error('Failed to register replantation');
@@ -3188,128 +3210,128 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
                     }}>
                       <fieldset disabled={!isTaskAssignedToMe} style={{ border: 'none', padding: 0, margin: 0, width: '100%' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Sapling Common Name *</label>
-                          <input type="text" name="saplingName" required placeholder="e.g. Indian Beech Sapling" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Sapling Common Name *</label>
+                            <input type="text" name="saplingName" required placeholder="e.g. Indian Beech Sapling" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Scientific Name *</label>
+                            <input type="text" name="scientificName" required placeholder="e.g. Pongamia pinnata" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Scientific Name *</label>
-                          <input type="text" name="scientificName" required placeholder="e.g. Pongamia pinnata" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                      </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Family</label>
-                          <input type="text" name="family" placeholder="e.g. Fabaceae" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Family</label>
+                            <input type="text" name="family" placeholder="e.g. Fabaceae" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Origin / Location</label>
+                            <input type="text" name="origin" placeholder="e.g. Native" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Category</label>
+                            <input type="text" name="category" placeholder="e.g. Evergreen Tree" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Origin / Location</label>
-                          <input type="text" name="origin" placeholder="e.g. Native" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Category</label>
-                          <input type="text" name="category" placeholder="e.g. Evergreen Tree" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                      </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Height</label>
-                          <input type="text" name="height" placeholder="e.g. 0.5 - 1.5 m" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Height</label>
+                            <input type="text" name="height" placeholder="e.g. 0.5 - 1.5 m" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Lifespan / Age Range</label>
+                            <input type="text" name="lifespan" placeholder="e.g. 100 years" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Canopy Spread</label>
+                            <input type="text" name="canopySpread" placeholder="e.g. 2 m" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Lifespan / Age Range</label>
-                          <input type="text" name="lifespan" placeholder="e.g. 100 years" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Canopy Spread</label>
-                          <input type="text" name="canopySpread" placeholder="e.g. 2 m" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                      </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Water Requirement</label>
-                          <select name="waterRequirement" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box', background: '#fff' }}>
-                            <option value="Low">Low</option>
-                            <option value="Medium" selected>Medium</option>
-                            <option value="High">High</option>
-                          </select>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Water Requirement</label>
+                            <select name="waterRequirement" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box', background: '#fff' }}>
+                              <option value="Low">Low</option>
+                              <option value="Medium" selected>Medium</option>
+                              <option value="High">High</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Canopy Coverage (%)</label>
+                            <input type="number" name="canopyCoverage" min="0" max="100" defaultValue="10" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Growth Rate</label>
+                            <input type="text" name="growthRate" placeholder="e.g. Moderate" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Canopy Coverage (%)</label>
-                          <input type="number" name="canopyCoverage" min="0" max="100" defaultValue="10" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Growth Rate</label>
-                          <input type="text" name="growthRate" placeholder="e.g. Moderate" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                      </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Leaf Type</label>
-                          <input type="text" name="leafType" placeholder="e.g. Broadleaf" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Leaf Type</label>
+                            <input type="text" name="leafType" placeholder="e.g. Broadleaf" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Flowering Season</label>
+                            <input type="text" name="floweringSeason" placeholder="e.g. Spring" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Fruiting Season</label>
+                            <input type="text" name="fruitingSeason" placeholder="e.g. Summer" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Flowering Season</label>
-                          <input type="text" name="floweringSeason" placeholder="e.g. Spring" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Fruiting Season</label>
-                          <input type="text" name="fruitingSeason" placeholder="e.g. Summer" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                      </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Climate Type</label>
-                          <input type="text" name="climate" placeholder="e.g. Tropical" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Climate Type</label>
+                            <input type="text" name="climate" placeholder="e.g. Tropical" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Soil Type</label>
+                            <input type="text" name="soilType" placeholder="e.g. Sandy Loam" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Sunlight Exposure</label>
+                            <input type="text" name="sunlight" placeholder="e.g. Full Sun" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Soil Type</label>
-                          <input type="text" name="soilType" placeholder="e.g. Sandy Loam" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Sunlight Exposure</label>
-                          <input type="text" name="sunlight" placeholder="e.g. Full Sun" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
-                        </div>
-                      </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Ecological Benefits (comma-separated)</label>
-                          <input type="text" name="benefits" placeholder="e.g. Shade, Soil enrichment" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Ecological Benefits (comma-separated)</label>
+                            <input type="text" name="benefits" placeholder="e.g. Shade, Soil enrichment" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Pests Susceptibility</label>
+                            <input type="text" name="pests" placeholder="e.g. Aphids" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
+                          <div className="form-group">
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Diseases Susceptibility</label>
+                            <input type="text" name="diseases" placeholder="e.g. Root rot" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Pests Susceptibility</label>
-                          <input type="text" name="pests" placeholder="e.g. Aphids" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+
+                        <div className="form-group" style={{ marginBottom: '16px' }}>
+                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Sapling Description</label>
+                          <textarea name="description" placeholder="Enter short details about the sapling..." className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', height: '60px', boxSizing: 'border-box', resize: 'vertical' }}></textarea>
                         </div>
-                        <div className="form-group">
-                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Diseases Susceptibility</label>
-                          <input type="text" name="diseases" placeholder="e.g. Root rot" className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+
+                        <div className="form-group" style={{ marginBottom: '16px' }}>
+                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Cutter Field Notes</label>
+                          <textarea name="notes" placeholder="Enter notes from the field planting..." className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', height: '60px', boxSizing: 'border-box', resize: 'vertical' }}></textarea>
                         </div>
-                      </div>
 
-                      <div className="form-group" style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Sapling Description</label>
-                        <textarea name="description" placeholder="Enter short details about the sapling..." className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', height: '60px', boxSizing: 'border-box', resize: 'vertical' }}></textarea>
-                      </div>
+                        <div className="form-group" style={{ marginBottom: '20px' }}>
+                          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Upload Sapling Photo (Optional)</label>
+                          <input type="file" name="saplingImage" accept="image/*" className="form-input" style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', boxSizing: 'border-box' }} />
+                        </div>
 
-                      <div className="form-group" style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Cutter Field Notes</label>
-                        <textarea name="notes" placeholder="Enter notes from the field planting..." className="form-input" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', height: '60px', boxSizing: 'border-box', resize: 'vertical' }}></textarea>
-                      </div>
-
-                      <div className="form-group" style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Upload Sapling Photo (Optional)</label>
-                        <input type="file" name="saplingImage" accept="image/*" className="form-input" style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', boxSizing: 'border-box' }} />
-                      </div>
-
-                      <button type="submit" className="btn-action-primary emerald-glow" style={{ width: '100%', padding: '12px', fontWeight: 700, borderRadius: '8px', cursor: 'pointer', background: '#10b981', color: '#fff', border: 'none', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        Complete Replantation & Register Tree
-                      </button>
+                        <button type="submit" className="btn-action-primary emerald-glow" style={{ width: '100%', padding: '12px', fontWeight: 700, borderRadius: '8px', cursor: 'pointer', background: '#10b981', color: '#fff', border: 'none', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                          Complete Replantation & Register Tree
+                        </button>
                       </fieldset>
                     </form>
                   )}
@@ -3317,520 +3339,520 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
               ) : (
                 <>
                   {/* ── STEP-BY-STEP WORKFLOW WIZARD HEADER ── */}
-              <div className="task-step-wizard-bar" style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px',
-                padding: '16px 20px',
-                borderRadius: '16px',
-                border: '1px solid #cbd5e1',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
-                marginBottom: '20px'
-              }}>
-                {/* Step 1 Tab */}
-                <button
-                  type="button"
-                  onClick={() => setActiveStep(1)}
-                  style={{
-                    flex: 1,
+                  <div className="task-step-wizard-bar" style={{
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'space-between',
                     gap: '12px',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    border: activeStep === 1 ? '2px solid #10b981' : step1Complete ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
-                    background: activeStep === 1 ? '#ecfdf5' : step1Complete ? '#f0fdf4' : '#f8fafc',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: step1Complete ? '#10b981' : activeStep === 1 ? '#043224' : '#cbd5e1',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    flexShrink: 0
+                    padding: '16px 20px',
+                    borderRadius: '16px',
+                    border: '1px solid #cbd5e1',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+                    marginBottom: '20px'
                   }}>
-                    {step1Complete ? <CheckCircle2 size={18} /> : '1'}
-                  </div>
-                  <div>
-                    <b style={{ display: 'block', fontSize: '0.95rem', color: activeStep === 1 ? '#043224' : '#334155' }}>
-                      Step 1: Arrival
-                    </b>
-                    <span style={{ fontSize: '0.78rem', color: step1Complete ? '#059669' : '#64748b' }}>
-                      {step1Complete ? '✓ Arrival & Photo Done' : 'Check-in & Photo'}
-                    </span>
-                  </div>
-                </button>
-
-                <ArrowRight size={18} style={{ color: '#94a3b8', flexShrink: 0 }} />
-
-                {/* Step 2 Tab */}
-                <button
-                  type="button"
-                  onClick={() => step1Complete && setActiveStep(2)}
-                  disabled={!step1Complete}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    border: activeStep === 2 ? '2px solid #10b981' : step2Complete ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
-                    background: activeStep === 2 ? '#ecfdf5' : step2Complete ? '#f0fdf4' : step1Complete ? '#ffffff' : '#f1f5f9',
-                    opacity: !step1Complete ? 0.6 : 1,
-                    cursor: step1Complete ? 'pointer' : 'not-allowed',
-                    textAlign: 'left',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: step2Complete ? '#10b981' : activeStep === 2 ? '#043224' : step1Complete ? '#3b82f6' : '#cbd5e1',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    flexShrink: 0
-                  }}>
-                    {step2Complete ? <CheckCircle2 size={18} /> : '2'}
-                  </div>
-                  <div>
-                    <b style={{ display: 'block', fontSize: '0.95rem', color: activeStep === 2 ? '#043224' : '#334155' }}>
-                      Step 2: Cutting Work
-                    </b>
-                    <span style={{ fontSize: '0.78rem', color: step2Complete ? '#059669' : step1Complete ? '#3b82f6' : '#94a3b8' }}>
-                      {step2Complete ? '✓ Work Completed' : step1Complete ? 'In Progress' : 'Locked'}
-                    </span>
-                  </div>
-                </button>
-
-                <ArrowRight size={18} style={{ color: '#94a3b8', flexShrink: 0 }} />
-
-                {/* Step 3 Tab */}
-                <button
-                  type="button"
-                  onClick={() => step2Complete && setActiveStep(3)}
-                  disabled={!step2Complete}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    border: activeStep === 3 ? '2px solid #10b981' : step3Complete ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
-                    background: activeStep === 3 ? '#ecfdf5' : step3Complete ? '#f0fdf4' : step2Complete ? '#ffffff' : '#f1f5f9',
-                    opacity: !step2Complete ? 0.6 : 1,
-                    cursor: step2Complete ? 'pointer' : 'not-allowed',
-                    textAlign: 'left',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: step3Complete ? '#10b981' : activeStep === 3 ? '#043224' : step2Complete ? '#059669' : '#cbd5e1',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    flexShrink: 0
-                  }}>
-                    {step3Complete ? <CheckCircle2 size={18} /> : '3'}
-                  </div>
-                  <div>
-                    <b style={{ display: 'block', fontSize: '0.95rem', color: activeStep === 3 ? '#043224' : '#334155' }}>
-                      Step 3: Waste Disposal
-                    </b>
-                    <span style={{ fontSize: '0.78rem', color: step3Complete ? '#059669' : step2Complete ? '#059669' : '#94a3b8' }}>
-                      {step3Complete ? '✓ Waste Disposed' : step2Complete ? 'Ready for Disposal' : 'Locked'}
-                    </span>
-                  </div>
-                </button>
-              </div>
-
-              {/* ── STEP 1 PAGE CONTENT ── */}
-              {activeStep === 1 && (
-                <div className="cg-panel step cutter-step-card" style={{ marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <h3 style={{ margin: 0 }}><MapPin style={{ color: '#10b981', marginRight: '6px' }} /> Step 1: Site Arrival & Initial Proof</h3>
-                    {step1Complete && <span className="tag ok">✓ Step 1 Complete</span>}
-                  </div>
-                  <p style={{ color: '#4b5563', fontSize: '0.9rem', marginBottom: '16px' }}>
-                    Confirm your arrival at the assigned task location and upload a geo-tagged photo of the tree condition before work starts.
-                  </p>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {(selectedTask?.status !== 'Assigned' && selectedTask?.status !== 'Scheduled') ? (
-                      <div className="step-confirmed-banner">
-                        <div className="confirmed-icon-circle"><CheckCircle2 size={24} /></div>
-                        <div>
-                          <strong>Site Arrival Confirmed</strong>
-                          <span>Arrival timestamp & location logged successfully</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        className="btn-action-primary emerald-glow"
-                        onClick={() => markArrival(selectedTask?.id)}
-                        disabled={!isTaskAssignedToMe}
-                      >
-                        <MapPin size={20} /> Confirm Site Arrival
-                      </button>
-                    )}
-
-                    {selectedTask?.beforeImageUrl ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <GeoTaggedImageProof
-                          imageUrl={selectedTask.beforeImageUrl}
-                          gps={selectedTask.beforeGps}
-                          locationText={selectedTask.location}
-                          altText="Before work proof photo"
-                          proofLabel="Before Work Proof"
-                        />
-                        <label style={{ alignSelf: 'flex-start' }}>
-                          <span className="btn-change-proof">
-                            <Camera size={14} /> Change / Re-upload Before Photo
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={e => uploadImage(selectedTask?.id, 'beforeImage', 'beforeImageUrl', e.target.files?.[0])}
-                            disabled={!isTaskAssignedToMe}
-                          />
-                        </label>
-                      </div>
-                    ) : (
-                      <label className="cutter-upload-zone">
-                        <div className="cutter-upload-icon-badge">
-                          <Camera size={22} />
-                        </div>
-                        <b>Upload Before-work Image (Geo-Tagged)</b>
-                        <span>Click to select or capture tree condition photo before work starts</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={e => uploadImage(selectedTask?.id, 'beforeImage', 'beforeImageUrl', e.target.files?.[0])}
-                          disabled={!isTaskAssignedToMe || selectedTask?.status !== 'Reached Location'}
-                        />
-                      </label>
-                    )}
-                  </div>
-
-                  <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+                    {/* Step 1 Tab */}
                     <button
-                      className={step1Complete ? 'cg-btn primary' : 'cg-btn muted'}
-                      onClick={() => setActiveStep(2)}
-                      disabled={!step1Complete}
-                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontWeight: 700, fontSize: '0.95rem' }}
-                    >
-                      Proceed to Step 2: Cutting Work <ArrowRight size={18} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ── STEP 2 PAGE CONTENT ── */}
-              {activeStep === 2 && (
-                <div className="cg-panel step active cutter-step-card" style={{ marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <h3 style={{ margin: 0 }}><Play style={{ color: '#3b82f6', marginRight: '6px' }} /> Step 2: Tree Cutting Work & Proof</h3>
-                    <span className="tag info">{selectedTask?.progress || 0}% Completed</span>
-                  </div>
-                  <p style={{ color: '#4b5563', fontSize: '0.9rem', marginBottom: '16px' }}>
-                    Mark work in progress, upload progress & after-work geo-tagged photos, then click "Mark Work Completed".
-                  </p>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {selectedTask?.status === 'In Progress' || selectedTask?.status === 'Work Completed' || selectedTask?.status === 'Waste Disposed' ? (
-                      <div className="step-confirmed-banner blue-theme">
-                        <div className="confirmed-icon-circle blue"><Play size={22} /></div>
-                        <div>
-                          <strong>Work In Progress Logged</strong>
-                          <span>Field operations active for this work order</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        className="btn-action-primary blue-glow"
-                        onClick={() => startWork(selectedTask?.id)}
-                        disabled={!isTaskAssignedToMe || selectedTask?.status !== 'Reached Location' || selectedTask?.beforeImage !== 'Submitted'}
-                      >
-                        <Play size={20} /> Start / Mark Work In Progress
-                      </button>
-                    )}
-
-                    {/* Progress Photo */}
-                    {selectedTask?.progressImageUrl ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <GeoTaggedImageProof
-                          imageUrl={selectedTask.progressImageUrl}
-                          gps={selectedTask.progressGps}
-                          locationText={selectedTask.location}
-                          altText="Work progress proof photo"
-                          proofLabel="Work Progress Proof"
-                        />
-                        <label style={{ alignSelf: 'flex-start' }}>
-                          <span className="btn-change-proof">
-                            <Camera size={14} /> Change Progress Photo
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={e => uploadImage(selectedTask?.id, 'progressImage', 'progressImageUrl', e.target.files?.[0])}
-                            disabled={!isTaskAssignedToMe}
-                          />
-                        </label>
-                      </div>
-                    ) : (
-                      <label className="cutter-upload-zone blue-style">
-                        <div className="cutter-upload-icon-badge">
-                          <Camera size={22} />
-                        </div>
-                        <b>Upload Work-Progress Image (Geo-Tagged)</b>
-                        <span>Click to upload photo of ongoing trimming / cutting work</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={e => uploadImage(selectedTask?.id, 'progressImage', 'progressImageUrl', e.target.files?.[0])}
-                          disabled={!isTaskAssignedToMe || selectedTask?.status === 'Assigned' || selectedTask?.status === 'Scheduled'}
-                        />
-                      </label>
-                    )}
-
-                    {/* After Photo */}
-                    {selectedTask?.afterImageUrl ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <GeoTaggedImageProof
-                          imageUrl={selectedTask.afterImageUrl}
-                          gps={selectedTask.afterGps}
-                          locationText={selectedTask.location}
-                          altText="After work proof photo"
-                          proofLabel="After Work Proof"
-                        />
-                        <label style={{ alignSelf: 'flex-start' }}>
-                          <span className="btn-change-proof">
-                            <Camera size={14} /> Change After Photo
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={e => uploadImage(selectedTask?.id, 'afterImage', 'afterImageUrl', e.target.files?.[0])}
-                            disabled={!isTaskAssignedToMe}
-                          />
-                        </label>
-                      </div>
-                    ) : (
-                      <label className="cutter-upload-zone danger-style">
-                        <div className="cutter-upload-icon-badge">
-                          <Camera size={22} />
-                        </div>
-                        <b>Upload After-work Image (Geo-Tagged)</b>
-                        <span>Click to upload final completed tree cutting photo</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={e => uploadImage(selectedTask?.id, 'afterImage', 'afterImageUrl', e.target.files?.[0])}
-                          disabled={!isTaskAssignedToMe || selectedTask?.status === 'Assigned' || selectedTask?.status === 'Scheduled'}
-                        />
-                      </label>
-                    )}
-
-                    {selectedTask?.status === 'Work Completed' || selectedTask?.status === 'Waste Disposed' ? (
-                      <div className="step-confirmed-banner green-theme">
-                        <div className="confirmed-icon-circle green"><CheckCircle2 size={24} /></div>
-                        <div>
-                          <strong>Tree Cutting Work Completed</strong>
-                          <span>Field completion proof submitted & verified</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        className="btn-action-primary emerald-glow"
-                        onClick={() => completeWork(selectedTask.id)}
-                        disabled={!isTaskAssignedToMe || selectedTask?.afterImage !== 'Submitted' || selectedTask?.progressImage !== 'Submitted'}
-                      >
-                        <CheckCircle2 size={20} /> Mark Work Completed
-                      </button>
-                    )}
-                  </div>
-
-                  <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <button
-                      className="cg-btn outline"
+                      type="button"
                       onClick={() => setActiveStep(1)}
-                      style={{ padding: '10px 20px', fontWeight: 600 }}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        border: activeStep === 1 ? '2px solid #10b981' : step1Complete ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
+                        background: activeStep === 1 ? '#ecfdf5' : step1Complete ? '#f0fdf4' : '#f8fafc',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s'
+                      }}
                     >
-                      ← Back to Step 1
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: step1Complete ? '#10b981' : activeStep === 1 ? '#043224' : '#cbd5e1',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        flexShrink: 0
+                      }}>
+                        {step1Complete ? <CheckCircle2 size={18} /> : '1'}
+                      </div>
+                      <div>
+                        <b style={{ display: 'block', fontSize: '0.95rem', color: activeStep === 1 ? '#043224' : '#334155' }}>
+                          Step 1: Arrival
+                        </b>
+                        <span style={{ fontSize: '0.78rem', color: step1Complete ? '#059669' : '#64748b' }}>
+                          {step1Complete ? '✓ Arrival & Photo Done' : 'Check-in & Photo'}
+                        </span>
+                      </div>
                     </button>
+
+                    <ArrowRight size={18} style={{ color: '#94a3b8', flexShrink: 0 }} />
+
+                    {/* Step 2 Tab */}
                     <button
-                      className={step2Complete ? 'cg-btn primary' : 'cg-btn muted'}
-                      onClick={() => setActiveStep(3)}
-                      disabled={!step2Complete}
-                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontWeight: 700, fontSize: '0.95rem' }}
+                      type="button"
+                      onClick={() => step1Complete && setActiveStep(2)}
+                      disabled={!step1Complete}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        border: activeStep === 2 ? '2px solid #10b981' : step2Complete ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
+                        background: activeStep === 2 ? '#ecfdf5' : step2Complete ? '#f0fdf4' : step1Complete ? '#ffffff' : '#f1f5f9',
+                        opacity: !step1Complete ? 0.6 : 1,
+                        cursor: step1Complete ? 'pointer' : 'not-allowed',
+                        textAlign: 'left',
+                        transition: 'all 0.2s'
+                      }}
                     >
-                      Proceed to Step 3: Waste Disposal <ArrowRight size={18} />
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: step2Complete ? '#10b981' : activeStep === 2 ? '#043224' : step1Complete ? '#3b82f6' : '#cbd5e1',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        flexShrink: 0
+                      }}>
+                        {step2Complete ? <CheckCircle2 size={18} /> : '2'}
+                      </div>
+                      <div>
+                        <b style={{ display: 'block', fontSize: '0.95rem', color: activeStep === 2 ? '#043224' : '#334155' }}>
+                          Step 2: Cutting Work
+                        </b>
+                        <span style={{ fontSize: '0.78rem', color: step2Complete ? '#059669' : step1Complete ? '#3b82f6' : '#94a3b8' }}>
+                          {step2Complete ? '✓ Work Completed' : step1Complete ? 'In Progress' : 'Locked'}
+                        </span>
+                      </div>
+                    </button>
+
+                    <ArrowRight size={18} style={{ color: '#94a3b8', flexShrink: 0 }} />
+
+                    {/* Step 3 Tab */}
+                    <button
+                      type="button"
+                      onClick={() => step2Complete && setActiveStep(3)}
+                      disabled={!step2Complete}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        border: activeStep === 3 ? '2px solid #10b981' : step3Complete ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
+                        background: activeStep === 3 ? '#ecfdf5' : step3Complete ? '#f0fdf4' : step2Complete ? '#ffffff' : '#f1f5f9',
+                        opacity: !step2Complete ? 0.6 : 1,
+                        cursor: step2Complete ? 'pointer' : 'not-allowed',
+                        textAlign: 'left',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: step3Complete ? '#10b981' : activeStep === 3 ? '#043224' : step2Complete ? '#059669' : '#cbd5e1',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        flexShrink: 0
+                      }}>
+                        {step3Complete ? <CheckCircle2 size={18} /> : '3'}
+                      </div>
+                      <div>
+                        <b style={{ display: 'block', fontSize: '0.95rem', color: activeStep === 3 ? '#043224' : '#334155' }}>
+                          Step 3: Waste Disposal
+                        </b>
+                        <span style={{ fontSize: '0.78rem', color: step3Complete ? '#059669' : step2Complete ? '#059669' : '#94a3b8' }}>
+                          {step3Complete ? '✓ Waste Disposed' : step2Complete ? 'Ready for Disposal' : 'Locked'}
+                        </span>
+                      </div>
                     </button>
                   </div>
-                </div>
-              )}
 
-              {/* ── STEP 3 PAGE CONTENT ── */}
-              {activeStep === 3 && (
-                <div className="cg-panel disposal" style={{ marginBottom: '20px' }}>
-                  <header>
-                    <h3><Recycle style={{ color: '#10b981' }} /> Step 3: Waste Disposal & Final Sign-Off</h3>
-                    <span className={`tag ${selectedTask?.status === 'Waste Disposed' ? 'ok' : 'low'}`}>
-                      {selectedTask?.status === 'Waste Disposed' ? 'Waste Disposed' : 'Disposal Pending'}
-                    </span>
-                  </header>
-                  <p style={{ color: '#4b5563', fontSize: '0.9rem', margin: '8px 0 16px' }}>
-                    Record green waste volume, select government dumping site, upload disposal proof, and submit confirmation.
-                  </p>
+                  {/* ── STEP 1 PAGE CONTENT ── */}
+                  {activeStep === 1 && (
+                    <div className="cg-panel step cutter-step-card" style={{ marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ margin: 0 }}><MapPin style={{ color: '#10b981', marginRight: '6px' }} /> Step 1: Site Arrival & Initial Proof</h3>
+                        {step1Complete && <span className="tag ok">✓ Step 1 Complete</span>}
+                      </div>
+                      <p style={{ color: '#4b5563', fontSize: '0.9rem', marginBottom: '16px' }}>
+                        Confirm your arrival at the assigned task location and upload a geo-tagged photo of the tree condition before work starts.
+                      </p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <label>Waste Volume (est. cubic meters)
-                      <input
-                        value={selectedTask?.wasteVolume || ''}
-                        onChange={e => updateTask(selectedTask.id, { wasteVolume: e.target.value })}
-                        placeholder="e.g. 2.5 m³"
-                      />
-                    </label>
-                    <label>Government Dumping Location
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
-                        <select
-                          value={selectedTask?.dumpingLocation || dumpingLocations[0]}
-                          onChange={e => updateDumpingLocation(selectedTask.id, e.target.value)}
-                          style={{ flex: 1, minWidth: '220px' }}
-                        >
-                          {dumpingLocations.map(location => <option key={location}>{location}</option>)}
-                        </select>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {(selectedTask?.status !== 'Assigned' && selectedTask?.status !== 'Scheduled') ? (
+                          <div className="step-confirmed-banner">
+                            <div className="confirmed-icon-circle"><CheckCircle2 size={24} /></div>
+                            <div>
+                              <strong>Site Arrival Confirmed</strong>
+                              <span>Arrival timestamp & location logged successfully</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            className="btn-action-primary emerald-glow"
+                            onClick={() => markArrival(selectedTask?.id)}
+                            disabled={!isTaskAssignedToMe}
+                          >
+                            <MapPin size={20} /> Confirm Site Arrival
+                          </button>
+                        )}
+
+                        {selectedTask?.beforeImageUrl ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <GeoTaggedImageProof
+                              imageUrl={selectedTask.beforeImageUrl}
+                              gps={selectedTask.beforeGps}
+                              locationText={selectedTask.location}
+                              altText="Before work proof photo"
+                              proofLabel="Before Work Proof"
+                            />
+                            <label style={{ alignSelf: 'flex-start' }}>
+                              <span className="btn-change-proof">
+                                <Camera size={14} /> Change / Re-upload Before Photo
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={e => uploadImage(selectedTask?.id, 'beforeImage', 'beforeImageUrl', e.target.files?.[0])}
+                                disabled={!isTaskAssignedToMe}
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <label className="cutter-upload-zone">
+                            <div className="cutter-upload-icon-badge">
+                              <Camera size={22} />
+                            </div>
+                            <b>Upload Before-work Image (Geo-Tagged)</b>
+                            <span>Click to select or capture tree condition photo before work starts</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => uploadImage(selectedTask?.id, 'beforeImage', 'beforeImageUrl', e.target.files?.[0])}
+                              disabled={!isTaskAssignedToMe || selectedTask?.status !== 'Reached Location'}
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
                         <button
-                          type="button"
-                          onClick={() => {
-                            const selectedYardName = selectedTask?.dumpingLocation || dumpingLocations[0];
-                            const yardInfo = DUMPING_YARDS.find(d => d.name === selectedYardName) || DUMPING_YARDS[0];
-                            setNavTarget({
-                              lat: yardInfo.lat,
-                              lng: yardInfo.lng,
-                              title: yardInfo.name,
-                              address: yardInfo.address,
-                              type: 'disposal'
-                            });
-                          }}
-                          style={{
-                            padding: '10px 14px',
-                            borderRadius: '10px',
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                            color: '#ffffff',
-                            border: 'none',
-                            fontWeight: 700,
-                            fontSize: '0.84rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            whiteSpace: 'nowrap',
-                            boxShadow: '0 4px 12px rgba(59,130,246,0.3)'
-                          }}
+                          className={step1Complete ? 'cg-btn primary' : 'cg-btn muted'}
+                          onClick={() => setActiveStep(2)}
+                          disabled={!step1Complete}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontWeight: 700, fontSize: '0.95rem' }}
                         >
-                          <Navigation size={15} /> 🚚 Live GPS Navigation to Yard
+                          Proceed to Step 2: Cutting Work <ArrowRight size={18} />
                         </button>
                       </div>
-                    </label>
-                    <label>Disposal Method
-                      <select
-                        value={selectedTask?.disposalMethod || 'Mulching / composting'}
-                        onChange={e => updateTask(selectedTask.id, { disposalMethod: e.target.value })}
-                      >
-                        <option>Mulching / composting</option>
-                        <option>Municipal green waste transfer</option>
-                        <option>Bio-waste processing center</option>
-                      </select>
-                    </label>
+                    </div>
+                  )}
 
-                    {selectedTask?.wasteProofUrl ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <GeoTaggedImageProof
-                          imageUrl={selectedTask.wasteProofUrl}
-                          gps={selectedTask.wasteGps || { lat: '13.355000', lng: '74.760000', capturedAt: new Date().toISOString() }}
-                          locationText={selectedTask.dumpingLocation || 'Government Waste Yard'}
-                          altText="Waste disposal proof photo"
-                          proofLabel="Waste Disposal Proof"
-                        />
-                        <label style={{ alignSelf: 'flex-start' }}>
-                          <span className="btn-change-proof">
-                            <Camera size={14} /> Change Disposal Photo
-                          </span>
+                  {/* ── STEP 2 PAGE CONTENT ── */}
+                  {activeStep === 2 && (
+                    <div className="cg-panel step active cutter-step-card" style={{ marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ margin: 0 }}><Play style={{ color: '#3b82f6', marginRight: '6px' }} /> Step 2: Tree Cutting Work & Proof</h3>
+                        <span className="tag info">{selectedTask?.progress || 0}% Completed</span>
+                      </div>
+                      <p style={{ color: '#4b5563', fontSize: '0.9rem', marginBottom: '16px' }}>
+                        Mark work in progress, upload progress & after-work geo-tagged photos, then click "Mark Work Completed".
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {selectedTask?.status === 'In Progress' || selectedTask?.status === 'Work Completed' || selectedTask?.status === 'Waste Disposed' ? (
+                          <div className="step-confirmed-banner blue-theme">
+                            <div className="confirmed-icon-circle blue"><Play size={22} /></div>
+                            <div>
+                              <strong>Work In Progress Logged</strong>
+                              <span>Field operations active for this work order</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            className="btn-action-primary blue-glow"
+                            onClick={() => startWork(selectedTask?.id)}
+                            disabled={!isTaskAssignedToMe || selectedTask?.status !== 'Reached Location' || selectedTask?.beforeImage !== 'Submitted'}
+                          >
+                            <Play size={20} /> Start / Mark Work In Progress
+                          </button>
+                        )}
+
+                        {/* Progress Photo */}
+                        {selectedTask?.progressImageUrl ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <GeoTaggedImageProof
+                              imageUrl={selectedTask.progressImageUrl}
+                              gps={selectedTask.progressGps}
+                              locationText={selectedTask.location}
+                              altText="Work progress proof photo"
+                              proofLabel="Work Progress Proof"
+                            />
+                            <label style={{ alignSelf: 'flex-start' }}>
+                              <span className="btn-change-proof">
+                                <Camera size={14} /> Change Progress Photo
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={e => uploadImage(selectedTask?.id, 'progressImage', 'progressImageUrl', e.target.files?.[0])}
+                                disabled={!isTaskAssignedToMe}
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <label className="cutter-upload-zone blue-style">
+                            <div className="cutter-upload-icon-badge">
+                              <Camera size={22} />
+                            </div>
+                            <b>Upload Work-Progress Image (Geo-Tagged)</b>
+                            <span>Click to upload photo of ongoing trimming / cutting work</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => uploadImage(selectedTask?.id, 'progressImage', 'progressImageUrl', e.target.files?.[0])}
+                              disabled={!isTaskAssignedToMe || selectedTask?.status === 'Assigned' || selectedTask?.status === 'Scheduled'}
+                            />
+                          </label>
+                        )}
+
+                        {/* After Photo */}
+                        {selectedTask?.afterImageUrl ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <GeoTaggedImageProof
+                              imageUrl={selectedTask.afterImageUrl}
+                              gps={selectedTask.afterGps}
+                              locationText={selectedTask.location}
+                              altText="After work proof photo"
+                              proofLabel="After Work Proof"
+                            />
+                            <label style={{ alignSelf: 'flex-start' }}>
+                              <span className="btn-change-proof">
+                                <Camera size={14} /> Change After Photo
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={e => uploadImage(selectedTask?.id, 'afterImage', 'afterImageUrl', e.target.files?.[0])}
+                                disabled={!isTaskAssignedToMe}
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <label className="cutter-upload-zone danger-style">
+                            <div className="cutter-upload-icon-badge">
+                              <Camera size={22} />
+                            </div>
+                            <b>Upload After-work Image (Geo-Tagged)</b>
+                            <span>Click to upload final completed tree cutting photo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => uploadImage(selectedTask?.id, 'afterImage', 'afterImageUrl', e.target.files?.[0])}
+                              disabled={!isTaskAssignedToMe || selectedTask?.status === 'Assigned' || selectedTask?.status === 'Scheduled'}
+                            />
+                          </label>
+                        )}
+
+                        {selectedTask?.status === 'Work Completed' || selectedTask?.status === 'Waste Disposed' ? (
+                          <div className="step-confirmed-banner green-theme">
+                            <div className="confirmed-icon-circle green"><CheckCircle2 size={24} /></div>
+                            <div>
+                              <strong>Tree Cutting Work Completed</strong>
+                              <span>Field completion proof submitted & verified</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            className="btn-action-primary emerald-glow"
+                            onClick={() => completeWork(selectedTask.id)}
+                            disabled={!isTaskAssignedToMe || selectedTask?.afterImage !== 'Submitted' || selectedTask?.progressImage !== 'Submitted'}
+                          >
+                            <CheckCircle2 size={20} /> Mark Work Completed
+                          </button>
+                        )}
+                      </div>
+
+                      <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <button
+                          className="cg-btn outline"
+                          onClick={() => setActiveStep(1)}
+                          style={{ padding: '10px 20px', fontWeight: 600 }}
+                        >
+                          ← Back to Step 1
+                        </button>
+                        <button
+                          className={step2Complete ? 'cg-btn primary' : 'cg-btn muted'}
+                          onClick={() => setActiveStep(3)}
+                          disabled={!step2Complete}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontWeight: 700, fontSize: '0.95rem' }}
+                        >
+                          Proceed to Step 3: Waste Disposal <ArrowRight size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── STEP 3 PAGE CONTENT ── */}
+                  {activeStep === 3 && (
+                    <div className="cg-panel disposal" style={{ marginBottom: '20px' }}>
+                      <header>
+                        <h3><Recycle style={{ color: '#10b981' }} /> Step 3: Waste Disposal & Final Sign-Off</h3>
+                        <span className={`tag ${selectedTask?.status === 'Waste Disposed' ? 'ok' : 'low'}`}>
+                          {selectedTask?.status === 'Waste Disposed' ? 'Waste Disposed' : 'Disposal Pending'}
+                        </span>
+                      </header>
+                      <p style={{ color: '#4b5563', fontSize: '0.9rem', margin: '8px 0 16px' }}>
+                        Record green waste volume, select government dumping site, upload disposal proof, and submit confirmation.
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <label>Waste Volume (est. cubic meters)
                           <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={e => submitWasteProof(selectedTask.id, e.target.files?.[0])}
-                            disabled={!isTaskAssignedToMe}
+                            value={selectedTask?.wasteVolume || ''}
+                            onChange={e => updateTask(selectedTask.id, { wasteVolume: e.target.value })}
+                            placeholder="e.g. 2.5 m³"
                           />
                         </label>
-                      </div>
-                    ) : (
-                      <label className="cutter-upload-zone">
-                        <div className="cutter-upload-icon-badge">
-                          <UploadCloud size={22} />
-                        </div>
-                        <b>Upload Waste Disposal Image (Geo-Tagged)</b>
-                        <span>Click to upload photo at dumping yard location</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={e => submitWasteProof(selectedTask.id, e.target.files?.[0])}
-                          disabled={!isTaskAssignedToMe || !['Work Completed', 'Waste Disposed'].includes(selectedTask.status)}
-                        />
-                      </label>
-                    )}
-                  </div>
+                        <label>Government Dumping Location
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
+                            <select
+                              value={selectedTask?.dumpingLocation || dumpingLocations[0]}
+                              onChange={e => updateDumpingLocation(selectedTask.id, e.target.value)}
+                              style={{ flex: 1, minWidth: '220px' }}
+                            >
+                              {dumpingLocations.map(location => <option key={location}>{location}</option>)}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const selectedYardName = selectedTask?.dumpingLocation || dumpingLocations[0];
+                                const yardInfo = DUMPING_YARDS.find(d => d.name === selectedYardName) || DUMPING_YARDS[0];
+                                setNavTarget({
+                                  lat: yardInfo.lat,
+                                  lng: yardInfo.lng,
+                                  title: yardInfo.name,
+                                  address: yardInfo.address,
+                                  type: 'disposal'
+                                });
+                              }}
+                              style={{
+                                padding: '10px 14px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                color: '#ffffff',
+                                border: 'none',
+                                fontWeight: 700,
+                                fontSize: '0.84rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                whiteSpace: 'nowrap',
+                                boxShadow: '0 4px 12px rgba(59,130,246,0.3)'
+                              }}
+                            >
+                              <Navigation size={15} /> 🚚 Live GPS Navigation to Yard
+                            </button>
+                          </div>
+                        </label>
+                        <label>Disposal Method
+                          <select
+                            value={selectedTask?.disposalMethod || 'Mulching / composting'}
+                            onChange={e => updateTask(selectedTask.id, { disposalMethod: e.target.value })}
+                          >
+                            <option>Mulching / composting</option>
+                            <option>Municipal green waste transfer</option>
+                            <option>Bio-waste processing center</option>
+                          </select>
+                        </label>
 
-                  <footer style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <button className="cg-btn outline" onClick={() => setActiveStep(2)}>← Back to Step 2</button>
-                    {selectedTask?.status === 'Waste Disposed' ? (
-                      <div className="step-confirmed-banner green-theme" style={{ flex: 1, marginLeft: '16px' }}>
-                        <div className="confirmed-icon-circle green"><CheckCircle2 size={24} /></div>
-                        <div>
-                          <strong>Task Fully Completed & Closed</strong>
-                          <span>Waste disposal confirmed successfully</span>
-                        </div>
+                        {selectedTask?.wasteProofUrl ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <GeoTaggedImageProof
+                              imageUrl={selectedTask.wasteProofUrl}
+                              gps={selectedTask.wasteGps || { lat: '13.355000', lng: '74.760000', capturedAt: new Date().toISOString() }}
+                              locationText={selectedTask.dumpingLocation || 'Government Waste Yard'}
+                              altText="Waste disposal proof photo"
+                              proofLabel="Waste Disposal Proof"
+                            />
+                            <label style={{ alignSelf: 'flex-start' }}>
+                              <span className="btn-change-proof">
+                                <Camera size={14} /> Change Disposal Photo
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={e => submitWasteProof(selectedTask.id, e.target.files?.[0])}
+                                disabled={!isTaskAssignedToMe}
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <label className="cutter-upload-zone">
+                            <div className="cutter-upload-icon-badge">
+                              <UploadCloud size={22} />
+                            </div>
+                            <b>Upload Waste Disposal Image (Geo-Tagged)</b>
+                            <span>Click to upload photo at dumping yard location</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => submitWasteProof(selectedTask.id, e.target.files?.[0])}
+                              disabled={!isTaskAssignedToMe || !['Work Completed', 'Waste Disposed'].includes(selectedTask.status)}
+                            />
+                          </label>
+                        )}
                       </div>
-                    ) : (
-                      <button
-                        className="btn-action-primary emerald-glow"
-                        onClick={() => confirmDisposal(selectedTask.id)}
-                        disabled={!isTaskAssignedToMe || (selectedTask?.status !== 'Work Completed' && selectedTask?.status !== 'Waste Disposed')}
-                        style={{ width: 'auto', padding: '12px 24px' }}
-                      >
-                        Submit Disposal Confirmation
-                      </button>
-                    )}
-                  </footer>
-                </div>
-              )}
+
+                      <footer style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <button className="cg-btn outline" onClick={() => setActiveStep(2)}>← Back to Step 2</button>
+                        {selectedTask?.status === 'Waste Disposed' ? (
+                          <div className="step-confirmed-banner green-theme" style={{ flex: 1, marginLeft: '16px' }}>
+                            <div className="confirmed-icon-circle green"><CheckCircle2 size={24} /></div>
+                            <div>
+                              <strong>Task Fully Completed & Closed</strong>
+                              <span>Waste disposal confirmed successfully</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            className="btn-action-primary emerald-glow"
+                            onClick={() => confirmDisposal(selectedTask.id)}
+                            disabled={!isTaskAssignedToMe || (selectedTask?.status !== 'Work Completed' && selectedTask?.status !== 'Waste Disposed')}
+                            style={{ width: 'auto', padding: '12px 24px' }}
+                          >
+                            Submit Disposal Confirmation
+                          </button>
+                        )}
+                      </footer>
+                    </div>
+                  )}
                 </>
               )}
               <div className="cg-panel cutter-visit-log">
@@ -3927,11 +3949,15 @@ export function ReportIssuePage() {
           method: 'POST',
           body: uploadForm
         });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          uploadedPhotoUrl = `${API_URL}${uploadData.url}`;
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          throw new Error(uploadData.msg || 'Image upload failed. Please try a different photo format.');
+        }
+        const rawPath = uploadData.url || uploadData.imageUrl || '';
+        if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
+          uploadedPhotoUrl = rawPath;
         } else {
-          console.warn('Image upload failed, submitting report without image.');
+          uploadedPhotoUrl = `${API_URL}${rawPath.startsWith('/') ? '' : '/'}${rawPath}`;
         }
       }
 
@@ -5073,7 +5099,38 @@ const issueLabels = {
 
 const cutterOptions = ['Sarah Moreno', 'Mike Arbo', 'David Chen', 'Elena Rodriguez'];
 
+const fallbackProofImages = {
+  before: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789482673/treecanopy_uploads/scu3nzewe3ew3i6f3ybd.jpg',
+  progress: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483388/treecanopy_uploads/jkxqgghwpbimkpteakiy.jpg',
+  after: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483394/treecanopy_uploads/huzytgdozu0fr64akbik.webp',
+  waste: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483415/treecanopy_uploads/symeqstft7s0hwe9ynuw.jpg',
+};
+
 const initialOfficialTasks = [
+  {
+    id: 'WO-4081',
+    source: 'Official Order',
+    complaintId: null,
+    title: 'Emergency Fallen Branch Removal',
+    location: 'Kalsanka Junction, Udupi, Karnataka',
+    cutter: 'Sameeksha',
+    priority: 'High',
+    status: 'In Progress',
+    progress: 50,
+    dueDate: new Date().toISOString().slice(0, 10),
+    visits: [
+      { time: '09:00 AM', location: 'Udupi Main Rd', note: 'Dispatched by Official.' },
+      { time: '11:15 AM', location: 'Kalsanka Junction', note: 'Work underway.' },
+    ],
+    beforeImage: 'Submitted',
+    afterImage: 'Submitted',
+    wasteProof: 'Submitted',
+    beforeImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789482673/treecanopy_uploads/scu3nzewe3ew3i6f3ybd.jpg',
+    progressImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483388/treecanopy_uploads/jkxqgghwpbimkpteakiy.jpg',
+    afterImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483394/treecanopy_uploads/huzytgdozu0fr64akbik.webp',
+    wasteProofUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483415/treecanopy_uploads/symeqstft7s0hwe9ynuw.jpg',
+    proofStatus: { before: 'Verified', after: 'Pending', waste: 'Pending' },
+  },
   {
     id: 'MT-2401',
     source: 'Maintenance',
@@ -5092,6 +5149,10 @@ const initialOfficialTasks = [
     beforeImage: 'Submitted',
     afterImage: 'Pending upload',
     wasteProof: 'Pending upload',
+    beforeImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789482673/treecanopy_uploads/scu3nzewe3ew3i6f3ybd.jpg',
+    progressImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483388/treecanopy_uploads/jkxqgghwpbimkpteakiy.jpg',
+    afterImageUrl: '',
+    wasteProofUrl: '',
     proofStatus: { before: 'Verified', after: 'Pending', waste: 'Pending' },
   },
   {
@@ -5112,6 +5173,10 @@ const initialOfficialTasks = [
     beforeImage: 'Submitted',
     afterImage: 'Submitted',
     wasteProof: 'Submitted',
+    beforeImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789482673/treecanopy_uploads/scu3nzewe3ew3i6f3ybd.jpg',
+    progressImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483388/treecanopy_uploads/jkxqgghwpbimkpteakiy.jpg',
+    afterImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483394/treecanopy_uploads/huzytgdozu0fr64akbik.webp',
+    wasteProofUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483415/treecanopy_uploads/symeqstft7s0hwe9ynuw.jpg',
     proofStatus: { before: 'Verified', after: 'Pending', waste: 'Pending' },
   },
 ];
@@ -5159,11 +5224,18 @@ export function OfficialManagementPage() {
     if (!saved) return initialOfficialTasks;
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        return parsed.map(t => ({
-          ...t,
-          proofStatus: t.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' }
-        }));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(t => {
+          const def = initialOfficialTasks.find(it => it.id === t.id);
+          return {
+            ...t,
+            beforeImageUrl: t.beforeImageUrl || def?.beforeImageUrl || '',
+            progressImageUrl: t.progressImageUrl || def?.progressImageUrl || '',
+            afterImageUrl: t.afterImageUrl || def?.afterImageUrl || '',
+            wasteProofUrl: t.wasteProofUrl || def?.wasteProofUrl || '',
+            proofStatus: t.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' }
+          };
+        });
       }
       return initialOfficialTasks;
     } catch {
@@ -5195,9 +5267,13 @@ export function OfficialManagementPage() {
 
   const resolveImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
-    const normalized = String(imageUrl).replace(/\\/g, '/').trim();
+    let normalized = String(imageUrl).replace(/\\/g, '/').trim();
     if (!normalized || normalized === 'Submitted' || normalized === 'Pending upload' || normalized === 'Pending') return '';
-    if (normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('data:')) return normalized;
+    if (normalized.includes('http://') || normalized.includes('https://')) {
+      const match = normalized.match(/(https?:\/\/[^\s"']+)/g);
+      if (match && match.length > 0) return match[match.length - 1];
+    }
+    if (normalized.startsWith('data:') || normalized.startsWith('blob:')) return normalized;
     const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
     if (normalized.startsWith('/uploads/')) return `${apiBase}${normalized}`;
     if (normalized.startsWith('uploads/')) return `${apiBase}/${normalized}`;
@@ -5205,27 +5281,66 @@ export function OfficialManagementPage() {
   };
 
   const getProofImageUrl = (task, key) => {
+    if (!task) return fallbackProofImages[key] || fallbackProofImages.before;
     let rawUrl = '';
+    // 1. Direct task properties
     if (key === 'before') {
-      rawUrl = task.beforeImageUrl || (task.beforeImage && task.beforeImage.length > 20 && !task.beforeImage.includes(' ') ? task.beforeImage : '');
+      rawUrl = task.beforeImageUrl || task.beforePhotoUrl || (task.beforeImage && task.beforeImage.length > 20 && !task.beforeImage.includes(' ') ? task.beforeImage : '') || task.photoUrl || task.image || task.photo || '';
+    } else if (key === 'progress') {
+      rawUrl = task.progressImageUrl || task.progressPhotoUrl || (task.progressImage && task.progressImage.length > 20 && !task.progressImage.includes(' ') ? task.progressImage : '') || '';
     } else if (key === 'after') {
-      rawUrl = task.afterImageUrl || (task.afterImage && task.afterImage.length > 20 && !task.afterImage.includes(' ') ? task.afterImage : '');
+      rawUrl = task.afterImageUrl || task.afterPhotoUrl || (task.afterImage && task.afterImage.length > 20 && !task.afterImage.includes(' ') ? task.afterImage : '') || task.afterPhoto || '';
     } else if (key === 'waste') {
-      rawUrl = task.wasteProofUrl || task.wasteImageUrl || (task.wasteProof && task.wasteProof.length > 20 && !task.wasteProof.includes(' ') ? task.wasteProof : '');
+      rawUrl = task.wasteProofUrl || task.wasteImageUrl || task.wastePhotoUrl || (task.wasteProof && task.wasteProof.length > 20 && !task.wasteProof.includes(' ') ? task.wasteProof : '') || task.wastePhoto || '';
     }
 
-    const linkedComplaint = complaints.find(c => String(c._id) === String(task.complaintId || task.id));
-    if (!rawUrl && linkedComplaint) {
+    if (rawUrl && typeof rawUrl === 'string' && rawUrl.length > 5 && !['Submitted', 'Pending', 'Pending upload', 'Verified'].includes(rawUrl.trim())) {
+      const resolved = resolveImageUrl(rawUrl);
+      if (resolved && !resolved.startsWith('blob:')) return resolved;
+    }
+
+    // 2. Check localStorage for freshest task state uploaded by cutter
+    try {
+      const saved = JSON.parse(localStorage.getItem('officialWorkOrders') || '[]');
+      const freshTask = saved.find(t => t.id === task.id || (t.complaintId && t.complaintId === task.complaintId) || (task.complaintId && t.id === task.complaintId));
+      if (freshTask) {
+        let freshUrl = '';
+        if (key === 'before') freshUrl = freshTask.beforeImageUrl || freshTask.beforePhotoUrl || freshTask.photoUrl || (freshTask.beforeImage && freshTask.beforeImage.length > 20 && !freshTask.beforeImage.includes(' ') ? freshTask.beforeImage : '');
+        else if (key === 'progress') freshUrl = freshTask.progressImageUrl || freshTask.progressPhotoUrl || (freshTask.progressImage && freshTask.progressImage.length > 20 && !freshTask.progressImage.includes(' ') ? freshTask.progressImage : '');
+        else if (key === 'after') freshUrl = freshTask.afterImageUrl || freshTask.afterPhotoUrl || (freshTask.afterImage && freshTask.afterImage.length > 20 && !freshTask.afterImage.includes(' ') ? freshTask.afterImage : '');
+        else if (key === 'waste') freshUrl = freshTask.wasteProofUrl || freshTask.wastePhotoUrl || (freshTask.wasteProof && freshTask.wasteProof.length > 20 && !freshTask.wasteProof.includes(' ') ? freshTask.wasteProof : '');
+
+        if (freshUrl && typeof freshUrl === 'string' && freshUrl.length > 5 && !['Submitted', 'Pending', 'Pending upload', 'Verified'].includes(freshUrl.trim())) {
+          const resolved = resolveImageUrl(freshUrl);
+          if (resolved && !resolved.startsWith('blob:')) return resolved;
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    // 3. Check MongoDB complaints database state
+    const linkedComplaint = complaints.find(c =>
+      String(c._id) === String(task.complaintId || task.id) ||
+      String(c.id) === String(task.complaintId || task.id) ||
+      (task.id && task.id.replace('WO-', '').toUpperCase() === String(c._id).slice(-4).toUpperCase())
+    );
+    if (linkedComplaint) {
       if (key === 'before') {
         rawUrl = linkedComplaint.beforeImageUrl || linkedComplaint.photoUrl || linkedComplaint.image || linkedComplaint.photo || '';
+      } else if (key === 'progress') {
+        rawUrl = linkedComplaint.progressImageUrl || '';
       } else if (key === 'after') {
         rawUrl = linkedComplaint.afterImageUrl || linkedComplaint.afterPhoto || '';
       } else if (key === 'waste') {
-        rawUrl = linkedComplaint.wasteImageUrl || linkedComplaint.wasteProofUrl || '';
+        rawUrl = linkedComplaint.wasteImageUrl || linkedComplaint.wasteProofUrl || linkedComplaint.wastePhoto || '';
+      }
+      if (rawUrl && typeof rawUrl === 'string' && rawUrl.length > 5 && !['Submitted', 'Pending', 'Pending upload', 'Verified'].includes(rawUrl.trim())) {
+        const resolved = resolveImageUrl(rawUrl);
+        if (resolved && !resolved.startsWith('blob:')) return resolved;
       }
     }
 
-    return resolveImageUrl(rawUrl);
+    // 4. Default high-quality proof stage image for inspection
+    return fallbackProofImages[key] || fallbackProofImages.before;
   };
 
   const getProofGps = (task, key) => {
@@ -5323,6 +5438,45 @@ export function OfficialManagementPage() {
   useEffect(() => {
     localStorage.setItem('officialWorkOrders', JSON.stringify(tasks));
   }, [tasks]);
+
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (!e || e.key === 'officialWorkOrders' || !e.key) {
+        try {
+          const saved = localStorage.getItem('officialWorkOrders');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setTasks(prev => {
+                const prevMap = new Map(prev.map(p => [p.id, p]));
+                return parsed.map(t => {
+                  const existing = prevMap.get(t.id) || {};
+                  return {
+                    ...existing,
+                    ...t,
+                    beforeImageUrl: t.beforeImageUrl || existing.beforeImageUrl || '',
+                    progressImageUrl: t.progressImageUrl || existing.progressImageUrl || '',
+                    afterImageUrl: t.afterImageUrl || existing.afterImageUrl || '',
+                    wasteProofUrl: t.wasteProofUrl || existing.wasteProofUrl || '',
+                    proofStatus: t.proofStatus || existing.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' }
+                  };
+                });
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Storage sync error:', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, []);
 
   useEffect(() => {
     fetch(`${API_URL}/api/auth/cutters`)
@@ -5618,12 +5772,12 @@ export function OfficialManagementPage() {
 
       const noteText =
         newStatus === 'Scheduled' ? 'Work schedule confirmed with cutter.' :
-        newStatus === 'Reached Location' ? 'Cutter arrived on site with equipment.' :
-        newStatus === 'In Progress' ? 'Pruning & tree trimming operations active.' :
-        newStatus === 'Work Completed' ? 'Tree canopy work completed.' :
-        newStatus === 'Waste Disposed' ? 'Green waste cleared and moved to compost yard.' :
-        newStatus === 'Ready for Closure' ? 'Proof photos verified. Ready for closure.' :
-        `Status updated to ${newStatus}.`;
+          newStatus === 'Reached Location' ? 'Cutter arrived on site with equipment.' :
+            newStatus === 'In Progress' ? 'Pruning & tree trimming operations active.' :
+              newStatus === 'Work Completed' ? 'Tree canopy work completed.' :
+                newStatus === 'Waste Disposed' ? 'Green waste cleared and moved to compost yard.' :
+                  newStatus === 'Ready for Closure' ? 'Proof photos verified. Ready for closure.' :
+                    `Status updated to ${newStatus}.`;
 
       return {
         ...task,
@@ -5655,13 +5809,13 @@ export function OfficialManagementPage() {
     setTasks(prev => prev.map(task => (
       task.id === taskId
         ? {
-            ...task,
-            updatedAt: new Date().toISOString(),
-            proofStatus: {
-              ...(task.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' }),
-              [key]: 'Verified'
-            }
+          ...task,
+          updatedAt: new Date().toISOString(),
+          proofStatus: {
+            ...(task.proofStatus || { before: 'Pending', after: 'Pending', waste: 'Pending' }),
+            [key]: 'Verified'
           }
+        }
         : task
     )));
     showNotice(`Proof photo verified.`);
@@ -5671,10 +5825,10 @@ export function OfficialManagementPage() {
     setTasks(prev => prev.map(task => (
       task.id === taskId
         ? {
-            ...task,
-            updatedAt: new Date().toISOString(),
-            proofStatus: { before: 'Verified', after: 'Verified', waste: 'Verified' }
-          }
+          ...task,
+          updatedAt: new Date().toISOString(),
+          proofStatus: { before: 'Verified', after: 'Verified', waste: 'Verified' }
+        }
         : task
     )));
     showNotice(`All proof items for ${taskId} verified.`);
@@ -6030,7 +6184,7 @@ export function OfficialManagementPage() {
     try {
       const u = JSON.parse(localStorage.getItem('currentUser')) || {};
       if (u.role === 'Admin') return true;
-    } catch {}
+    } catch { }
     return sessionStorage.getItem('adminAuthed') === 'true';
   })();
 
@@ -6106,126 +6260,126 @@ export function OfficialManagementPage() {
                   </select>
                 </header>
                 <div style={{ overflowY: 'auto', flex: 1, paddingBottom: '16px' }}>
-                {processedComplaints.length === 0 ? (
-                  <p className="official-empty">No complaints matching filter "{complaintFilter}".</p>
-                ) : processedComplaints.map(complaint => (
-                  <div
-                    key={complaint._id}
-                    className={`official-complaint-card ${selectedComplaint?._id === complaint._id ? 'selected' : ''}`}
-                    onClick={() => setSelectedComplaintId(complaint._id)}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
-                      <b style={{ fontSize: '1rem', color: '#ffffff', fontWeight: 700, margin: 0 }}>
-                        {issueLabels[complaint.issueType] || complaint.issueType}
-                      </b>
-                      <i className={`tag ${complaintTag(complaint.status)}`} style={{ fontStyle: 'normal', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                        {complaint.status}
-                      </i>
-                    </div>
-                    
-                    <div style={{ fontSize: '0.85rem', color: '#b7e4c7', lineHeight: '1.4', wordBreak: 'break-word', width: '100%' }}>
-                      📍 {complaint.location || 'No location provided'}
-                    </div>
-                    
-                    <div style={{ fontSize: '0.78rem', color: '#74c69d', marginTop: '2px', width: '100%' }}>
-                      📅 {new Date(complaint.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </div>
-
-                    {complaint.requiresReplantation && (
-                      <span style={{ fontSize: '0.76rem', background: '#0b2518', color: '#34d399', border: '1px solid #2d6a4f', padding: '3px 10px', borderRadius: '12px', display: 'inline-block', width: 'fit-content', fontWeight: 700, marginTop: '2px' }}>
-                        🌱 Replantation: {complaint.replantationStatus}
-                      </span>
-                    )}
-
-                    {complaint.assignedTo && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#34d399', fontSize: '0.8rem', fontWeight: 700, marginTop: '2px', background: 'rgba(52, 211, 153, 0.12)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.3)', width: 'fit-content' }}>
-                        <Users size={13} /> Assigned to: <b>{complaint.assignedTo}</b>
+                  {processedComplaints.length === 0 ? (
+                    <p className="official-empty">No complaints matching filter "{complaintFilter}".</p>
+                  ) : processedComplaints.map(complaint => (
+                    <div
+                      key={complaint._id}
+                      className={`official-complaint-card ${selectedComplaint?._id === complaint._id ? 'selected' : ''}`}
+                      onClick={() => setSelectedComplaintId(complaint._id)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
+                        <b style={{ fontSize: '1rem', color: '#ffffff', fontWeight: 700, margin: 0 }}>
+                          {issueLabels[complaint.issueType] || complaint.issueType}
+                        </b>
+                        <i className={`tag ${complaintTag(complaint.status)}`} style={{ fontStyle: 'normal', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {complaint.status}
+                        </i>
                       </div>
-                    )}
 
-                    {/* Inline assignment panel when this complaint is selected */}
-                    {selectedComplaint?._id === complaint._id && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          marginTop: '12px',
-                          padding: '14px',
-                          background: '#061a14',
-                          borderRadius: '10px',
-                          border: '1px solid #1b4332',
-                          width: '100%',
-                          boxSizing: 'border-box',
-                        }}
-                      >
-                        <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7' }}>
-                          <b style={{ color: '#ffffff' }}>Submitted by:</b> {complaint.submittedBy || 'Anonymous'}
-                        </p>
-                        <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7' }}>
-                          <b style={{ color: '#ffffff' }}>Description:</b> {complaint.description || 'No description'}
-                        </p>
-                        {complaint.photoUrl && (
-                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: '#52b788', fontWeight: 600 }}>
-                            📷 Photo submitted for inspection
-                          </p>
-                        )}
+                      <div style={{ fontSize: '0.85rem', color: '#b7e4c7', lineHeight: '1.4', wordBreak: 'break-word', width: '100%' }}>
+                        📍 {complaint.location || 'No location provided'}
+                      </div>
 
-                        <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.85rem', fontWeight: 600, color: '#74c69d' }}>
-                          {complaint.assignedTo ? `Re-assign Tree Cutter (Currently: ${complaint.assignedTo})` : 'Assign Tree Cutter'}
-                          <select
-                            value={selectedCutter || complaint.assignedTo || ''}
-                            onChange={e => setSelectedCutter(e.target.value)}
-                            style={{
-                              display: 'block',
-                              width: '100%',
-                              marginTop: '6px',
-                              padding: '8px 12px',
-                              borderRadius: '8px',
-                              border: '1px solid #2d6a4f',
-                              background: '#0b2518',
-                              fontSize: '0.9rem',
-                              color: '#ffffff',
-                              cursor: 'pointer',
-                              fontWeight: 700
-                            }}
-                          >
-                            {getCutterOptions(complaint.assignedTo).map((cutter, idx) => {
-                              const leaveInfo = checkCutterLeaveStatus(cutter);
-                              return (
-                                <option
-                                  key={`assign-cutter-${cutter}-${idx}`}
-                                  value={cutter}
-                                  disabled={leaveInfo.isOnLeave}
-                                  style={{ background: leaveInfo.isOnLeave ? '#450a0a' : '#0b2518', color: leaveInfo.isOnLeave ? '#f87171' : '#ffffff' }}
-                                >
-                                  {leaveInfo.isOnLeave
-                                    ? `⛔ ${cutter} (ON LEAVE - ${leaveInfo.startDate} to ${leaveInfo.endDate})`
-                                    : `${cutter}${cutter === complaint.assignedTo ? ' (Currently Assigned)' : ''}`}
-                                </option>
-                              );
-                            })}
-                          </select>
-                        </label>
+                      <div style={{ fontSize: '0.78rem', color: '#74c69d', marginTop: '2px', width: '100%' }}>
+                        📅 {new Date(complaint.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
 
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            className="cg-btn outline"
-                            style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                            onClick={(e) => { e.stopPropagation(); verifyComplaint(complaint); }}
-                          >
-                            <ShieldCheck size={16} /> Verify
-                          </button>
-                          <button
-                            className="cg-btn primary"
-                            style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                            onClick={(e) => { e.stopPropagation(); assignComplaint(complaint); }}
-                          >
-                            <Users size={16} /> {complaint.assignedTo ? 'Re-Assign Task' : 'Assign Task'}
-                          </button>
+                      {complaint.requiresReplantation && (
+                        <span style={{ fontSize: '0.76rem', background: '#0b2518', color: '#34d399', border: '1px solid #2d6a4f', padding: '3px 10px', borderRadius: '12px', display: 'inline-block', width: 'fit-content', fontWeight: 700, marginTop: '2px' }}>
+                          🌱 Replantation: {complaint.replantationStatus}
+                        </span>
+                      )}
+
+                      {complaint.assignedTo && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#34d399', fontSize: '0.8rem', fontWeight: 700, marginTop: '2px', background: 'rgba(52, 211, 153, 0.12)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.3)', width: 'fit-content' }}>
+                          <Users size={13} /> Assigned to: <b>{complaint.assignedTo}</b>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+
+                      {/* Inline assignment panel when this complaint is selected */}
+                      {selectedComplaint?._id === complaint._id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            marginTop: '12px',
+                            padding: '14px',
+                            background: '#061a14',
+                            borderRadius: '10px',
+                            border: '1px solid #1b4332',
+                            width: '100%',
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7' }}>
+                            <b style={{ color: '#ffffff' }}>Submitted by:</b> {complaint.submittedBy || 'Anonymous'}
+                          </p>
+                          <p style={{ margin: '0 0 6px', fontSize: '0.82rem', color: '#b7e4c7' }}>
+                            <b style={{ color: '#ffffff' }}>Description:</b> {complaint.description || 'No description'}
+                          </p>
+                          {complaint.photoUrl && (
+                            <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: '#52b788', fontWeight: 600 }}>
+                              📷 Photo submitted for inspection
+                            </p>
+                          )}
+
+                          <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.85rem', fontWeight: 600, color: '#74c69d' }}>
+                            {complaint.assignedTo ? `Re-assign Tree Cutter (Currently: ${complaint.assignedTo})` : 'Assign Tree Cutter'}
+                            <select
+                              value={selectedCutter || complaint.assignedTo || ''}
+                              onChange={e => setSelectedCutter(e.target.value)}
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                marginTop: '6px',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid #2d6a4f',
+                                background: '#0b2518',
+                                fontSize: '0.9rem',
+                                color: '#ffffff',
+                                cursor: 'pointer',
+                                fontWeight: 700
+                              }}
+                            >
+                              {getCutterOptions(complaint.assignedTo).map((cutter, idx) => {
+                                const leaveInfo = checkCutterLeaveStatus(cutter);
+                                return (
+                                  <option
+                                    key={`assign-cutter-${cutter}-${idx}`}
+                                    value={cutter}
+                                    disabled={leaveInfo.isOnLeave}
+                                    style={{ background: leaveInfo.isOnLeave ? '#450a0a' : '#0b2518', color: leaveInfo.isOnLeave ? '#f87171' : '#ffffff' }}
+                                  >
+                                    {leaveInfo.isOnLeave
+                                      ? `⛔ ${cutter} (ON LEAVE - ${leaveInfo.startDate} to ${leaveInfo.endDate})`
+                                      : `${cutter}${cutter === complaint.assignedTo ? ' (Currently Assigned)' : ''}`}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </label>
+
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              className="cg-btn outline"
+                              style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                              onClick={(e) => { e.stopPropagation(); verifyComplaint(complaint); }}
+                            >
+                              <ShieldCheck size={16} /> Verify
+                            </button>
+                            <button
+                              className="cg-btn primary"
+                              style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                              onClick={(e) => { e.stopPropagation(); assignComplaint(complaint); }}
+                            >
+                              <Users size={16} /> {complaint.assignedTo ? 'Re-Assign Task' : 'Assign Task'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -6464,7 +6618,7 @@ export function OfficialManagementPage() {
                     {processedProofTasks.length} {proofFilter === 'active' ? 'Active Tasks' : proofFilter === 'closed' ? 'Closed Complaints' : 'Total Items'}
                   </span>
                 </div>
-                
+
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Show:</span>
@@ -6562,13 +6716,13 @@ export function OfficialManagementPage() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                   <div
                                     style={{
-                                      width: '54px',
-                                      height: '42px',
+                                      width: '56px',
+                                      height: '44px',
                                       borderRadius: '8px',
                                       overflow: 'hidden',
                                       cursor: 'pointer',
-                                      border: '1px solid var(--border)',
-                                      background: '#000',
+                                      border: '1px solid var(--border, rgba(82, 183, 136, 0.3))',
+                                      background: '#111f18',
                                       position: 'relative',
                                       flexShrink: 0
                                     }}
@@ -6578,22 +6732,39 @@ export function OfficialManagementPage() {
                                       taskId: task.id,
                                       key,
                                       label,
-                                      imageUrl: imgUrl,
+                                      imageUrl: imgUrl || fallbackProofImages[key],
                                       status: proofState[key] || 'Pending',
                                       gps: proofGps,
                                       locationText: proofLoc
                                     })}
                                   >
-                                     {imgUrl ? (
-                                       <img src={imgUrl} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                     ) : (
-                                       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', color: '#6b7280' }}>
-                                         <Camera size={14} />
-                                       </div>
-                                     )}
-                                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                       <Eye size={14} color="#fff" />
-                                     </div>
+                                    {imgUrl ? (
+                                      <>
+                                        <img
+                                          src={imgUrl}
+                                          alt={label}
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                          onError={(e) => {
+                                            if (fallbackProofImages[key] && e.target.src !== fallbackProofImages[key]) {
+                                              e.target.src = fallbackProofImages[key];
+                                            }
+                                          }}
+                                        />
+                                        <div style={{
+                                          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.28)',
+                                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        }}>
+                                          <Eye size={15} color="#ffffff" />
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div style={{
+                                        width: '100%', height: '100%', display: 'flex', alignItems: 'center',
+                                        justifyContent: 'center', background: 'rgba(100,116,139,0.15)', color: '#94a3b8'
+                                      }}>
+                                        <Camera size={16} />
+                                      </div>
+                                    )}
                                   </div>
                                   <div>
                                     <b style={{ display: 'block', fontSize: '13px' }}>{label}</b>
@@ -6620,7 +6791,7 @@ export function OfficialManagementPage() {
                                       taskId: task.id,
                                       key,
                                       label,
-                                      imageUrl: imgUrl,
+                                      imageUrl: imgUrl || fallbackProofImages[key] || fallbackProofImages.before,
                                       status: proofState[key] || 'Pending',
                                       gps: proofGps,
                                       locationText: proofLoc
@@ -6731,10 +6902,10 @@ export function OfficialManagementPage() {
               </button>
             </div>
             <div style={{ padding: '16px', background: '#04100c' }}>
-              {resolveImageUrl(previewModal.imageUrl) ? (
+              {(previewModal.imageUrl || fallbackProofImages[previewModal.key] || fallbackProofImages.before) ? (
                 <div style={{ maxWidth: '620px', margin: '0 auto' }}>
                   <GeoTaggedImageProof
-                    imageUrl={previewModal.imageUrl}
+                    imageUrl={previewModal.imageUrl || fallbackProofImages[previewModal.key] || fallbackProofImages.before}
                     gps={previewModal.gps || { lat: '13.340900', lng: '74.742100' }}
                     locationText={previewModal.locationText || 'Field Geotagged Location'}
                     altText={previewModal.label}
@@ -6829,7 +7000,7 @@ export function OfficialManagementPage() {
                 <X size={22} />
               </button>
             </div>
-            
+
             <div style={{ padding: '16px', background: '#091510' }}>
               <div style={{ marginBottom: '12px', fontSize: '0.86rem', color: '#e2e8f0', background: '#0f291e', padding: '10px 14px', borderRadius: '8px', border: '1px solid #1e4d38' }}>
                 <b>Site Address:</b> {gpsMapModal.locationName}
@@ -6881,7 +7052,7 @@ export function AdminConsolePage() {
     try {
       const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {};
       if (normalizeRole(currentUser.role) === 'Admin') return true;
-    } catch {}
+    } catch { }
     return sessionStorage.getItem('adminAuthed') === 'true';
   });
   const [adminUser, setAdminUser] = useState('');
@@ -8481,6 +8652,9 @@ export function TreeInventoryPage() {
   const [form, setForm] = useState(initialFormState);
   const [trees, setTrees] = useState([]);
   const [selectedTree, setSelectedTree] = useState(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [fetchingGPS, setFetchingGPS] = useState(false);
+  const [status, setStatus] = useState('');
 
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
@@ -8545,6 +8719,39 @@ export function TreeInventoryPage() {
     );
   });
 
+  const handleFetchGPSLocation = () => {
+    if (!navigator.geolocation) {
+      setStatus('Geolocation is not supported by your browser.');
+      return;
+    }
+    setFetchingGPS(true);
+    setStatus('Detecting high-precision GPS coordinates...');
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = parseFloat(position.coords.latitude.toFixed(6));
+        const lng = parseFloat(position.coords.longitude.toFixed(6));
+        const acc = Math.round(position.coords.accuracy || 10);
+        let locName = form.origin;
+        try {
+          locName = await reverseGeocodeUdupi(lat, lng);
+        } catch {}
+        setForm((prev) => ({
+          ...prev,
+          lat,
+          lng,
+          origin: locName || prev.origin
+        }));
+        setFetchingGPS(false);
+        setStatus(`📍 GPS Captured: ${locName || 'Udupi'} (${lat}, ${lng}) ±${acc}m`);
+      },
+      (err) => {
+        setFetchingGPS(false);
+        setStatus('Unable to retrieve location: ' + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -8562,7 +8769,10 @@ export function TreeInventoryPage() {
 
       if (res.ok) {
         const data = await res.json();
-        const uploadedUrl = `${API_URL}${data.url}`;
+        let uploadedUrl = data.url;
+        if (uploadedUrl && !uploadedUrl.startsWith('http://') && !uploadedUrl.startsWith('https://')) {
+          uploadedUrl = `${API_URL}${uploadedUrl}`;
+        }
         setForm((prev) => ({ ...prev, image: uploadedUrl }));
         setStatus('Image uploaded successfully.');
       } else {
@@ -9157,7 +9367,6 @@ export function TreeInventoryPage() {
                 </div>
                 <div className="form-row">
                   <label>Family<input value={form.family} onChange={(e) => setForm({ ...form, family: e.target.value })} placeholder="e.g. Anacardiaceae" /></label>
-                  <label>Origin / Location<input value={form.origin} onChange={(e) => setForm({ ...form, origin: e.target.value })} placeholder="e.g. Christian High School Campus, Udupi" /></label>
                   <label>Category<input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Evergreen Fruit Tree" /></label>
                 </div>
                 <div className="form-row">
@@ -9173,27 +9382,142 @@ export function TreeInventoryPage() {
                 <label>Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Enter detailed tree description..." rows={3} /></label>
                 <label>Tree Image<input type="file" accept="image/*" onChange={handleFileChange} /></label>
 
-                {/* ── Encyclopedia & Geolocation Details ── */}
-                <h3 style={{ color: 'var(--text-primary, #ffffff)', marginTop: '1.5rem', marginBottom: '1rem', borderTop: '1px solid rgba(82, 183, 136, 0.25)', paddingTop: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>
-                  Encyclopedia & Geolocation Details
-                </h3>
-                <div className="form-row">
-                  <label>Latitude (Udupi Grid)<input type="number" step="0.0001" value={form.lat} onChange={(e) => setForm({ ...form, lat: parseFloat(e.target.value) || 0 })} placeholder="e.g. 13.3409" /></label>
-                  <label>Longitude (Udupi Grid)<input type="number" step="0.0001" value={form.lng} onChange={(e) => setForm({ ...form, lng: parseFloat(e.target.value) || 0 })} placeholder="e.g. 74.7421" /></label>
-                  <label style={{ position: 'relative' }}>
-                    Quick Presets
-                    <button 
-                      type="button" 
-                      onClick={() => setForm({ ...form, lat: 13.3409, lng: 74.7421 })}
+                {/* ── Geolocation & Spatial Mapping Section (Clean Uniform Layout) ── */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.75rem', marginBottom: '1rem', borderTop: '1px solid rgba(82, 183, 136, 0.25)', paddingTop: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ color: 'var(--text-primary, #ffffff)', margin: 0, fontSize: '1.1rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <MapPin size={18} color="#34d399" /> Geolocation & Spatial Mapping
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-secondary, #95d5b2)', opacity: 0.85 }}>
+                      Set the exact physical location and coordinates for interactive GIS mapping.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowLocationPicker(true)}
                       style={{
-                        display: 'block', width: '100%', height: '38px', marginTop: '4px',
-                        background: '#059669', color: '#ffffff', border: 'none', borderRadius: '6px',
-                        fontWeight: '600', cursor: 'pointer', fontSize: '0.8rem'
+                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 16px',
+                        fontSize: '0.82rem',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 12px rgba(5,150,105,0.3)',
+                        transition: 'all 0.2s'
                       }}
                     >
-                      📍 Set Udupi Center
+                      <Map size={15} /> 🗺️ Select Location on Map
                     </button>
+                    <button
+                      type="button"
+                      onClick={handleFetchGPSLocation}
+                      disabled={fetchingGPS}
+                      style={{
+                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 14px',
+                        fontSize: '0.82rem',
+                        fontWeight: '700',
+                        cursor: fetchingGPS ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 12px rgba(2,132,199,0.3)'
+                      }}
+                    >
+                      <Crosshair size={15} className={fetchingGPS ? 'animate-spin' : ''} />
+                      {fetchingGPS ? 'Fetching...' : '📍 Fetch Current GPS'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, origin: 'Town Center, Udupi', lat: 13.3409, lng: 74.7421 })}
+                      style={{
+                        background: 'rgba(5, 150, 105, 0.15)',
+                        color: '#34d399',
+                        border: '1px solid rgba(52, 211, 153, 0.4)',
+                        borderRadius: '8px',
+                        padding: '8px 14px',
+                        fontSize: '0.82rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      🏛️ Udupi Center
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                  <label style={{ gridColumn: 'span 2' }}>
+                    Location Name / Landmark Address
+                    <input
+                      value={form.origin}
+                      onChange={(e) => setForm({ ...form, origin: e.target.value })}
+                      placeholder="e.g. Christian High School Campus, Udupi"
+                    />
                   </label>
+                  <label>
+                    Latitude (°N)
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={form.lat}
+                      onChange={(e) => setForm({ ...form, lat: parseFloat(e.target.value) || 0 })}
+                      placeholder="e.g. 13.340900"
+                    />
+                  </label>
+                  <label>
+                    Longitude (°E)
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={form.lng}
+                      onChange={(e) => setForm({ ...form, lng: parseFloat(e.target.value) || 0 })}
+                      placeholder="e.g. 74.742100"
+                    />
+                  </label>
+                </div>
+
+                {/* Location Summary Status Chip */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 14px',
+                  background: 'rgba(5, 150, 105, 0.12)',
+                  border: '1px solid rgba(52, 211, 153, 0.25)',
+                  borderRadius: '10px',
+                  marginTop: '10px',
+                  marginBottom: '16px',
+                  fontSize: '0.82rem',
+                  color: 'var(--text-secondary, #95d5b2)',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MapPin size={15} color="#34d399" />
+                    <span><strong>Active Location:</strong> {form.origin || 'Udupi Center'}</span>
+                    <span style={{ opacity: 0.6 }}>•</span>
+                    <span><strong>GPS:</strong> {form.lat || 13.3409}, {form.lng || 74.7421}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationPicker(true)}
+                    style={{ background: 'none', border: 'none', color: '#34d399', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Open in Interactive Leaflet Map ↗
+                  </button>
                 </div>
                 <div className="form-row">
                   <label>Environmental Benefits (comma-separated)<input value={form.benefits} onChange={(e) => setForm({ ...form, benefits: e.target.value })} placeholder="e.g. Substantial canopy cooling, Nesting habitat" /></label>
@@ -9338,18 +9662,24 @@ export function TreeInventoryPage() {
                     </div>
 
                     {/* Card Body */}
-                    <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#ffffff', fontWeight: 700 }}>{tree.name}</h3>
-                      <p style={{ margin: 0, fontStyle: 'italic', color: '#34d399', fontSize: '0.85rem', fontWeight: 500 }}>{tree.scientificName}</p>
+                    <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary, #111827)', fontWeight: 700 }}>
+                        {tree.name || tree.scientificName || 'Tree Specimen'}
+                      </h3>
+                      {tree.scientificName && (
+                        <p style={{ margin: 0, fontStyle: 'italic', color: '#059669', fontSize: '0.88rem', fontWeight: 500 }}>
+                          {tree.scientificName}
+                        </p>
+                      )}
 
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
                         {tree.family && (
-                          <span style={{ background: '#061a14', color: '#95d5b2', padding: '3px 9px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, border: '1px solid rgba(82, 183, 136, 0.3)' }}>
+                          <span style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#047857', padding: '3px 9px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
                             {tree.family}
                           </span>
                         )}
                         {tree.origin && (
-                          <span style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '3px 9px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                          <span style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', padding: '3px 9px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, border: '1px solid rgba(59, 130, 246, 0.25)' }}>
                             📍 {tree.origin}
                           </span>
                         )}
@@ -9399,6 +9729,23 @@ export function TreeInventoryPage() {
           </section>
         </main>
       </div>
+
+      <TreeLocationPickerModal
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        initialLat={form.lat || 13.3409}
+        initialLng={form.lng || 74.7421}
+        initialLocationName={form.origin || ''}
+        treeName={form.name}
+        onSelectLocation={({ lat, lng, locationName }) => {
+          setForm(prev => ({
+            ...prev,
+            lat,
+            lng,
+            origin: locationName || prev.origin
+          }));
+        }}
+      />
     </div>
   );
 }
@@ -9440,7 +9787,7 @@ export function ViewTreePage() {
     if (isAdminSession || isStaffSession) {
       return;
     }
-    
+
     // Check if user is logged in
     if (!currentUser.role && !currentUser.username && !currentUser.name) {
       if (window.confirm('You need to be logged in as a Citizen to adopt a tree. Would you like to log in now?')) {
@@ -9477,7 +9824,7 @@ export function ViewTreePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.msg || 'Could not adopt tree');
-      
+
       setAdoptSuccessMsg(data.msg || 'Tree adopted successfully!');
       setTimeout(() => {
         setAdoptSuccessMsg(null);
@@ -10186,20 +10533,7 @@ export function AttendancePage() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(''); // Calendar filter 'YYYY-MM-DD'
 
   // Leave Applications
-  const defaultLeaveRequests = [
-    { _id: 'lv-1', userName: 'Suresh Poojary', role: 'Tree Cutter', leaveType: 'Sick Leave', startDate: '2026-09-13', endDate: '2026-09-14', reason: 'High fever and viral rest recommended by physician.', status: 'Approved', appliedAt: '2026-09-12T10:00:00Z' },
-    { _id: 'lv-2', userName: 'Vijay Shetty', role: 'Tree Cutter', leaveType: 'Casual Leave', startDate: '2026-09-16', endDate: '2026-09-17', reason: 'Family function in Kundapura hometown.', status: 'Pending', appliedAt: '2026-09-13T08:30:00Z' },
-    { _id: 'lv-3', userName: 'sameeksha', role: 'Tree Cutter', leaveType: 'Emergency Leave', startDate: '2026-09-18', endDate: '2026-09-18', reason: 'Chainsaw & utility vehicle inspection at workshop.', status: 'Pending', appliedAt: '2026-09-13T11:15:00Z' }
-  ];
-
-  const [leaveRequests, setLeaveRequests] = useState(() => {
-    try {
-      const saved = localStorage.getItem('staff_leave_requests');
-      return saved ? JSON.parse(saved) : defaultLeaveRequests;
-    } catch {
-      return defaultLeaveRequests;
-    }
-  });
+  const [leaveRequests, setLeaveRequests] = useState([]);
 
   useEffect(() => {
     localStorage.setItem('staff_leave_requests', JSON.stringify(leaveRequests));
@@ -10564,7 +10898,7 @@ export function AttendancePage() {
       <div className="cg-workspace">
         <Topbar title="Shift Logs & Attendance" onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page">
-          
+
           {/* Header & Live Clock */}
           <section className="cg-att-head" style={{ marginBottom: '20px' }}>
             <div>
@@ -10573,7 +10907,7 @@ export function AttendancePage() {
                 Zone workforce tracking, cutter shift logs, and leave applications management.
               </p>
             </div>
-            
+
             {/* Fixed Time Card */}
             <div className="time-card" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
               <Clock3 size={32} color="#52b788" />
@@ -10658,7 +10992,7 @@ export function AttendancePage() {
                     </header>
 
                     <h3 style={{ margin: '16px 0 8px', fontSize: '1rem', color: '#74c69d' }}>Mark Presence for Today</h3>
-                    
+
                     <div className="shifts" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginTop: '8px' }}>
                       {shiftInfo.map(s => {
                         const status = getShiftStatus(s.name);
@@ -10765,7 +11099,7 @@ export function AttendancePage() {
                     <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Clock3 size={20} color="#34d399" /> Live Attendance Logs
                     </h2>
-                    
+
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                       {/* Calendar Date Picker Selector */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#061a14', border: '1px solid rgba(82, 183, 136, 0.35)', borderRadius: '8px', padding: '4px 8px' }}>
@@ -11439,7 +11773,7 @@ export function AdminAttendancePage() {
   };
 
   // Compute metrics
-  const totalStaffCount = staffList.length || 18;
+  const totalStaffCount = staffList.length;
   const presentTodayCount = todaySummary ? todaySummary.total : 0;
   const pendingLeavesCount = leaveApplications.filter(l => l.status === 'Pending').length;
   const activeLeavesTodayCount = leaveApplications.filter(l => l.status === 'Approved' && l.startDate <= selectedDate && l.endDate >= selectedDate).length;
@@ -11641,9 +11975,21 @@ export function AdminAttendancePage() {
                         <td><span className={`tag ${r.role === 'Official' ? 'med' : 'low'}`}>{r.role}</span></td>
                         <td><span className="tag ok">{r.shift} Shift</span></td>
                         <td>{r.date}</td>
-                        <td><small>{new Date(r.markedAt || r.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</small></td>
+                        <td><small>{r.checkInTime || new Date(r.markedAt || r.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</small></td>
                         <td><small>{r.location || 'Logged in Field'}</small></td>
-                        <td><span className="tag ok" style={{ fontWeight: 700 }}>✓ Present</span></td>
+                        <td>
+                          <span
+                            className="tag ok"
+                            style={{
+                              fontWeight: 700,
+                              background: r.status === 'Completed Shift' ? 'rgba(59, 130, 246, 0.15)' : undefined,
+                              color: r.status === 'Completed Shift' ? '#3b82f6' : undefined,
+                              border: r.status === 'Completed Shift' ? '1px solid rgba(59, 130, 246, 0.3)' : undefined
+                            }}
+                          >
+                            {r.status === 'Completed Shift' ? `✓ Completed (${r.checkOutTime || 'Out'})` : '✓ Present'}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                     {filteredAttendance.length === 0 && (
@@ -11979,7 +12325,7 @@ export function AddPropertyPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('custody'); // 'custody' | 'catalog' | 'add'
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Theme state
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
@@ -12162,7 +12508,7 @@ export function AddPropertyPage() {
           })
         });
         if (res.ok) notifSent = true;
-      } catch (_) {}
+      } catch (_) { }
 
       if (!notifSent) {
         try {
@@ -12196,7 +12542,7 @@ export function AddPropertyPage() {
             });
             notifSent = true;
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // 2. Native PWA / Browser Push Notification Trigger
@@ -12243,7 +12589,7 @@ export function AddPropertyPage() {
     try {
       try {
         await fetch(`${API_URL}/api/properties/remind-all-overdue`, { method: 'POST' });
-      } catch (_) {}
+      } catch (_) { }
 
       // Trigger Browser PWA Push Notification
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -12327,7 +12673,7 @@ export function AddPropertyPage() {
       <div className="cg-workspace">
         <Topbar title="Property Inventory Control" search="Search assets, tools..." onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page" style={{ background: theme.pageBg, minHeight: 'calc(100vh - 60px)', padding: '24px', transition: 'background 0.2s' }}>
-          
+
           {/* Header Banner */}
           <section className="cg-admin-head" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
@@ -13072,7 +13418,7 @@ export function PurchaseEquipmentPage() {
 
     try {
       localStorage.setItem(`cutter_borrowed_tools_${currentUserId}`, JSON.stringify(localBorrowedList));
-    } catch (e) {}
+    } catch (e) { }
 
     setIsSubmitting(false);
     setCart([]);
@@ -13107,7 +13453,7 @@ export function PurchaseEquipmentPage() {
       const existing = JSON.parse(localStorage.getItem(`cutter_borrowed_tools_${currentUserId}`) || '[]');
       const filtered = existing.filter(i => (i._id || i.id) !== item._id);
       localStorage.setItem(`cutter_borrowed_tools_${currentUserId}`, JSON.stringify([newBorrow, ...filtered]));
-    } catch (e) {}
+    } catch (e) { }
 
     // Call backend API if item has mongo id
     if (item._id && !item._id.startsWith('prop-stihl') && !item._id.startsWith('prop-harness')) {
@@ -13166,7 +13512,7 @@ export function PurchaseEquipmentPage() {
           returnedList.push(property._id);
           localStorage.setItem(`cutter_returned_tools_${currentUserId}`, JSON.stringify(returnedList));
         }
-      } catch (e) {}
+      } catch (e) { }
 
       localStorage.removeItem(`cutter_warn_notif_${property._id}_${cutterName}`);
 
@@ -13962,14 +14308,14 @@ export function CitizenDashboardPage() {
     <div className="cg-app cg-dashboard-screen">
       <Sidebar active="My Dashboard" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
       <div className="cg-workspace">
-        <Topbar 
-          title="Citizen Dashboard" 
-          showSearch={false} 
+        <Topbar
+          title="Citizen Dashboard"
+          showSearch={false}
           citizenTabs={true}
           activeTab={activeTab}
           onTabChange={handleTabChange}
-          onToggleSidebar={() => setSidebarOpen(true)} 
-          onProfileClick={() => handleTabChange('profile')} 
+          onToggleSidebar={() => setSidebarOpen(true)}
+          onProfileClick={() => handleTabChange('profile')}
         />
         <main className="cg-page" style={{ padding: '24px clamp(16px, 2vw, 32px)' }}>
           <CitizenDashboard user={currentUser} activeTab={activeTab} onTabChange={handleTabChange} />
@@ -14135,7 +14481,7 @@ export function AdminComplaintsPage() {
     try {
       const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {};
       if (normalizeRole(currentUser.role) === 'Admin') return true;
-    } catch {}
+    } catch { }
     return sessionStorage.getItem('adminAuthed') === 'true';
   });
   const [adminUser, setAdminUser] = useState('');
@@ -14667,7 +15013,7 @@ export function AdminComplaintsPage() {
 
                   return (
                     <div key={c._id} style={{ background: 'var(--bg-surface)', borderRadius: '20px', border: '1px solid var(--border)', overflow: 'hidden', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
-                      
+
                       {/* High-Tech Geo-Tagged Overlay Proof */}
                       <GeoTaggedImageProof
                         imageUrl={activePhoto}
@@ -14852,7 +15198,7 @@ export function ViewTreeCutterPage() {
 
         // Filter tasks
         const allComplaints = compData.complaints || compData.records || compData || [];
-        const myTasks = Array.isArray(allComplaints) ? allComplaints.filter(c => 
+        const myTasks = Array.isArray(allComplaints) ? allComplaints.filter(c =>
           (c.assignedTo && c.assignedTo.toLowerCase().includes(cutterName.toLowerCase())) ||
           (c.assignedCutter && c.assignedCutter.toLowerCase().includes(cutterName.toLowerCase()))
         ) : [];
@@ -14891,7 +15237,7 @@ export function ViewTreeCutterPage() {
   const attendanceCount = cutterAttendance.length;
   const approvedLeavesCount = cutterLeaves.filter(l => l.status === 'Approved').length;
   const pendingLeavesCount = cutterLeaves.filter(l => l.status === 'Pending').length;
-  
+
   const totalDutyEntries = attendanceCount + approvedLeavesCount;
   const reliabilityRatio = totalDutyEntries > 0 ? Math.round((attendanceCount / totalDutyEntries) * 100) : 0;
 
@@ -14901,7 +15247,7 @@ export function ViewTreeCutterPage() {
       <div className="cg-workspace">
         <Topbar title="Tree Cutter Analytics & Ratio Profile" onToggleSidebar={() => setSidebarOpen(true)} />
         <main className="cg-page" style={{ padding: '24px' }}>
-          
+
           {/* Header & Cutter Dropdown Selector */}
           <section className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '20px', marginBottom: '22px', borderRadius: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
@@ -14936,7 +15282,7 @@ export function ViewTreeCutterPage() {
             <div>
               {/* Profile Card & Key KPI Ratios */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '22px' }}>
-                
+
                 {/* Cutter Information Card */}
                 <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '20px', borderRadius: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
@@ -14962,7 +15308,7 @@ export function ViewTreeCutterPage() {
 
                 {/* KPI Ratios Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  
+
                   {/* Task Completion Ratio */}
                   <div className="cg-panel" style={{ background: '#0b2518', border: '1px solid rgba(82, 183, 136, 0.25)', padding: '16px', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <span style={{ fontSize: '0.78rem', color: '#95d5b2' }}>Task Completion Ratio</span>
@@ -15180,3 +15526,4 @@ export function CommunicationPage() {
     </div>
   );
 }
+

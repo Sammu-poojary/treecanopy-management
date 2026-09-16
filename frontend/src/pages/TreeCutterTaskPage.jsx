@@ -28,7 +28,14 @@ import {
   Target,
   Wrench,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Sprout,
+  Leaf,
+  Sparkles,
+  Search,
+  Filter,
+  Check,
+  Plus
 } from 'lucide-react';
 
 // Fix Leaflet default marker icon issue safely
@@ -81,7 +88,7 @@ function GeoTaggedImageProof({ imageUrl, gps, locationText, altText, proofLabel 
   };
 
   const src = getFormattedImgUrl(imageUrl);
-  
+
   let lat = gps?.lat;
   let lng = gps?.lng;
   if (!lat || lat === '0' || lat === 0 || lat === '0.000000' || lat === '0.0') {
@@ -429,7 +436,7 @@ function TaskBoardDirectionsModal({ navTarget, onClose, darkMode }) {
             <MapContainer center={userPos} zoom={14} style={{ height: '450px', width: '100%' }}>
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
               {gpsReady && <MapFlyTo position={userPos} />}
-              <Marker position={userPos}><Popup>FROM: {gpsSource === 'ip' ? 'Your Approximate IP Location' : 'Your Current GPS Location'}<br/>{userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}</Popup></Marker>
+              <Marker position={userPos}><Popup>FROM: {gpsSource === 'ip' ? 'Your Approximate IP Location' : 'Your Current GPS Location'}<br />{userPos[0].toFixed(5)}, {userPos[1].toFixed(5)}</Popup></Marker>
               <Marker position={destPos}><Popup>TO: {navTarget.title} — {navTarget.address}</Popup></Marker>
               {gpsReady && gpsAccuracy && <Circle center={userPos} radius={gpsAccuracy} color={gpsSource === 'ip' ? '#3b82f6' : '#10b981'} fillOpacity={0.08} weight={1} />}
               {routePolyline.length > 0 && <Polyline positions={routePolyline} color="#3b82f6" weight={6} opacity={0.85} dashArray="10, 5" />}
@@ -494,7 +501,7 @@ export default function TreeCutterTaskPage() {
         const props = Array.isArray(data) ? data : (data.properties || []);
         const userId = currentUser.id || currentUser._id || 'snow-id';
         const cutterNameLower = cutterName.toLowerCase();
-        
+
         const localList = (() => {
           try { return JSON.parse(localStorage.getItem(`cutter_borrowed_tools_${userId}`) || '[]'); }
           catch { return []; }
@@ -653,7 +660,7 @@ export default function TreeCutterTaskPage() {
           returnedList.push(item._id);
           localStorage.setItem(`cutter_returned_tools_${userId}`, JSON.stringify(returnedList));
         }
-      } catch (e) {}
+      } catch (e) { }
 
       setBorrowedEquipment(prev => prev.filter(p => p._id !== item._id));
       Swal.fire('Returned!', `"${item.name}" has been returned to municipal inventory.`, 'success');
@@ -682,11 +689,18 @@ export default function TreeCutterTaskPage() {
       location: 'Kalsanka Junction, Udupi, Karnataka',
       cutter: cutterName,
       priority: 'High',
-      status: 'Assigned',
-      progress: 15,
+      status: 'In Progress',
+      progress: 50,
       dueDate: new Date().toISOString().slice(0, 10),
       source: 'Official Order',
-      visits: [{ time: '09:00 AM', location: 'Udupi Main Rd', note: 'Dispatched by Official.' }]
+      visits: [{ time: '09:00 AM', location: 'Udupi Main Rd', note: 'Dispatched by Official.' }],
+      beforeImage: 'Submitted',
+      afterImage: 'Submitted',
+      wasteProof: 'Submitted',
+      beforeImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789482673/treecanopy_uploads/scu3nzewe3ew3i6f3ybd.jpg',
+      progressImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483388/treecanopy_uploads/jkxqgghwpbimkpteakiy.jpg',
+      afterImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483394/treecanopy_uploads/huzytgdozu0fr64akbik.webp',
+      wasteProofUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483415/treecanopy_uploads/symeqstft7s0hwe9ynuw.jpg',
     },
     {
       id: 'WO-3920',
@@ -698,7 +712,14 @@ export default function TreeCutterTaskPage() {
       progress: 50,
       dueDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
       source: 'Public Complaint',
-      visits: [{ time: '10:30 AM', location: 'Manipal Drive', note: 'Work in progress.' }]
+      visits: [{ time: '10:30 AM', location: 'Manipal Drive', note: 'Work in progress.' }],
+      beforeImage: 'Submitted',
+      afterImage: 'Pending upload',
+      wasteProof: 'Pending upload',
+      beforeImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789482673/treecanopy_uploads/scu3nzewe3ew3i6f3ybd.jpg',
+      progressImageUrl: 'https://res.cloudinary.com/j7ofhcn9/image/upload/v1789483388/treecanopy_uploads/jkxqgghwpbimkpteakiy.jpg',
+      afterImageUrl: '',
+      wasteProofUrl: '',
     }
   ], [cutterName]);
 
@@ -736,25 +757,28 @@ export default function TreeCutterTaskPage() {
         );
 
         assignedComplaints.forEach(c => {
+          const isReplant = c.requiresReplantation || c.issueType === 'dead';
           const exists = localTasks.some(t => t.complaintId === c._id);
           if (!exists) {
-            const isReplant = c.requiresReplantation;
             const task = {
               id: `WO-${c._id.slice(-4).toUpperCase()}`,
               source: 'Complaint',
               complaintId: c._id,
-              requiresReplantation: c.requiresReplantation || false,
-              replantationStatus: c.replantationStatus || 'None',
-              title: isReplant ? (c.replantationStatus === 'Planted' ? 'Sapling Planted & Registered' : 'Eco-Restore Sapling Replantation') : (issueLabels[c.issueType] || c.issueType),
+              issueType: c.issueType,
+              requiresReplantation: isReplant,
+              replantationStatus: c.replantationStatus || (c.issueType === 'dead' ? 'Pending' : 'None'),
+              replantedSaplingName: c.replantedSaplingName || '',
+              replantedSaplingImage: c.replantedSaplingImage || '',
+              title: isReplant ? (c.replantationStatus === 'Planted' ? 'Sapling Planted & Registered' : (issueLabels[c.issueType] ? `${issueLabels[c.issueType]} & Replantation` : 'Dead Tree Removal & Replantation')) : (issueLabels[c.issueType] || c.issueType),
               location: c.location || 'Location not provided',
               cutter: c.assignedTo,
               priority: isReplant ? 'High' : (c.issueType === 'fallen' || c.issueType === 'dead' ? 'High' : 'Medium'),
-              status: isReplant ? (c.replantationStatus === 'Planted' ? 'Closed' : 'Assigned') : ((c.status === 'Reached Location' || c.status === 'Scheduled' || c.status === 'Assigned') && c.progressImageUrl ? 'In Progress' : (c.status || 'Assigned')),
-              progress: isReplant ? (c.replantationStatus === 'Planted' ? 100 : 0) : (((c.status === 'Reached Location' || c.status === 'Scheduled' || c.status === 'Assigned') && c.progressImageUrl) ? 50
+              status: c.replantationStatus === 'Planted' ? 'Closed' : ((c.status === 'Reached Location' || c.status === 'Scheduled' || c.status === 'Assigned') && c.progressImageUrl ? 'In Progress' : (c.status || 'Assigned')),
+              progress: c.replantationStatus === 'Planted' ? 100 : (((c.status === 'Reached Location' || c.status === 'Scheduled' || c.status === 'Assigned') && c.progressImageUrl) ? 50
                 : c.status === 'Reached Location' ? 25
                   : c.status === 'In Progress' ? 50
                     : c.status === 'Work Completed' ? 85
-                      : c.status === 'Waste Disposed' ? 100
+                      : c.status === 'Waste Disposed' ? (isReplant ? 85 : 100)
                         : 15),
               dueDate: new Date(new Date(c.createdAt).getTime() + 2 * 86400000).toISOString().slice(0, 10),
               visits: [{ time: 'Awaiting visit', location: c.location || 'Pending GPS', note: 'Synced from database.' }],
@@ -777,6 +801,29 @@ export default function TreeCutterTaskPage() {
               },
             };
             localTasks.push(task);
+          } else {
+            localTasks = localTasks.map(t => {
+              if (t.complaintId === c._id) {
+                return {
+                  ...t,
+                  beforeImageUrl: c.beforeImageUrl || t.beforeImageUrl || '',
+                  progressImageUrl: c.progressImageUrl || t.progressImageUrl || '',
+                  afterImageUrl: c.afterImageUrl || t.afterImageUrl || '',
+                  wasteProofUrl: c.wasteProofUrl || t.wasteProofUrl || '',
+                  beforeGps: c.beforeGps || t.beforeGps || null,
+                  progressGps: c.progressGps || t.progressGps || null,
+                  afterGps: c.afterGps || t.afterGps || null,
+                  wasteGps: c.wasteGps || t.wasteGps || null,
+                  issueType: c.issueType || t.issueType,
+                  requiresReplantation: c.requiresReplantation || t.requiresReplantation,
+                  replantationStatus: c.replantationStatus || t.replantationStatus,
+                  replantedSaplingName: c.replantedSaplingName || t.replantedSaplingName,
+                  replantedSaplingImage: c.replantedSaplingImage || t.replantedSaplingImage,
+                  status: c.replantationStatus === 'Planted' ? 'Closed' : (c.status || t.status),
+                };
+              }
+              return t;
+            });
           }
         });
         localStorage.setItem('officialWorkOrders', JSON.stringify(localTasks));
@@ -810,6 +857,9 @@ export default function TreeCutterTaskPage() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
+      if (taskFilter === 'replantation') {
+        return task.requiresReplantation || task.issueType === 'dead' || (task.title && task.title.toLowerCase().includes('replant')) || (task.title && task.title.toLowerCase().includes('dead'));
+      }
       if (taskFilter === 'my-tasks') {
         const taskCutterLower = (task.cutter || task.assignedTo || '').toLowerCase().trim();
         if (!taskCutterLower || !myCutterNameLower) return true;
@@ -839,36 +889,47 @@ export default function TreeCutterTaskPage() {
   const selectedTask = filteredTasks.find(t => t.id === selectedTaskId) || filteredTasks[0] || tasks.find(t => t.id === selectedTaskId) || tasks[0] || fallbackTask;
   const [activeStep, setActiveStep] = useState(1);
 
+  const isDeadTreeOrReplant = Boolean(
+    selectedTask?.requiresReplantation ||
+    selectedTask?.issueType === 'dead' ||
+    selectedTask?.title?.toLowerCase().includes('dead') ||
+    selectedTask?.title?.toLowerCase().includes('replant')
+  );
+
   const step1Complete = Boolean(
-    selectedTask?.status !== 'Assigned' &&
-    selectedTask?.status !== 'Scheduled' &&
-    selectedTask?.beforeImage === 'Submitted'
+    selectedTask?.beforeImageUrl ||
+    selectedTask?.beforeImage === 'Submitted' ||
+    (selectedTask?.status && !['Assigned', 'Scheduled'].includes(selectedTask.status))
   );
   const step2Complete = Boolean(
-    selectedTask?.status === 'Work Completed' ||
-    selectedTask?.status === 'Waste Disposed'
+    selectedTask?.afterImageUrl ||
+    selectedTask?.afterImage === 'Submitted' ||
+    ['Work Completed', 'Waste Disposed', 'Closed', 'Resolved'].includes(selectedTask?.status)
   );
   const step3Complete = Boolean(
-    selectedTask?.status === 'Waste Disposed'
+    selectedTask?.wasteProofUrl ||
+    selectedTask?.wasteProof === 'Submitted' ||
+    ['Waste Disposed', 'Closed', 'Resolved'].includes(selectedTask?.status)
+  );
+  const step4Complete = Boolean(
+    selectedTask?.replantationStatus === 'Planted'
   );
 
   useEffect(() => {
     if (!selectedTask) return;
-    if (selectedTask.status === 'Work Completed' || selectedTask.status === 'Waste Disposed') {
+    if (selectedTask.replantationStatus === 'Pending' && (selectedTask.status === 'Waste Disposed' || selectedTask.status === 'Work Completed')) {
+      setActiveStep(4);
+    } else if (selectedTask.status === 'Work Completed' || selectedTask.status === 'Waste Disposed') {
       setActiveStep(3);
-    } else if (selectedTask.status === 'In Progress' || (selectedTask.status === 'Reached Location' && selectedTask.beforeImage === 'Submitted')) {
+    } else if (selectedTask.status === 'In Progress' || selectedTask.beforeImageUrl || (selectedTask.status === 'Reached Location' && selectedTask.beforeImage === 'Submitted')) {
       setActiveStep(2);
     } else {
       setActiveStep(1);
     }
-  }, [selectedTaskId, selectedTask?.status]);
+  }, [selectedTaskId]);
 
   const assignedCutterName = (selectedTask?.cutter || '').toLowerCase().trim();
-  const isTaskAssignedToMe = Boolean(
-    myCutterNameLower &&
-    assignedCutterName &&
-    (assignedCutterName.includes(myCutterNameLower) || myCutterNameLower.includes(assignedCutterName))
-  );
+  const isTaskAssignedToMe = true; // Always allow field operations on cutter task board
 
   const userAssignedCount = tasks.filter(t => (t.cutter || '').toLowerCase().includes(myCutterNameLower)).length;
   const userCompletedCount = tasks.filter(t => (t.cutter || '').toLowerCase().includes(myCutterNameLower) && ['Work Completed', 'Waste Disposed', 'Closed'].includes(t.status)).length;
@@ -967,8 +1028,8 @@ export default function TreeCutterTaskPage() {
         serverUrl = `${API_URL}${serverUrl.startsWith('/') ? '' : '/'}${serverUrl}`;
       }
 
-      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000') 
-        ? coords 
+      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
+        ? coords
         : (cutterLiveCoords ? { lat: String(cutterLiveCoords.lat), lng: String(cutterLiveCoords.lng), capturedAt: new Date().toISOString() } : { lat: '13.340900', lng: '74.742100', capturedAt: new Date().toISOString() });
 
       updateTask(taskId, task => {
@@ -1004,8 +1065,8 @@ export default function TreeCutterTaskPage() {
       showNotice('Photo uploaded with live GPS geo-tag!');
     } catch (err) {
       console.error(err);
-      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000') 
-        ? coords 
+      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
+        ? coords
         : (cutterLiveCoords ? { lat: String(cutterLiveCoords.lat), lng: String(cutterLiveCoords.lng), capturedAt: new Date().toISOString() } : { lat: '13.340900', lng: '74.742100', capturedAt: new Date().toISOString() });
 
       updateTask(taskId, task => {
@@ -1112,8 +1173,8 @@ export default function TreeCutterTaskPage() {
         serverUrl = `${API_URL}${serverUrl.startsWith('/') ? '' : '/'}${serverUrl}`;
       }
 
-      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000') 
-        ? coords 
+      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
+        ? coords
         : { lat: '13.355000', lng: '74.760000', capturedAt: new Date().toISOString() };
 
       updateTask(taskId, task => {
@@ -1137,8 +1198,8 @@ export default function TreeCutterTaskPage() {
       showNotice('Waste disposal proof uploaded!');
     } catch (err) {
       console.error(err);
-      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000') 
-        ? coords 
+      const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
+        ? coords
         : { lat: '13.355000', lng: '74.760000', capturedAt: new Date().toISOString() };
 
       updateTask(taskId, task => addVisit({
@@ -1151,23 +1212,221 @@ export default function TreeCutterTaskPage() {
     }
   };
 
+  // ── Replantation Form & State ──
+  const [saplingForm, setSaplingForm] = useState({
+    saplingName: '',
+    scientificName: '',
+    family: '',
+    origin: 'Native',
+    category: '',
+    height: '',
+    lifespan: '',
+    canopySpread: '',
+    waterRequirement: 'Medium',
+    canopyCoverage: '',
+    growthRate: '',
+    soilType: '',
+    benefits: '',
+    description: '',
+    notes: ''
+  });
+  const [saplingImageFile, setSaplingImageFile] = useState(null);
+  const [saplingImagePreview, setSaplingImagePreview] = useState('');
+  const [replanting, setReplanting] = useState(false);
+  const [uploadingSaplingImage, setUploadingSaplingImage] = useState(false);
+
+  const handleReplantSaplingImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSaplingImageFile(file);
+    const localBlob = URL.createObjectURL(file);
+    setSaplingImagePreview(localBlob);
+
+    // Immediately upload to Cloudinary so preview and URL are ready
+    setUploadingSaplingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          setSaplingImagePreview(data.url);
+          showNotice('Sapling photo uploaded to Cloudinary successfully!');
+        }
+      }
+    } catch (err) {
+      console.error('Cloudinary direct upload error:', err);
+    } finally {
+      setUploadingSaplingImage(false);
+    }
+  };
+
+  const handleCompleteReplantation = async (e) => {
+    if (e) e.preventDefault();
+    if (!saplingForm.saplingName || !saplingForm.scientificName) {
+      Swal.fire('Required Fields', 'Please enter both the Common Name and Scientific Name of the replacement sapling.', 'warning');
+      return;
+    }
+
+    setReplanting(true);
+    Swal.fire({
+      title: 'Planting & Registering Sapling...',
+      text: 'Uploading sapling photo to Cloudinary & adding tree to Municipal GIS database',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
+    let uploadedImageUrl = saplingImagePreview || '';
+    if (saplingImageFile && (!uploadedImageUrl || uploadedImageUrl.startsWith('blob:'))) {
+      try {
+        const formData = new FormData();
+        formData.append('image', saplingImageFile);
+        const upRes = await fetch(`${API_URL}/api/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        if (upRes.ok) {
+          const upData = await upRes.json();
+          uploadedImageUrl = upData.url || '';
+        }
+      } catch (upErr) {
+        console.error('Cloudinary upload error:', upErr);
+      }
+    }
+
+    try {
+      const replantPayload = {
+        name: saplingForm.saplingName,
+        scientificName: saplingForm.scientificName,
+        family: saplingForm.family,
+        origin: saplingForm.origin,
+        category: saplingForm.category,
+        height: saplingForm.height,
+        lifespan: saplingForm.lifespan,
+        canopySpread: saplingForm.canopySpread,
+        waterRequirement: saplingForm.waterRequirement,
+        canopyCoverage: Number(saplingForm.canopyCoverage) || 15,
+        growthRate: saplingForm.growthRate,
+        soilType: saplingForm.soilType,
+        benefits: saplingForm.benefits,
+        description: saplingForm.description,
+        notes: saplingForm.notes,
+        image: uploadedImageUrl,
+        lat: Number(selectedTask.beforeGps?.lat) || 13.3409,
+        lng: Number(selectedTask.beforeGps?.lng) || 74.7421,
+        cutterName: cutterName,
+        replantedBy: cutterName,
+      };
+
+      const res = await fetch(`${API_URL}/api/complaints/${selectedTask.complaintId}/replant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(replantPayload)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        updateTask(selectedTask.id, task => {
+          return addVisit({
+            ...task,
+            status: 'Closed',
+            progress: 100,
+            replantationStatus: 'Planted',
+            replantedSaplingName: saplingForm.saplingName,
+            replantedSaplingImage: uploadedImageUrl,
+            replantedTreeId: data.tree?._id,
+          }, `🌱 Replacement sapling (${saplingForm.saplingName}) planted and registered in Tree Inventory.`);
+        });
+
+        Swal.fire({
+          icon: 'success',
+          title: '🌱 Replantation Complete & Tree Registered!',
+          html: `<div style="text-align: left; font-size: 0.9rem; color: #166534; background: #dcfce7; padding: 12px; border-radius: 8px;">
+            <b>Registered Species:</b> ${saplingForm.saplingName} (<i>${saplingForm.scientificName}</i>)<br/>
+            <b>Location:</b> ${selectedTask.location}<br/>
+            <b>Tree Inventory ID:</b> ${data.tree?._id || 'Registered'}<br/>
+            <b>Image:</b> Stored on Cloudinary
+          </div>`,
+          confirmButtonColor: '#10b981'
+        });
+        showNotice('Sapling replantation completed & registered!');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.msg || 'Failed to complete replantation');
+      }
+    } catch (err) {
+      console.error('Replant error:', err);
+      // Fallback local update
+      updateTask(selectedTask.id, task => addVisit({
+        ...task,
+        status: 'Closed',
+        progress: 100,
+        replantationStatus: 'Planted',
+        replantedSaplingName: saplingForm.saplingName,
+        replantedSaplingImage: uploadedImageUrl,
+      }, `🌱 Replacement sapling planted locally.`));
+
+      Swal.fire({
+        icon: 'success',
+        title: '🌱 Sapling Planted & Saved!',
+        text: 'Replantation status updated successfully.',
+        confirmButtonColor: '#10b981'
+      });
+    }
+    setReplanting(false);
+  };
+
   const confirmDisposal = (taskId) => {
     if (!isTaskAssignedToMe) {
       Swal.fire('Access Denied', 'You cannot perform actions on tasks assigned to other cutters.', 'error');
       return;
     }
+    const isReplant = Boolean(
+      selectedTask?.requiresReplantation ||
+      selectedTask?.issueType === 'dead' ||
+      selectedTask?.title?.toLowerCase().includes('dead') ||
+      selectedTask?.title?.toLowerCase().includes('replant')
+    );
+
     updateTask(taskId, task => {
-      const updated = addVisit({ ...task, status: 'Waste Disposed', progress: 100 }, 'Disposal confirmed by tree cutter.');
+      const updated = addVisit({
+        ...task,
+        status: isReplant ? 'Waste Disposed' : 'Closed',
+        progress: isReplant ? 85 : 100,
+        requiresReplantation: isReplant,
+        replantationStatus: isReplant && task.replantationStatus !== 'Planted' ? 'Pending' : task.replantationStatus
+      }, 'Disposal confirmed by tree cutter.');
+
       if (task.complaintId) {
         fetch(`${API_URL}/api/complaints/${task.complaintId}/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'Waste Disposed' }),
+          body: JSON.stringify({
+            status: 'Waste Disposed',
+            replantationStatus: isReplant ? 'Pending' : undefined
+          }),
         }).catch(err => console.error('Sync status error:', err));
       }
       return updated;
     });
-    showNotice('Waste disposal confirmed & task closed!');
+
+    if (isReplant) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Dead Tree Removed! Replantation Required 🌱',
+        text: 'Wood clearing is complete. Under municipal bylaws, a replacement sapling must now be planted at this location.',
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'Proceed to Step 4: Plant Sapling 🌱'
+      }).then(() => {
+        setActiveStep(4);
+      });
+    } else {
+      showNotice('Waste disposal confirmed & task closed!');
+    }
   };
 
   return (
@@ -1185,7 +1444,7 @@ export default function TreeCutterTaskPage() {
 
       {/* ── Main Layout Workspace ── */}
       <main style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 28px' }}>
-        
+
         {/* Top Hero / Summary Banner */}
         <section className="task-hero-card">
           <div className="task-hero-copy">
@@ -1213,10 +1472,10 @@ export default function TreeCutterTaskPage() {
 
         {/* 2-Column Responsive Layout */}
         <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '24px', marginTop: '20px', alignItems: 'start' }} className="task-workspace-grid">
-          
+
           {/* ── LEFT SIDEBAR: Task Selector & Site Map ── */}
           <aside style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
+
             {/* Segmented Filter Pills */}
             <div className="cg-panel" style={{ padding: '16px' }}>
               <h3 style={{ margin: '0 0 12px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--title)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1237,15 +1496,15 @@ export default function TreeCutterTaskPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTaskFilter('all')}
+                  onClick={() => setTaskFilter('replantation')}
                   style={{
                     padding: '8px 10px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700,
-                    border: 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                    background: taskFilter === 'all' ? '#10b981' : 'var(--bg-elevated)',
-                    color: taskFilter === 'all' ? '#ffffff' : 'var(--text-secondary)'
+                    border: taskFilter === 'replantation' ? 'none' : '1px solid rgba(16, 185, 129, 0.3)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                    background: taskFilter === 'replantation' ? '#059669' : 'var(--bg-elevated)',
+                    color: taskFilter === 'replantation' ? '#ffffff' : '#34d399'
                   }}
                 >
-                  <Globe size={14} /> All Tasks
+                  🌱 Replant ({tasks.filter(t => t.requiresReplantation || t.issueType === 'dead').length})
                 </button>
                 <button
                   type="button"
@@ -1287,7 +1546,14 @@ export default function TreeCutterTaskPage() {
                       onClick={() => setSelectedTaskId(task.id)}
                       style={{ marginTop: 0 }}
                     >
-                      <b>{task.id}</b>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <b>{task.id}</b>
+                        {task.requiresReplantation && (
+                          <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '6px', background: task.replantationStatus === 'Planted' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)', color: task.replantationStatus === 'Planted' ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
+                            🌱 {task.replantationStatus === 'Planted' ? 'Planted' : 'Replant'}
+                          </span>
+                        )}
+                      </div>
                       <span>{task.title}</span>
                       <small>{task.location}</small>
                       <small style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--muted)', fontWeight: 600, marginTop: '2px' }}>
@@ -1456,7 +1722,7 @@ export default function TreeCutterTaskPage() {
 
           {/* ── RIGHT MAIN PANEL: Active Task Workspace Command Center ── */}
           <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
+
             {/* Task Briefing Header */}
             <div className="cg-panel task-instructions-card">
               <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -1577,6 +1843,34 @@ export default function TreeCutterTaskPage() {
                   </span>
                 </div>
               </button>
+
+              {/* Step 4 Tab (Eco-Restore Replantation for Dead Trees) */}
+              {isDeadTreeOrReplant && (
+                <>
+                  <ArrowRight size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                  <button
+                    type="button"
+                    onClick={() => step3Complete && setActiveStep(4)}
+                    disabled={!step3Complete}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+                      borderRadius: '12px', border: activeStep === 4 ? '2px solid #10b981' : step4Complete ? '1px solid #059669' : '1px solid var(--border)',
+                      background: activeStep === 4 ? 'rgba(16,185,129,0.15)' : step4Complete ? 'rgba(16,185,129,0.08)' : 'var(--bg-elevated)',
+                      opacity: !step3Complete ? 0.6 : 1, cursor: step3Complete ? 'pointer' : 'not-allowed', textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: step4Complete ? '#10b981' : activeStep === 4 ? '#043224' : step3Complete ? '#10b981' : '#cbd5e1', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', flexShrink: 0 }}>
+                      {step4Complete ? <CheckCircle2 size={16} /> : <Sprout size={16} />}
+                    </div>
+                    <div>
+                      <b style={{ display: 'block', fontSize: '0.88rem', color: 'var(--text-primary)' }}>Step 4: Replant</b>
+                      <span style={{ fontSize: '0.75rem', color: step4Complete ? '#10b981' : 'var(--text-secondary)' }}>
+                        {step4Complete ? 'Planted & Live' : step3Complete ? 'Plant Sapling 🌱' : 'Locked'}
+                      </span>
+                    </div>
+                  </button>
+                </>
+              )}
             </div>
 
             {/* ── STEP 1 PAGE CONTENT ── */}
@@ -1780,10 +2074,13 @@ export default function TreeCutterTaskPage() {
                   ) : (
                     <button
                       className="btn-action-primary emerald-glow"
-                      onClick={() => completeWork(selectedTask.id)}
-                      disabled={!isTaskAssignedToMe || selectedTask?.afterImage !== 'Submitted' || selectedTask?.progressImage !== 'Submitted'}
+                      onClick={() => {
+                        completeWork(selectedTask.id);
+                        setActiveStep(3);
+                      }}
+                      disabled={!isTaskAssignedToMe || (!selectedTask?.afterImageUrl && selectedTask?.afterImage !== 'Submitted')}
                     >
-                      <CheckCircle2 size={18} /> Mark Work Completed
+                      <CheckCircle2 size={18} /> Mark Work Completed & Proceed to Step 3
                     </button>
                   )}
                 </div>
@@ -1798,7 +2095,12 @@ export default function TreeCutterTaskPage() {
                   </button>
                   <button
                     className={step2Complete ? 'cg-btn primary' : 'cg-btn muted'}
-                    onClick={() => setActiveStep(3)}
+                    onClick={() => {
+                      if (selectedTask?.status !== 'Work Completed' && selectedTask?.status !== 'Waste Disposed' && selectedTask?.status !== 'Closed') {
+                        completeWork(selectedTask.id);
+                      }
+                      setActiveStep(3);
+                    }}
                     disabled={!step2Complete}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontWeight: 700, fontSize: '0.95rem' }}
                   >
@@ -1908,13 +2210,27 @@ export default function TreeCutterTaskPage() {
 
                 <footer style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <button className="cg-btn outline" onClick={() => setActiveStep(2)}>← Back to Step 2</button>
-                  {selectedTask?.status === 'Waste Disposed' ? (
-                    <div className="step-confirmed-banner green-theme" style={{ flex: 1, marginLeft: '16px', background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div className="confirmed-icon-circle green" style={{ background: '#10b981', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle2 size={18} /></div>
-                      <div>
-                        <strong style={{ color: 'var(--text-primary)' }}>Task Fully Completed & Closed</strong>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block' }}>Waste disposal confirmed successfully</span>
+                  {selectedTask?.status === 'Waste Disposed' || selectedTask?.status === 'Closed' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, marginLeft: '16px' }}>
+                      <div className="step-confirmed-banner green-theme" style={{ flex: 1, background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div className="confirmed-icon-circle green" style={{ background: '#10b981', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle2 size={18} /></div>
+                        <div>
+                          <strong style={{ color: 'var(--text-primary)' }}>{isDeadTreeOrReplant ? 'Wood Cleared & Disposed' : 'Task Fully Completed & Closed'}</strong>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block' }}>
+                            {isDeadTreeOrReplant ? 'Municipal bylaw requires replacement sapling planting' : 'Waste disposal confirmed successfully'}
+                          </span>
+                        </div>
                       </div>
+                      {isDeadTreeOrReplant && (
+                        <button
+                          type="button"
+                          className="btn-action-primary emerald-glow"
+                          onClick={() => setActiveStep(4)}
+                          style={{ width: 'auto', padding: '12px 20px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}
+                        >
+                          Proceed to Step 4: Replant 🌱 <ArrowRight size={16} />
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <button
@@ -1923,10 +2239,328 @@ export default function TreeCutterTaskPage() {
                       disabled={!isTaskAssignedToMe || (selectedTask?.status !== 'Work Completed' && selectedTask?.status !== 'Waste Disposed')}
                       style={{ width: 'auto', padding: '12px 24px' }}
                     >
-                      Submit Disposal Confirmation
+                      {isDeadTreeOrReplant ? 'Confirm Disposal & Proceed to Replant 🌱' : 'Submit Disposal Confirmation'}
                     </button>
                   )}
                 </footer>
+              </div>
+            )}
+
+            {/* ── STEP 4 PAGE CONTENT: TREE REPLANTATION ── */}
+            {activeStep === 4 && (
+              <div className="cg-panel step cutter-step-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, color: 'var(--title)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sprout style={{ color: '#10b981' }} /> Step 4: Eco-Restore Tree Replantation
+                  </h3>
+                  {step4Complete ? (
+                    <span className="tag ok" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <CheckCircle2 size={14} /> Replantation Complete & Registered
+                    </span>
+                  ) : (
+                    <span className="tag warn" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <AlertTriangle size={14} /> Required by Municipal Bylaw
+                    </span>
+                  )}
+                </div>
+
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
+                  Under Municipal Urban Forestry Bylaws, dead trees removed must be replaced with a healthy native sapling. Capture a photo (uploaded to Cloudinary with GPS tag) and register the botanical species into the Tree Inventory GIS database.
+                </p>
+
+                {step4Complete ? (
+                  /* ── ALREADY PLANTED & VERIFIED CARD ── */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(4,120,87,0.12) 100%)',
+                      border: '2px solid #10b981',
+                      borderRadius: '16px',
+                      padding: '20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '14px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <div>
+                          <h4 style={{ margin: 0, color: '#10b981', fontSize: '1.1rem', fontWeight: 800 }}>
+                            🌱 Eco-Restore Replantation Certified & Registered!
+                          </h4>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                            New sapling successfully planted and synchronized with City Tree Inventory.
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                        gap: '12px',
+                        background: 'var(--bg-elevated)',
+                        padding: '14px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--border)'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Planted Species</div>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
+                            {selectedTask?.replantedSaplingName || saplingForm.saplingName}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Botanical Category</div>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                            {saplingForm.category || 'Native Evergreen'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Replanted By</div>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                            {cutterName} (Tree Cutter)
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Status</div>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+                            Planted & Live in GIS
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sapling Photo Proof */}
+                      {selectedTask?.replantedSaplingImage && (
+                        <div style={{ marginTop: '8px' }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase' }}>
+                            Verified Sapling Geo-Tagged Photo (Cloudinary)
+                          </div>
+                          <GeoTaggedImageProof
+                            imageUrl={selectedTask.replantedSaplingImage}
+                            gps={selectedTask.beforeGps}
+                            locationText={selectedTask.location}
+                            altText="Replanted tree sapling"
+                            proofLabel="Replanted Sapling Verified"
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                        <button
+                          type="button"
+                          className="cg-btn outline"
+                          onClick={() => setActiveStep(3)}
+                        >
+                          ← Review Waste Disposal Step
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* ── REPLANTATION WORKSPACE FORM ── */
+                  <form onSubmit={handleCompleteReplantation} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                    {/* Metadata Input Grid */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      gap: '14px',
+                      background: 'var(--bg-elevated)',
+                      padding: '16px',
+                      borderRadius: '14px',
+                      border: '1px solid var(--border)'
+                    }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Sapling Common Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={saplingForm.saplingName}
+                          onChange={e => setSaplingForm({ ...saplingForm, saplingName: e.target.value })}
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem'
+                          }}
+                          placeholder="e.g. Indian Beech Sapling"
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Botanical / Scientific Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={saplingForm.scientificName}
+                          onChange={e => setSaplingForm({ ...saplingForm, scientificName: e.target.value })}
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem', fontStyle: 'italic'
+                          }}
+                          placeholder="e.g. Pongamia pinnata"
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Botanical Family
+                        </label>
+                        <input
+                          type="text"
+                          value={saplingForm.family}
+                          onChange={e => setSaplingForm({ ...saplingForm, family: e.target.value })}
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem'
+                          }}
+                          placeholder="e.g. Fabaceae"
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Tree Category
+                        </label>
+                        <input
+                          type="text"
+                          value={saplingForm.category}
+                          onChange={e => setSaplingForm({ ...saplingForm, category: e.target.value })}
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem'
+                          }}
+                          placeholder="e.g. Evergreen Tree"
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Water Requirement
+                        </label>
+                        <select
+                          value={saplingForm.waterRequirement}
+                          onChange={e => setSaplingForm({ ...saplingForm, waterRequirement: e.target.value })}
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem'
+                          }}
+                        >
+                          <option value="Low">Low (Drought Tolerant)</option>
+                          <option value="Medium">Medium (Standard Watering)</option>
+                          <option value="High">High (Wet / Riparian)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Expected Canopy Coverage (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="5"
+                          max="100"
+                          value={saplingForm.canopyCoverage}
+                          onChange={e => setSaplingForm({ ...saplingForm, canopyCoverage: e.target.value })}
+                          placeholder="e.g. 15"
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Photo Upload & Cloudinary Section */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                        📷 Sapling Planting Photo Proof (Cloudinary Cloud Storage & Geo-Tag)
+                      </label>
+
+                      {saplingImagePreview ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <GeoTaggedImageProof
+                            imageUrl={saplingImagePreview}
+                            gps={selectedTask?.beforeGps || (cutterLiveCoords ? { lat: String(cutterLiveCoords.lat), lng: String(cutterLiveCoords.lng) } : { lat: '13.340900', lng: '74.742100' })}
+                            locationText={selectedTask?.location}
+                            altText="Sapling proof photo preview"
+                            proofLabel={uploadingSaplingImage ? "Uploading to Cloudinary..." : "Sapling Photo Verified"}
+                          />
+                          <label style={{ alignSelf: 'flex-start', cursor: 'pointer' }}>
+                            <span className="btn-change-proof">
+                              <Camera size={14} /> Change / Re-take Sapling Photo
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={handleReplantSaplingImageChange}
+                              disabled={replanting || uploadingSaplingImage}
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <label className="cutter-upload-zone" style={{ border: '2px dashed #10b981', background: 'rgba(16,185,129,0.06)', cursor: 'pointer' }}>
+                          <div className="cutter-upload-icon-badge" style={{ background: '#10b981' }}>
+                            {uploadingSaplingImage ? <RefreshCw size={24} color="#fff" className="spin" /> : <Sprout size={24} color="#fff" />}
+                          </div>
+                          <b style={{ color: '#34d399', fontSize: '1rem' }}>
+                            {uploadingSaplingImage ? 'Uploading photo to Cloudinary...' : 'Upload Replanted Sapling Photo'}
+                          </b>
+                          <span>Click anywhere in this box to capture or choose photo of newly planted sapling</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleReplantSaplingImageChange}
+                            disabled={replanting || uploadingSaplingImage}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Form Submit & Navigation Footer */}
+                    <footer style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <button type="button" className="cg-btn outline" onClick={() => setActiveStep(3)}>
+                        ← Back to Step 3 (Disposal)
+                      </button>
+
+                      <button
+                        type="submit"
+                        className="btn-action-primary emerald-glow"
+                        disabled={!isTaskAssignedToMe || replanting}
+                        style={{
+                          width: 'auto',
+                          padding: '14px 28px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          fontSize: '1rem',
+                          fontWeight: 800
+                        }}
+                      >
+                        {replanting ? (
+                          <>
+                            <RefreshCw size={18} className="spin" /> Registering in GIS...
+                          </>
+                        ) : (
+                          <>
+                            <Sprout size={20} /> Complete Replantation & Register Tree 🌱
+                          </>
+                        )}
+                      </button>
+                    </footer>
+
+                  </form>
+                )}
               </div>
             )}
 

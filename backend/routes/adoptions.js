@@ -18,12 +18,12 @@ const POINTS = {
 
 // Activity Rules Matrix (Points, Cooldowns, Photo & GPS Requirements)
 const ACTIVITY_RULES = {
-  WATERED: { points: 50, cooldownHours: 18, photoRequired: false, gpsRequired: true },
-  MULCHED: { points: 75, cooldownHours: 168, photoRequired: true, gpsRequired: true },
-  HEALTH_CHECK: { points: 60, cooldownHours: 72, photoRequired: true, gpsRequired: true },
-  PHOTO_UPDATE: { points: 80, cooldownHours: 72, photoRequired: true, gpsRequired: true },
-  FERTILIZED: { points: 70, cooldownHours: 720, photoRequired: true, gpsRequired: true },
-  PRUNED_DEAD_LEAVES: { points: 65, cooldownHours: 168, photoRequired: true, gpsRequired: true },
+  WATERED: { points: 50, cooldownHours: 0, photoRequired: false, gpsRequired: true },
+  MULCHED: { points: 75, cooldownHours: 0, photoRequired: true, gpsRequired: true },
+  HEALTH_CHECK: { points: 60, cooldownHours: 0, photoRequired: true, gpsRequired: true },
+  PHOTO_UPDATE: { points: 80, cooldownHours: 0, photoRequired: true, gpsRequired: true },
+  FERTILIZED: { points: 70, cooldownHours: 0, photoRequired: true, gpsRequired: true },
+  PRUNED_DEAD_LEAVES: { points: 65, cooldownHours: 0, photoRequired: true, gpsRequired: true },
 };
 
 // Haversine GPS Distance Calculation Helper (returns meters)
@@ -254,24 +254,24 @@ router.post('/:id/care-log', async (req, res) => {
     const now = new Date();
 
     // ── 1. Anti-Spam Cooldown Check ──────────────────────────────────────────────
-    if (Array.isArray(adoption.careLogs)) {
+    if (rule.cooldownHours && rule.cooldownHours > 0 && Array.isArray(adoption.careLogs)) {
       const lastSameActionLog = adoption.careLogs.find(l => l.action === normalizedAction);
       if (lastSameActionLog && lastSameActionLog.timestamp) {
         const diffHours = (now - new Date(lastSameActionLog.timestamp)) / (1000 * 60 * 60);
         if (diffHours < rule.cooldownHours) {
-          const remainingHours = Math.ceil(rule.cooldownHours - diffHours);
+          const remainingMinutes = Math.ceil((rule.cooldownHours - diffHours) * 60);
           return res.status(400).json({
-            msg: `⏳ Activity already recorded. You can log '${normalizedAction}' again after ${remainingHours} hours.`,
-            cooldownRemainingHours: remainingHours,
+            msg: `⏳ Activity already recorded recently. You can log '${normalizedAction}' again in ${remainingMinutes} minute(s).`,
+            cooldownRemainingMinutes: remainingMinutes,
             action: normalizedAction,
           });
         }
       }
-    } else {
+    } else if (!Array.isArray(adoption.careLogs)) {
       adoption.careLogs = [];
     }
 
-    // ── 2. Verification & Proximity Engine ──────────────────────────────────────
+    // ── 2. Verification & Proximity Engine (Liberalized Municipal Coverage) ──
     let verificationStatus = 'Verified';
     let verificationReason = 'Location and activity verified.';
     
@@ -281,7 +281,7 @@ router.post('/:id/care-log', async (req, res) => {
       verificationReason = 'Photo evidence is required for this activity.';
     }
 
-    // Check GPS & Distance (Proximity Radius)
+    // Check GPS & Distance (Liberal Proximity Radius)
     const reqLat = latitude || (location ? location.latitude : null);
     const reqLng = longitude || (location ? location.longitude : null);
     const reqAcc = accuracy || (location ? location.accuracy : null);
@@ -299,13 +299,17 @@ router.post('/:id/care-log', async (req, res) => {
 
     const distMeters = calculateHaversineDistance(reqLat, reqLng, treeLat, treeLng);
 
+    // Set verification radius to 1,000 meters (1 km coverage) and GPS accuracy tolerance to 1,000m
+    const MAX_ALLOWED_RADIUS_METERS = 1000;
+    const MAX_ALLOWED_ACCURACY_METERS = 1000;
+
     if (verificationStatus === 'Verified') {
-      if (reqAcc && reqAcc > 50) {
+      if (reqAcc && reqAcc > MAX_ALLOWED_ACCURACY_METERS) {
         verificationStatus = 'Rejected';
-        verificationReason = `GPS accuracy is too low (${Math.round(reqAcc)}m accuracy; required <= 50m).`;
-      } else if (distMeters > 300) {
+        verificationReason = `GPS accuracy signal is too weak (${Math.round(reqAcc)}m accuracy; required <= ${MAX_ALLOWED_ACCURACY_METERS}m).`;
+      } else if (distMeters > MAX_ALLOWED_RADIUS_METERS) {
         verificationStatus = 'Rejected';
-        verificationReason = `Location is ${distMeters}m from registered tree (required <= 300m).`;
+        verificationReason = `Location is ${distMeters}m from registered tree (radius required <= ${MAX_ALLOWED_RADIUS_METERS}m / 1km).`;
       }
     }
 
