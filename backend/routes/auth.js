@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
@@ -56,6 +57,7 @@ router.post('/google', async (req, res) => {
         role: role,
         status: role === 'Tree Cutter' ? 'Pending' : 'Verified',
         avatar: picture || '',
+        profileImage: picture || '',
       });
     }
 
@@ -73,7 +75,9 @@ router.post('/google', async (req, res) => {
         phone: user.phone,
         role: user.role,
         status: user.status,
-        avatar: picture || user.avatar || '',
+        avatar: picture || user.avatar || user.profileImage || '',
+        profileImage: picture || user.profileImage || user.avatar || '',
+        address: user.address || '',
       },
     });
   } catch (error) {
@@ -128,6 +132,9 @@ router.post('/register', async (req, res) => {
         phone: user.phone,
         role: user.role,
         status: user.status,
+        profileImage: user.profileImage || user.avatar || '',
+        avatar: user.avatar || user.profileImage || '',
+        address: user.address || '',
       },
     });
   } catch (error) {
@@ -177,6 +184,10 @@ router.post('/login', async (req, res) => {
           email: officialUser.email,
           phone: officialUser.phone || '',
           role: 'Official',
+          status: officialUser.status || 'Verified',
+          profileImage: officialUser.profileImage || officialUser.avatar || '',
+          avatar: officialUser.avatar || officialUser.profileImage || '',
+          address: officialUser.address || '',
         },
       });
     }
@@ -214,6 +225,10 @@ router.post('/login', async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        status: user.status || 'Verified',
+        profileImage: user.profileImage || user.avatar || '',
+        avatar: user.avatar || user.profileImage || '',
+        address: user.address || '',
       },
     });
   } catch (error) {
@@ -554,6 +569,25 @@ router.get('/cutters', async (req, res) => {
   }
 });
 
+// @route   GET /api/auth/profile/:id
+// @desc    Get user profile by ID or email
+// @access  Public / Protected
+router.get('/profile/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let user;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      user = await User.findById(id).select('-password -resetToken -resetTokenExpiry');
+    } else {
+      user = await User.findOne({ email: id.toLowerCase().trim() }).select('-password -resetToken -resetTokenExpiry');
+    }
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to fetch profile', error: error.message });
+  }
+});
+
 // @route   PATCH /api/auth/profile/:id
 // @desc    Update user profile (profileImage, avatar, name, phone, address)
 // @access  Public / Protected
@@ -572,7 +606,12 @@ router.patch('/profile/:id', async (req, res) => {
     if (phone) updateFields.phone = phone;
     if (address) updateFields.address = address;
 
-    const user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true }).select('-password');
+    let user;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true }).select('-password');
+    } else {
+      user = await User.findOneAndUpdate({ email: req.params.id.toLowerCase().trim() }, updateFields, { new: true }).select('-password');
+    }
     if (!user) return res.status(404).json({ msg: 'User not found' });
     res.json({ msg: 'Profile updated successfully', user });
   } catch (error) {
@@ -599,7 +638,12 @@ router.patch('/users/:id', async (req, res) => {
     if (role) updateFields.role = role;
     if (status) updateFields.status = status;
 
-    const user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true }).select('-password');
+    let user;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true }).select('-password');
+    } else {
+      user = await User.findOneAndUpdate({ email: req.params.id.toLowerCase().trim() }, updateFields, { new: true }).select('-password');
+    }
     if (!user) return res.status(404).json({ msg: 'User not found' });
     res.json({ msg: 'User updated successfully', user });
   } catch (error) {
@@ -608,4 +652,5 @@ router.patch('/users/:id', async (req, res) => {
 });
 
 module.exports = router;
+
 

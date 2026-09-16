@@ -224,6 +224,56 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
   const [avatarUploading, setAvatarUploading] = useState(false);
 
+  // Sync profile when user prop updates
+  useEffect(() => {
+    if (user) {
+      setProfileData(prev => ({
+        ...prev,
+        name: user.name || user.username || prev.name,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        address: user.address || prev.address,
+        profileImage: user.profileImage || user.avatar || prev.profileImage,
+        citizenId: user.id || user._id || prev.citizenId,
+      }));
+    }
+  }, [user]);
+
+  // Fetch full user profile from backend on mount to load persisted profile photo
+  useEffect(() => {
+    const lookupId = user?.id || user?._id || profileData.citizenId || profileData.email;
+    if (lookupId && lookupId !== 'CZ-7821' && lookupId !== 'citizen_guest') {
+      fetch(`${API_URL}/api/auth/profile/${encodeURIComponent(lookupId)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.user) {
+            const fetchedImg = data.user.profileImage || data.user.avatar || '';
+            setProfileData(prev => ({
+              ...prev,
+              name: data.user.name || prev.name,
+              email: data.user.email || prev.email,
+              phone: data.user.phone || prev.phone,
+              address: data.user.address || prev.address,
+              profileImage: fetchedImg || prev.profileImage,
+              avatar: fetchedImg || prev.avatar,
+              citizenId: data.user._id || data.user.id || prev.citizenId,
+            }));
+            try {
+              const stored = JSON.parse(localStorage.getItem('currentUser')) || {};
+              localStorage.setItem('currentUser', JSON.stringify({
+                ...stored,
+                ...data.user,
+                profileImage: fetchedImg || stored.profileImage || '',
+                avatar: fetchedImg || stored.avatar || '',
+              }));
+              window.dispatchEvent(new Event('storage'));
+            } catch (err) {}
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user?.id, user?._id, profileData.email]);
+
   const effectiveUserId = user?.id || user?._id || profileData.citizenId || 'citizen_guest';
   const effectiveUserName = profileData.name || user?.name || user?.username || 'Eco Guardian';
   const effectiveUserEmail = profileData.email || user?.email || 'citizen@treecanopy.gov.in';
@@ -259,20 +309,20 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
       } catch (err) {}
 
       // Persist to MongoDB User collection
-      const targetUserId = user?.id || user?._id || profileData.citizenId;
+      const targetUserId = user?.id || user?._id || profileData.citizenId || profileData.email;
       if (targetUserId && targetUserId !== 'CZ-7821' && targetUserId !== 'citizen_guest') {
-        fetch(`${API_URL}/api/auth/profile/${targetUserId}`, {
+        fetch(`${API_URL}/api/auth/profile/${encodeURIComponent(targetUserId)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ profileImage: imgUrl, avatar: imgUrl })
         }).catch(() => {});
       }
 
-      setProfileMsg({ type: 'success', text: '☁️ Profile picture uploaded to Cloudinary successfully!' });
+      setProfileMsg({ type: 'success', text: '☁️ Profile picture updated & saved successfully!' });
       Swal.fire({
         icon: 'success',
         title: 'Profile Photo Updated!',
-        text: 'Your new profile avatar is live with Cloudinary cloud storage.',
+        text: 'Your new profile avatar is permanently saved.',
         timer: 2000,
         showConfirmButton: false
       });
@@ -302,9 +352,9 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
       } catch (err) {}
 
       // Update backend
-      const targetUserId = user?.id || user?._id || profileData.citizenId;
+      const targetUserId = user?.id || user?._id || profileData.citizenId || profileData.email;
       if (targetUserId && targetUserId !== 'CZ-7821' && targetUserId !== 'citizen_guest') {
-        await fetch(`${API_URL}/api/auth/profile/${targetUserId}`, {
+        await fetch(`${API_URL}/api/auth/profile/${encodeURIComponent(targetUserId)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

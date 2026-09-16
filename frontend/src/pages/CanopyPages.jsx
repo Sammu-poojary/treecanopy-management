@@ -648,10 +648,22 @@ export function Sidebar({ active = 'Dashboard', admin = false, isOpen = false, o
 
 export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, or reports...', showSearch = true, attendance = false, citizenTabs = false, activeTab, onTabChange, onToggleSidebar, onProfileClick }) {
   const navigate = useNavigate();
-  const currentUser = (() => {
+  const [currentUser, setCurrentUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
     catch { return {}; }
-  })();
+  });
+
+  useEffect(() => {
+    const syncUser = () => {
+      try {
+        setCurrentUser(JSON.parse(localStorage.getItem('currentUser')) || {});
+      } catch {
+        setCurrentUser({});
+      }
+    };
+    window.addEventListener('storage', syncUser);
+    return () => window.removeEventListener('storage', syncUser);
+  }, []);
 
   const isAdminSession = title === 'Admin Console' || sessionStorage.getItem('adminAuthed') === 'true' || window.location.pathname.startsWith('/admin') || currentUser.role === 'Admin';
   const isOfficialSession = sessionStorage.getItem('officialAuthed') === 'true' || currentUser.role === 'Official';
@@ -1572,8 +1584,17 @@ export function TaskPage() {
       setProfileImage(photoUrl);
 
       const u = JSON.parse(localStorage.getItem('currentUser')) || {};
-      const updatedUser = { ...u, profileImage: photoUrl };
+      const updatedUser = { ...u, profileImage: photoUrl, avatar: photoUrl };
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+      const targetId = u.id || u._id || u.email;
+      if (targetId) {
+        fetch(`${API_URL}/api/auth/profile/${encodeURIComponent(targetId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileImage: photoUrl, avatar: photoUrl })
+        }).catch(() => {});
+      }
 
       Swal.fire({
         icon: 'success',
@@ -1602,6 +1623,14 @@ export function TaskPage() {
       delete u.profileImage;
       delete u.avatar;
       localStorage.setItem('currentUser', JSON.stringify(u));
+      const targetId = u.id || u._id || u.email;
+      if (targetId) {
+        fetch(`${API_URL}/api/auth/profile/${encodeURIComponent(targetId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileImage: '', avatar: '' })
+        }).catch(() => {});
+      }
     } catch (e) {
       console.error(e);
     }
