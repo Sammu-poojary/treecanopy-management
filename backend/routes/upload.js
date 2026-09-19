@@ -134,4 +134,62 @@ router.use((err, req, res, next) => {
   next();
 });
 
+// @route   POST /api/upload/multiple
+// @desc    Upload multiple images (up to 8) — Cloudinary if configured, local fallback
+// @access  Public
+const uploadMultiple = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 },
+}).array('images', 8);
+
+router.post('/multiple', (req, res) => {
+  uploadMultiple(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ msg: err.message });
+    }
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ msg: 'No images uploaded' });
+    }
+
+    const isCloudinaryConfigured = Boolean(
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+    );
+
+    if (isCloudinaryConfigured) {
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+      });
+    }
+
+    const urls = [];
+    for (const file of req.files) {
+      try {
+        if (isCloudinaryConfigured) {
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: 'treecanopy_gallery',
+          });
+          urls.push(result.secure_url);
+          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        } else {
+          let fileUrl = `/uploads/${file.filename}`;
+          urls.push(`${process.env.FRONTEND_URL ? '' : ''}${fileUrl}`);
+        }
+      } catch (uploadErr) {
+        console.error('Multi-upload error for file:', file.originalname, uploadErr.message);
+        if (fs.existsSync(file.path)) { try { fs.unlinkSync(file.path); } catch (_) {} }
+      }
+    }
+
+    return res.status(201).json({
+      msg: `${urls.length} image(s) uploaded successfully`,
+      urls,
+    });
+  });
+});
+
 module.exports = router;

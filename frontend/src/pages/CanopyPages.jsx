@@ -297,6 +297,8 @@ const ROLE_COLORS = {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const speciesImages = {
+  chiku: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
+  sapota: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
   mango: 'https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=800&q=80',
   guava: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=800&q=80',
   coconut: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80',
@@ -312,11 +314,31 @@ const speciesImages = {
   gulmohar: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=800&q=80',
   honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
   oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=800&q=80',
-  default: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80'
+  default: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80'
 };
 
 const getTreeDisplayImage = (tree) => {
   if (!tree) return speciesImages.default;
+
+  // 1. Check tree.images array first if available
+  if (tree.images && Array.isArray(tree.images) && tree.images.length > 0) {
+    let firstImg = tree.images[0];
+    if (typeof firstImg === 'object' && firstImg?.url) firstImg = firstImg.url;
+    if (typeof firstImg === 'string' && firstImg.trim() !== '') {
+      let img = firstImg.trim();
+      if (img.includes('http') && img.lastIndexOf('http') > 0) {
+        img = img.substring(img.lastIndexOf('http'));
+      }
+      if (img.startsWith('/uploads/')) {
+        img = `${API_URL}${img}`;
+      }
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+      }
+    }
+  }
+
+  // 2. Check primary tree.image field
   if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
     let img = tree.image.trim();
     if (img.includes('http') && img.lastIndexOf('http') > 0) {
@@ -329,7 +351,10 @@ const getTreeDisplayImage = (tree) => {
       return img;
     }
   }
+
+  // 3. Species-specific smart image fallback
   const nameStr = `${tree.name || ''} ${tree.scientificName || ''} ${tree.family || ''}`.toLowerCase();
+  if (nameStr.includes('chiku') || nameStr.includes('sapota') || nameStr.includes('manilkara') || nameStr.includes('zapota')) return speciesImages.chiku;
   if (nameStr.includes('mango') || nameStr.includes('mangifera')) return speciesImages.mango;
   if (nameStr.includes('guava') || nameStr.includes('guajava') || nameStr.includes('psidium')) return speciesImages.guava;
   if (nameStr.includes('pomegranate') || nameStr.includes('punica') || nameStr.includes('granatum')) return speciesImages.pomegranate;
@@ -8676,6 +8701,8 @@ export function TreeInventoryPage() {
     sunlight: '', growthRate: '', leafType: '', floweringSeason: '', fruitingSeason: '',
     carbonSequestration: '', notes: '', healthScore: 90, canopyCoverage: 80,
     waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
+    images: [],
+    nativeRegion: '', iucnStatus: '', flowerColor: '', fruitColor: '', culturalUses: '',
     lat: 13.3409, lng: 74.7421
   };
   const [form, setForm] = useState(initialFormState);
@@ -8684,6 +8711,20 @@ export function TreeInventoryPage() {
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [fetchingGPS, setFetchingGPS] = useState(false);
   const [status, setStatus] = useState('');
+  const [uploadedImages, setUploadedImages] = useState([]); // [{url, uploading}]
+  const [uploadingMulti, setUploadingMulti] = useState(false);
+  const [lookupResults, setLookupResults] = useState([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupVisible, setLookupVisible] = useState(false);
+  const lookupTimerRef = useRef(null);
+
+  const [detailActiveImgIndex, setDetailActiveImgIndex] = useState(0);
+  const [showPhotoLightbox, setShowPhotoLightbox] = useState(false);
+
+  useEffect(() => {
+    setDetailActiveImgIndex(0);
+    setShowPhotoLightbox(false);
+  }, [selectedTree]);
 
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
@@ -8781,36 +8822,167 @@ export function TreeInventoryPage() {
     );
   };
 
-  const handleFileChange = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  // ── Multi-Image Upload ──────────────────────────────────────────────────────
+  const handleMultiFileChange = async (event) => {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+    const remaining = 8 - uploadedImages.length;
+    if (remaining <= 0) { setStatus('Maximum 8 images allowed per tree.'); return; }
+    const toUpload = files.slice(0, remaining);
 
-    setStatus('Uploading tree image...');
+    // Add placeholders
+    const placeholders = toUpload.map((f, i) => ({ url: URL.createObjectURL(f), uploading: true, key: Date.now() + i }));
+    setUploadedImages(prev => [...prev, ...placeholders]);
+    setUploadingMulti(true);
+    setStatus(`Uploading ${toUpload.length} image(s) to Cloudinary...`);
 
     try {
-      const uploadForm = new FormData();
-      uploadForm.append('image', file);
-
-      const res = await fetch(`${API_URL}/api/upload`, {
-        method: 'POST',
-        body: uploadForm
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        let uploadedUrl = data.url;
-        if (uploadedUrl && !uploadedUrl.startsWith('http://') && !uploadedUrl.startsWith('https://')) {
-          uploadedUrl = `${API_URL}${uploadedUrl}`;
-        }
-        setForm((prev) => ({ ...prev, image: uploadedUrl }));
-        setStatus('Image uploaded successfully.');
+      const fd = new FormData();
+      toUpload.forEach(f => fd.append('images', f));
+      const res = await fetch(`${API_URL}/api/upload/multiple`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.urls) {
+        // Replace placeholders with real Cloudinary URLs
+        setUploadedImages(prev => {
+          const updated = [...prev];
+          let ri = 0;
+          for (let i = 0; i < updated.length; i++) {
+            if (updated[i].uploading && ri < data.urls.length) {
+              updated[i] = { url: data.urls[ri], uploading: false, key: updated[i].key };
+              ri++;
+            }
+          }
+          return updated;
+        });
+        // Set primary image if none set
+        setForm(prev => ({ ...prev, image: prev.image || data.urls[0] || prev.image, images: [...(prev.images || []), ...data.urls] }));
+        setStatus(`✅ ${data.urls.length} image(s) uploaded successfully.`);
       } else {
-        const data = await res.json();
-        setStatus(data.msg || 'Failed to upload image.');
+        setUploadedImages(prev => prev.filter(p => !p.uploading));
+        setStatus(data.msg || 'Upload failed.');
       }
     } catch (err) {
-      console.error('Error uploading tree image:', err);
-      setStatus('Connection error. Failed to upload image.');
+      setUploadedImages(prev => prev.filter(p => !p.uploading));
+      setStatus('Connection error during upload.');
+    } finally {
+      setUploadingMulti(false);
+    }
+  };
+
+  const handleRemoveUploadedImage = (idx) => {
+    setUploadedImages(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      const nextUrls = next.filter(x => !x.uploading).map(x => x.url);
+      setForm(f => ({ ...f, images: nextUrls, image: nextUrls[0] || '' }));
+      return next;
+    });
+  };
+
+  // ── Perenual Plant Lookup ───────────────────────────────────────────────────
+  const handleNameLookup = (value) => {
+    clearTimeout(lookupTimerRef.current);
+    if (!value || value.trim().length < 3) { setLookupResults([]); setLookupVisible(false); return; }
+    setLookupLoading(true);
+    lookupTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/trees/lookup?name=${encodeURIComponent(value.trim())}`);
+        const data = await res.json();
+        if (res.ok && data.results) {
+          setLookupResults(data.results);
+          setLookupVisible(data.results.length > 0);
+        } else {
+          setLookupResults([]);
+          setLookupVisible(false);
+        }
+      } catch { setLookupResults([]); setLookupVisible(false); }
+      finally { setLookupLoading(false); }
+    }, 600);
+  };
+
+  const applyLookupResult = (plant) => {
+    const waterMap = { none: 'None', minimum: 'Low', average: 'Medium', frequent: 'High' };
+    setForm(prev => ({
+      ...prev,
+      name: prev.name,
+      scientificName: plant.scientific_name || prev.scientificName,
+      family: plant.family || prev.family,
+      origin: prev.origin,
+      climate: plant.tropical ? 'Tropical' : prev.climate,
+      sunlight: plant.sunlight || prev.sunlight,
+      growthRate: plant.growth_rate || prev.growth_rate,
+      waterRequirement: waterMap[plant.watering?.toLowerCase()] || prev.waterRequirement,
+      floweringSeason: plant.flowering_season || prev.floweringSeason,
+      leafType: plant.leaf_color ? `Leaves: ${plant.leaf_color}` : prev.leafType,
+      description: plant.description || prev.description,
+      image: (plant.image_url && !prev.image) ? plant.image_url : prev.image,
+      benefits: prev.benefits || 'Substantial canopy cooling, Habitat for urban species',
+      diseases: prev.diseases || 'Leaf spot, Root rot',
+      pests: prev.pests || 'Scale insects, Mealybugs',
+    }));
+    if (plant.image_url && uploadedImages.length === 0) {
+      setUploadedImages([{ url: plant.image_url, uploading: false, key: Date.now() }]);
+    }
+    setLookupVisible(false);
+    setLookupResults([]);
+    setStatus(`✅ Auto-filled from Perenual: ${plant.common_name || plant.scientific_name}`);
+  };
+
+  const handleAiAutoFill = async () => {
+    const targetName = form.name.trim();
+    if (!targetName) {
+      setStatus('⚠️ Please type a Tree Name first (e.g. Chiku, Sapota, Mango, Banyan)');
+      return;
+    }
+    setLookupLoading(true);
+    setStatus('✨ AI is auto-generating complete botanical details...');
+    try {
+      const res = await fetch(`${API_URL}/api/trees/ai-autofill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: targetName })
+      });
+      const result = await res.json();
+      if (res.ok && result.data) {
+        const d = result.data;
+        setForm(prev => ({
+          ...prev,
+          scientificName: d.scientificName || prev.scientificName,
+          family: d.family || prev.family,
+          category: d.category || prev.category,
+          height: d.height || prev.height,
+          lifespan: d.lifespan || prev.lifespan,
+          canopySpread: d.canopySpread || prev.canopySpread,
+          healthScore: d.healthScore || prev.healthScore,
+          canopyCoverage: d.canopyCoverage || prev.canopyCoverage,
+          waterRequirement: d.waterRequirement || prev.waterRequirement,
+          sunlight: d.sunlight || prev.sunlight,
+          growthRate: d.growthRate || prev.growthRate,
+          floweringSeason: d.floweringSeason || prev.floweringSeason,
+          fruitingSeason: d.fruitingSeason || prev.fruitingSeason,
+          nativeRegion: d.nativeRegion || prev.nativeRegion,
+          iucnStatus: d.iucnStatus || prev.iucnStatus,
+          flowerColor: d.flowerColor || prev.flowerColor,
+          leafType: d.leafType || prev.leafType,
+          soilType: d.soilType || prev.soilType,
+          climate: d.climate || prev.climate,
+          description: d.description || prev.description,
+          culturalUses: d.culturalUses || prev.culturalUses,
+          benefits: d.benefits || 'Substantial canopy cooling, Habitat for urban species',
+          diseases: d.diseases || 'Leaf spot, Root rot',
+          pests: d.pests || 'Scale insects, Mealybugs',
+          image: d.image || prev.image,
+        }));
+        if (d.image && uploadedImages.length === 0) {
+          setUploadedImages([{ url: d.image, uploading: false, key: Date.now() }]);
+        }
+        setStatus(`✅ AI Auto-Filled all botanical details for "${targetName}"!`);
+      } else {
+        setStatus('⚠️ Could not auto-fill. Please try typing another tree name.');
+      }
+    } catch (err) {
+      setStatus('⚠️ AI Auto-fill error. Check backend network connection.');
+    } finally {
+      setLookupLoading(false);
     }
   };
 
@@ -8827,11 +8999,14 @@ export function TreeInventoryPage() {
       return;
     }
 
+    const realImages = uploadedImages.filter(x => !x.uploading).map(x => x.url);
     const submission = {
       ...form,
       benefits: parseCommaInput(form.benefits),
       pests: parseCommaInput(form.pests),
       diseases: parseCommaInput(form.diseases),
+      images: realImages,
+      image: realImages[0] || form.image || '',
     };
 
     try {
@@ -8868,6 +9043,7 @@ export function TreeInventoryPage() {
         }
       }
       setForm(initialFormState);
+      setUploadedImages([]);
       setShowForm(false);
     } catch (err) {
       setStatus('Server connection error. Please try again.');
@@ -8881,6 +9057,9 @@ export function TreeInventoryPage() {
       pests: Array.isArray(tree.pests) ? tree.pests.join(', ') : tree.pests || '',
       diseases: Array.isArray(tree.diseases) ? tree.diseases.join(', ') : tree.diseases || '',
     });
+    // Pre-populate uploaded images from existing gallery
+    const existingImgs = (Array.isArray(tree.images) && tree.images.length > 0) ? tree.images : (tree.image ? [tree.image] : []);
+    setUploadedImages(existingImgs.map((url, i) => ({ url, uploading: false, key: i })));
     setEditingId(tree._id || tree.id);
     setShowForm(true);
     setSelectedTree(null);
@@ -8988,6 +9167,30 @@ export function TreeInventoryPage() {
   if (selectedTree) {
     const details = getTreeDetails(selectedTree);
 
+    const allTreeImages = (() => {
+      const list = [];
+      if (Array.isArray(selectedTree.images) && selectedTree.images.length > 0) {
+        selectedTree.images.forEach(img => {
+          const url = typeof img === 'object' && img?.url ? img.url : img;
+          if (typeof url === 'string' && url.trim() && !list.includes(url.trim())) {
+            list.push(url.trim());
+          }
+        });
+      }
+      if (selectedTree.image && typeof selectedTree.image === 'string' && selectedTree.image.trim()) {
+        const primary = selectedTree.image.trim();
+        if (!list.includes(primary)) {
+          list.unshift(primary);
+        }
+      }
+      if (list.length === 0) {
+        list.push(getTreeDisplayImage(selectedTree || details));
+      }
+      return list;
+    })();
+
+    const activeImageSrc = allTreeImages[detailActiveImgIndex] || allTreeImages[0] || getTreeDisplayImage(selectedTree || details);
+
     const getBenefitIcon = (benefit) => {
       const text = benefit.toLowerCase();
       if (text.includes('shade') || text.includes('heat') || text.includes('cool')) return <Umbrella size={18} color="#15803d" />;
@@ -9036,11 +9239,12 @@ export function TreeInventoryPage() {
 
               {/* Left Column */}
               <div className="tree-detail-left">
-                {/* Image Card */}
-                <div className="tree-detail-image-card">
+                {/* Image Card & Gallery Controls */}
+                <div className="tree-detail-image-card" style={{ marginBottom: allTreeImages.length > 1 ? '10px' : '24px', position: 'relative', overflow: 'hidden', borderRadius: '16px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}>
                   <img
-                    src={getTreeDisplayImage(selectedTree || details)}
+                    src={activeImageSrc}
                     alt={details.name}
+                    style={{ width: '100%', height: '340px', objectFit: 'cover', display: 'block', transition: 'all 0.3s ease-in-out' }}
                     onError={(e) => {
                       const fallback = speciesImages.default;
                       if (e.currentTarget.src !== fallback) {
@@ -9048,14 +9252,62 @@ export function TreeInventoryPage() {
                       }
                     }}
                   />
-                  <button className="view-image-overlay-btn" onClick={() => {
-                    const imgUrl = getTreeDisplayImage(selectedTree || details);
-                    const w = window.open();
-                    w.document.write(`<img src="${imgUrl}" style="max-width:100%; max-height:100vh; display:block; margin:auto;" />`);
+                  <span style={{
+                    position: 'absolute', top: '12px', left: '12px',
+                    background: 'rgba(3, 20, 14, 0.75)', backdropFilter: 'blur(8px)',
+                    color: '#ffffff', fontSize: '0.75rem', fontWeight: 700,
+                    padding: '5px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px',
+                    border: '1px solid rgba(82, 183, 136, 0.3)'
                   }}>
-                    <Eye size={16} style={{ marginRight: '6px' }} /> View Image
+                    📸 {detailActiveImgIndex + 1} / {allTreeImages.length}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="view-image-overlay-btn"
+                    onClick={() => setShowPhotoLightbox(true)}
+                    style={{
+                      position: 'absolute', bottom: '12px', right: '12px',
+                      background: '#046b4e', backdropFilter: 'blur(8px)',
+                      color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)',
+                      borderRadius: '8px', padding: '8px 16px', fontSize: '0.85rem',
+                      fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.35)', transition: 'all 0.2s'
+                    }}
+                  >
+                    <Eye size={16} /> View All Photos ({allTreeImages.length})
                   </button>
                 </div>
+
+                {/* Gallery Thumbnail Strip below main image card */}
+                {allTreeImages.length > 1 && (
+                  <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '24px' }}>
+                    {allTreeImages.map((imgUrl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setDetailActiveImgIndex(idx)}
+                        style={{
+                          border: idx === detailActiveImgIndex ? '3px solid #10b981' : '1px solid rgba(82, 183, 136, 0.3)',
+                          borderRadius: '10px',
+                          overflow: 'hidden',
+                          width: '72px',
+                          height: '72px',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          padding: 0,
+                          background: '#0b2518',
+                          opacity: idx === detailActiveImgIndex ? 1 : 0.65,
+                          transform: idx === detailActiveImgIndex ? 'scale(1.05)' : 'scale(1)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: idx === detailActiveImgIndex ? '0 4px 12px rgba(16, 185, 129, 0.4)' : 'none'
+                        }}
+                      >
+                        <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* About This Tree Card */}
                 <div className="tree-section-card info-card">
@@ -9352,6 +9604,107 @@ export function TreeInventoryPage() {
             </div>
           </main>
         </div>
+
+        {/* Full-Screen Interactive Gallery Lightbox Modal */}
+        {showPhotoLightbox && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(3, 15, 10, 0.95)', backdropFilter: 'blur(16px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+            padding: '24px clamp(16px, 4vw, 40px)', color: '#ffffff'
+          }}>
+            {/* Modal Header */}
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#ffffff', fontSize: '1.35rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {details.name} <span style={{ fontStyle: 'italic', fontWeight: 400, color: '#a7f3d0', fontSize: '1rem' }}>({details.scientificName})</span>
+                </h3>
+                <p style={{ margin: '4px 0 0', color: '#95d5b2', fontSize: '0.85rem' }}>
+                  Photo {detailActiveImgIndex + 1} of {allTreeImages.length}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPhotoLightbox(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.15)', border: 'none', color: '#ffffff',
+                  width: '44px', height: '44px', borderRadius: '50%', cursor: 'pointer',
+                  fontSize: '1.3rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Main Content & Nav Buttons */}
+            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', maxWidth: '1200px', margin: '16px 0' }}>
+              {allTreeImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setDetailActiveImgIndex((prev) => (prev > 0 ? prev - 1 : allTreeImages.length - 1))}
+                  style={{
+                    position: 'absolute', left: '0px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.25)',
+                    color: '#ffffff', width: '52px', height: '52px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.8rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, backdropFilter: 'blur(8px)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+                  }}
+                >
+                  ‹
+                </button>
+              )}
+
+              <img
+                src={allTreeImages[detailActiveImgIndex]}
+                alt={`${details.name} photo ${detailActiveImgIndex + 1}`}
+                style={{ maxHeight: '72vh', maxWidth: '100%', objectFit: 'contain', borderRadius: '14px', boxShadow: '0 12px 48px rgba(0,0,0,0.85)' }}
+                onError={(e) => {
+                  const fallback = speciesImages.default;
+                  if (e.currentTarget.src !== fallback) {
+                    e.currentTarget.src = fallback;
+                  }
+                }}
+              />
+
+              {allTreeImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setDetailActiveImgIndex((prev) => (prev < allTreeImages.length - 1 ? prev + 1 : 0))}
+                  style={{
+                    position: 'absolute', right: '0px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.25)',
+                    color: '#ffffff', width: '52px', height: '52px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.8rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, backdropFilter: 'blur(8px)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+                  }}
+                >
+                  ›
+                </button>
+              )}
+            </div>
+
+            {/* Modal Bottom Gallery Carousel Bar */}
+            {allTreeImages.length > 1 && (
+              <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', padding: '12px', maxWidth: '1000px' }}>
+                {allTreeImages.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setDetailActiveImgIndex(idx)}
+                    style={{
+                      border: idx === detailActiveImgIndex ? '3px solid #10b981' : '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '10px', overflow: 'hidden', width: '68px', height: '68px', flexShrink: 0,
+                      cursor: 'pointer', opacity: idx === detailActiveImgIndex ? 1 : 0.5, padding: 0,
+                      transform: idx === detailActiveImgIndex ? 'scale(1.08)' : 'scale(1)',
+                      transition: 'all 0.2s', background: '#081c12'
+                    }}
+                  >
+                    <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -9388,13 +9741,81 @@ export function TreeInventoryPage() {
           </section>
           {showForm && (
             <section className="cg-panel cg-tree-glass" style={{ background: 'var(--bg-surface, #0b2518)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))' }}>
-              <h2 style={{ color: 'var(--text-primary, #ffffff)', marginBottom: '1.5rem' }}>{editingId ? 'Edit Tree Details' : 'Add New Tree'}</h2>
+              <h2 style={{ color: 'var(--text-primary, #ffffff)', marginBottom: '0.5rem' }}>{editingId ? '✏️ Edit Tree Details' : '🌳 Add New Tree'}</h2>
+              <p style={{ color: '#95d5b2', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Type the tree name to auto-fill details from the Perenual plant database.</p>
               <form onSubmit={handleSubmit} className="tree-form">
-                <div className="form-row">
-                  <label>Tree Name*<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Mango Tree" /></label>
-                  <label>Scientific Name*<input value={form.scientificName} onChange={(e) => setForm({ ...form, scientificName: e.target.value })} placeholder="e.g. Mangifera indica" /></label>
+
+                {/* ── Tree Name with Perenual Auto-fill ── */}
+                <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', color: 'var(--text-secondary, #95d5b2)', fontWeight: 700, fontSize: '0.82rem', marginBottom: '6px' }}>Tree Name *</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      value={form.name}
+                      onChange={(e) => { setForm({ ...form, name: e.target.value }); handleNameLookup(e.target.value); }}
+                      onFocus={() => lookupResults.length > 0 && setLookupVisible(true)}
+                      onBlur={() => setTimeout(() => setLookupVisible(false), 200)}
+                      placeholder="e.g. Chiku, Sapota, Mango, Banyan..."
+                      style={{ flex: 1, background: 'var(--bg-elevated, #061a14)', color: '#fff', border: '1px solid rgba(82,183,136,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.9rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAiAutoFill}
+                      disabled={lookupLoading}
+                      style={{
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '10px 18px',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        cursor: lookupLoading ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                    >
+                      {lookupLoading ? (
+                        <>
+                          <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid #ffffff44', borderTopColor: '#ffffff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                          Auto-Filling...
+                        </>
+                      ) : (
+                        '✨ Auto-Fill with AI'
+                      )}
+                    </button>
+                  </div>
+                  {/* Lookup Dropdown */}
+                  {lookupVisible && lookupResults.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#0b2518', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '10px', boxShadow: '0 12px 32px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: '4px' }}>
+                      <div style={{ padding: '6px 14px', fontSize: '0.72rem', color: '#6b7280', fontWeight: 700, borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(52,211,153,0.05)' }}>🌿 Perenual Plant Database — Select to Auto-fill</div>
+                      {lookupResults.map(plant => (
+                        <div
+                          key={plant.id}
+                          onMouseDown={() => applyLookupResult(plant)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid rgba(82,183,136,0.1)', transition: 'background 0.15s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.1)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {plant.image_url && <img src={plant.image_url} alt={plant.common_name} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(52,211,153,0.3)' }} />}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.88rem' }}>{plant.common_name || plant.scientific_name}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#95d5b2', fontStyle: 'italic' }}>{plant.scientific_name} {plant.family ? `· ${plant.family}` : ''}</div>
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 700, whiteSpace: 'nowrap' }}>Auto-fill ↗</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
                 <div className="form-row">
+                  <label>Scientific Name*<input value={form.scientificName} onChange={(e) => setForm({ ...form, scientificName: e.target.value })} placeholder="e.g. Mangifera indica" /></label>
                   <label>Family<input value={form.family} onChange={(e) => setForm({ ...form, family: e.target.value })} placeholder="e.g. Anacardiaceae" /></label>
                   <label>Category<input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Evergreen Fruit Tree" /></label>
                 </div>
@@ -9408,8 +9829,93 @@ export function TreeInventoryPage() {
                   <label>Canopy Coverage (%)<input type="number" min="0" max="100" value={form.canopyCoverage} onChange={(e) => setForm({ ...form, canopyCoverage: parseInt(e.target.value) || 0 })} /></label>
                   <label>Water Requirement<input value={form.waterRequirement} onChange={(e) => setForm({ ...form, waterRequirement: e.target.value })} placeholder="e.g. Medium" /></label>
                 </div>
+
+                {/* Ecology row */}
+                <div className="form-row">
+                  <label>Sunlight<input value={form.sunlight} onChange={(e) => setForm({ ...form, sunlight: e.target.value })} placeholder="e.g. Full Sun" /></label>
+                  <label>Growth Rate<input value={form.growthRate} onChange={(e) => setForm({ ...form, growthRate: e.target.value })} placeholder="e.g. Fast" /></label>
+                  <label>Flowering Season<input value={form.floweringSeason} onChange={(e) => setForm({ ...form, floweringSeason: e.target.value })} placeholder="e.g. Mar – May" /></label>
+                  <label>Fruiting Season<input value={form.fruitingSeason} onChange={(e) => setForm({ ...form, fruitingSeason: e.target.value })} placeholder="e.g. Jun – Aug" /></label>
+                </div>
+                <div className="form-row">
+                  <label>Native Region<input value={form.nativeRegion || ''} onChange={(e) => setForm({ ...form, nativeRegion: e.target.value })} placeholder="e.g. South Asia" /></label>
+                  <label>IUCN Conservation Status
+                    <select value={form.iucnStatus || ''} onChange={(e) => setForm({ ...form, iucnStatus: e.target.value })} style={{ background: 'var(--bg-elevated, #061a14)', color: 'var(--text-primary, #fff)', border: '1px solid rgba(82,183,136,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.9rem', width: '100%' }}>
+                      <option value="">— Select Status —</option>
+                      <option>Least Concern</option>
+                      <option>Near Threatened</option>
+                      <option>Vulnerable</option>
+                      <option>Endangered</option>
+                      <option>Critically Endangered</option>
+                      <option>Data Deficient</option>
+                      <option>Not Evaluated</option>
+                    </select>
+                  </label>
+                  <label>Flower Color<input value={form.flowerColor || ''} onChange={(e) => setForm({ ...form, flowerColor: e.target.value })} placeholder="e.g. Yellow, White" /></label>
+                </div>
+                <div className="form-row">
+                  <label>Leaf Type<input value={form.leafType} onChange={(e) => setForm({ ...form, leafType: e.target.value })} placeholder="e.g. Simple, Pinnate" /></label>
+                  <label>Soil Type<input value={form.soilType} onChange={(e) => setForm({ ...form, soilType: e.target.value })} placeholder="e.g. Loamy, Sandy" /></label>
+                  <label>Climate<input value={form.climate} onChange={(e) => setForm({ ...form, climate: e.target.value })} placeholder="e.g. Tropical monsoonal" /></label>
+                </div>
+
                 <label>Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Enter detailed tree description..." rows={3} /></label>
-                <label>Tree Image<input type="file" accept="image/*" onChange={handleFileChange} /></label>
+                <label>Cultural &amp; Traditional Uses<textarea value={form.culturalUses || ''} onChange={(e) => setForm({ ...form, culturalUses: e.target.value })} placeholder="e.g. Medicinal, Sacred, Timber..." rows={2} /></label>
+
+                {/* Benefits, Diseases, and Pests Row */}
+                <div className="form-row">
+                  <label>🌿 Environmental Benefits (Comma-separated)<input value={form.benefits || ''} onChange={(e) => setForm({ ...form, benefits: e.target.value })} placeholder="e.g. Canopy cooling, Soil erosion prevention, Wildlife habitat" /></label>
+                  <label>🛡️ Susceptible Diseases (Comma-separated)<input value={form.diseases || ''} onChange={(e) => setForm({ ...form, diseases: e.target.value })} placeholder="e.g. Leaf spot, Root rot, Powdery mildew" /></label>
+                  <label>🐛 Common Pests (Comma-separated)<input value={form.pests || ''} onChange={(e) => setForm({ ...form, pests: e.target.value })} placeholder="e.g. Scale insects, Mealybugs, Sapodilla moth" /></label>
+                </div>
+
+                {/* ── Multi-Image Upload Section ── */}
+                <div style={{ marginTop: '1.75rem', borderTop: '1px solid rgba(82,183,136,0.25)', paddingTop: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <h3 style={{ color: 'var(--text-primary, #fff)', margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>📸 Tree Photo Gallery</h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#95d5b2', opacity: 0.85 }}>Upload up to 8 photos. First image is used as the primary/thumbnail. All photos will appear in the citizen-facing gallery carousel.</p>
+                    </div>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: uploadedImages.length >= 8 ? 'rgba(100,100,100,0.2)' : 'linear-gradient(135deg, #059669, #047857)', color: '#fff', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', cursor: uploadedImages.length >= 8 || uploadingMulti ? 'not-allowed' : 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.3)', opacity: uploadedImages.length >= 8 ? 0.5 : 1 }}>
+                      {uploadingMulti ? <><span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Uploading…</> : <>+ Add Photos ({uploadedImages.length}/8)</>}
+                      <input type="file" accept="image/*" multiple disabled={uploadedImages.length >= 8 || uploadingMulti} onChange={handleMultiFileChange} style={{ display: 'none' }} />
+                    </label>
+                  </div>
+
+                  {uploadedImages.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '10px' }}>
+                      {uploadedImages.map((img, idx) => (
+                        <div key={img.key || idx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: idx === 0 ? '2px solid #34d399' : '1px solid rgba(82,183,136,0.3)', aspectRatio: '1', background: '#1b4332' }}>
+                          <img src={img.url} alt={`Tree photo ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: img.uploading ? 'brightness(0.5)' : 'none', transition: 'filter 0.3s' }} />
+                          {img.uploading && (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ display: 'inline-block', width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                            </div>
+                          )}
+                          {!img.uploading && (
+                            <>
+                              {idx === 0 && <span style={{ position: 'absolute', bottom: '5px', left: '5px', background: 'rgba(52,211,153,0.9)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: '20px' }}>PRIMARY</span>}
+                              <button type="button" onClick={() => handleRemoveUploadedImage(idx)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(239,68,68,0.85)', border: 'none', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                      {uploadedImages.length < 8 && (
+                        <label style={{ border: '2px dashed rgba(82,183,136,0.4)', borderRadius: '10px', aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: uploadingMulti ? 'not-allowed' : 'pointer', color: '#95d5b2', fontSize: '0.75rem', gap: '6px', transition: 'border-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#34d399'} onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(82,183,136,0.4)'}>
+                          <span style={{ fontSize: '1.5rem' }}>+</span><span>Add Photo</span>
+                          <input type="file" accept="image/*" multiple disabled={uploadingMulti} onChange={handleMultiFileChange} style={{ display: 'none' }} />
+                        </label>
+                      )}
+                    </div>
+                  ) : (
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(82,183,136,0.35)', borderRadius: '14px', padding: '2.5rem', cursor: 'pointer', color: '#95d5b2', gap: '10px', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#34d399'; e.currentTarget.style.background = 'rgba(52,211,153,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(82,183,136,0.35)'; e.currentTarget.style.background = 'transparent'; }}>
+                      <span style={{ fontSize: '2.5rem' }}>🌿</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#34d399' }}>Click to Upload Tree Photos</span>
+                      <span style={{ fontSize: '0.78rem', opacity: 0.8 }}>PNG, JPG, WebP · Up to 8 images · 10MB each · Stored on Cloudinary</span>
+                      <input type="file" accept="image/*" multiple onChange={handleMultiFileChange} style={{ display: 'none' }} />
+                    </label>
+                  )}
+                </div>
 
                 {/* ── Geolocation & Spatial Mapping Section (Clean Uniform Layout) ── */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.75rem', marginBottom: '1rem', borderTop: '1px solid rgba(82, 183, 136, 0.25)', paddingTop: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
@@ -9806,6 +10312,40 @@ export function ViewTreePage() {
   const isOfficialSession = !isAdminSession && (sessionStorage.getItem('officialAuthed') === 'true' || currentUserRole === 'Official' || path.startsWith('/official'));
   const isStaffSession = isAdminSession || isOfficialSession || currentUserRole === 'Tree Cutter' || path.startsWith('/treecutter') || path.startsWith('/cutter');
   const isCitizen = !isAdminSession && !isOfficialSession && (!currentUserRole || currentUserRole === 'Citizen');
+
+  // ── Carousel & Gallery state ──
+  const [carouselIndices, setCarouselIndices] = useState({}); // treeId -> currentSlide
+  const [galleryTree, setGalleryTree] = useState(null);       // tree object for lightbox
+  const [galleryIdx, setGalleryIdx] = useState(0);            // active photo in lightbox
+  const carouselTimers = useRef({});
+
+  // Start auto-scroll for a tree card when it mounts/becomes visible
+  const startCarousel = (treeId, imageCount) => {
+    if (imageCount <= 1) return;
+    if (carouselTimers.current[treeId]) return; // already running
+    carouselTimers.current[treeId] = setInterval(() => {
+      setCarouselIndices(prev => ({
+        ...prev,
+        [treeId]: ((prev[treeId] || 0) + 1) % imageCount
+      }));
+    }, 2500);
+  };
+  const stopCarousel = (treeId) => {
+    if (carouselTimers.current[treeId]) {
+      clearInterval(carouselTimers.current[treeId]);
+      delete carouselTimers.current[treeId];
+    }
+  };
+  // Cleanup on unmount
+  useEffect(() => { return () => Object.values(carouselTimers.current).forEach(clearInterval); }, []);
+
+  const getTreeImages = (tree) => {
+    const imgs = Array.isArray(tree.images) && tree.images.length > 0 ? tree.images : [];
+    const primary = getTreeDisplayImage(tree);
+    // merge, deduplicate
+    const all = [primary, ...imgs.filter(u => u && u !== primary)];
+    return [...new Set(all)].filter(Boolean);
+  };
 
   const effectiveUserId = currentUser.id || currentUser._id || currentUser.userId || 'guest-citizen';
   const effectiveUserName = currentUser.name || currentUser.username || currentUser.fullName || 'Citizen User';
@@ -10238,28 +10778,54 @@ export function ViewTreePage() {
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
                   }}
                 >
-                  {/* Card Header (image) */}
-                  <div style={{ height: '180px', background: '#1b4332', position: 'relative' }}>
-                    <img
-                      src={getTreeDisplayImage(tree)}
-                      alt={tree.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => {
-                        const fallback = speciesImages.default;
-                        if (e.currentTarget.src !== fallback) {
-                          e.currentTarget.src = fallback;
-                        }
-                      }}
-                    />
-                    <span style={{
-                      position: 'absolute', top: '12px', right: '12px',
-                      background: hColor, color: '#fff', borderRadius: '20px',
-                      padding: '3px 12px', fontSize: '0.78rem', fontWeight: 700,
-                      boxShadow: `0 2px 8px ${hColor}55`
-                    }}>
-                      {hLabel}
-                    </span>
-                  </div>
+                  {/* Card Header — auto-scroll carousel */}
+                  {(() => {
+                    const imgs = getTreeImages(tree);
+                    const tid = tree._id || tree.id;
+                    const slideIdx = carouselIndices[tid] || 0;
+                    return (
+                      <div
+                        style={{ height: '180px', background: '#1b4332', position: 'relative', overflow: 'hidden' }}
+                        onMouseEnter={() => stopCarousel(tid)}
+                        onMouseLeave={() => startCarousel(tid, imgs.length)}
+                        ref={el => { if (el && !carouselTimers.current[tid]) startCarousel(tid, imgs.length); }}
+                      >
+                        <img
+                          key={slideIdx}
+                          src={imgs[slideIdx] || getTreeDisplayImage(tree)}
+                          alt={tree.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.5s ease' }}
+                          onError={e => { if (e.currentTarget.src !== speciesImages.default) e.currentTarget.src = speciesImages.default; }}
+                        />
+                        {/* Health badge */}
+                        <span style={{ position: 'absolute', top: '12px', right: '12px', background: hColor, color: '#fff', borderRadius: '20px', padding: '3px 12px', fontSize: '0.78rem', fontWeight: 700, boxShadow: `0 2px 8px ${hColor}55` }}>{hLabel}</span>
+                        {/* Image count badge */}
+                        {imgs.length > 1 && (
+                          <span style={{ position: 'absolute', top: '12px', left: '12px', background: 'rgba(0,0,0,0.55)', color: '#fff', borderRadius: '20px', padding: '3px 10px', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📸 {imgs.length}
+                          </span>
+                        )}
+                        {/* Dot indicators */}
+                        {imgs.length > 1 && (
+                          <div style={{ position: 'absolute', bottom: '8px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '5px' }}>
+                            {imgs.map((_, di) => (
+                              <div key={di} style={{ width: di === slideIdx ? '16px' : '6px', height: '6px', borderRadius: '4px', background: di === slideIdx ? '#34d399' : 'rgba(255,255,255,0.45)', transition: 'all 0.3s' }} />
+                            ))}
+                          </div>
+                        )}
+                        {/* View All Photos overlay on hover */}
+                        {imgs.length > 1 && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setGalleryTree(tree); setGalleryIdx(0); }}
+                            style={{ position: 'absolute', bottom: '28px', right: '8px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '8px', padding: '4px 10px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}
+                            className="view-all-photos-btn"
+                          >
+                            View All 📸
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Card body */}
                   <div style={{ padding: '18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -10359,6 +10925,67 @@ export function ViewTreePage() {
           </div>
         )}
       </main>
+    );
+  };
+
+  // ── Gallery Lightbox Modal ──
+  const renderGalleryLightbox = () => {
+    if (!galleryTree) return null;
+    const imgs = getTreeImages(galleryTree);
+    const total = imgs.length;
+    const prev = () => setGalleryIdx(i => (i - 1 + total) % total);
+    const next = () => setGalleryIdx(i => (i + 1) % total);
+    return (
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+        onClick={() => setGalleryTree(null)}
+      >
+        <style>{`@keyframes fadeInScale { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }`}</style>
+        {/* Header */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)', zIndex: 1 }} onClick={e => e.stopPropagation()}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff' }}>{galleryTree.name}</div>
+            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', fontStyle: 'italic' }}>{galleryTree.scientificName}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ background: 'rgba(52,211,153,0.2)', border: '1px solid rgba(52,211,153,0.4)', color: '#34d399', padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700 }}>📷 {galleryIdx + 1} / {total}</span>
+            <button onClick={() => setGalleryTree(null)} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>✕</button>
+          </div>
+        </div>
+
+        {/* Main image */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', width: '100%', maxWidth: '1000px', padding: '0 16px', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+          <button onClick={prev} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', width: '48px', height: '48px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.3rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.25)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}>&#8249;</button>
+          <img
+            key={galleryIdx}
+            src={imgs[galleryIdx]}
+            alt={`${galleryTree.name} photo ${galleryIdx + 1}`}
+            style={{ maxWidth: '100%', maxHeight: '60vh', borderRadius: '16px', objectFit: 'contain', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', animation: 'fadeInScale 0.3s ease-out' }}
+            onError={e => { if (e.currentTarget.src !== speciesImages.default) e.currentTarget.src = speciesImages.default; }}
+          />
+          <button onClick={next} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', width: '48px', height: '48px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.3rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.25)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}>&#8250;</button>
+        </div>
+
+        {/* Thumbnail strip */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 24px', background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)', display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto' }} onClick={e => e.stopPropagation()}>
+          {imgs.map((url, i) => (
+            <img
+              key={i}
+              src={url}
+              alt={`thumb ${i}`}
+              onClick={() => setGalleryIdx(i)}
+              style={{ width: '52px', height: '52px', borderRadius: '8px', objectFit: 'cover', cursor: 'pointer', border: i === galleryIdx ? '2px solid #34d399' : '2px solid transparent', opacity: i === galleryIdx ? 1 : 0.55, transition: 'all 0.2s', flexShrink: 0 }}
+            />
+          ))}
+        </div>
+
+        {/* Dot indicators */}
+        <div style={{ position: 'absolute', top: '50%', right: '12px', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '6px' }} onClick={e => e.stopPropagation()}>
+          {imgs.map((_, i) => (
+            <div key={i} onClick={() => setGalleryIdx(i)} style={{ width: '6px', height: i === galleryIdx ? '18px' : '6px', borderRadius: '4px', background: i === galleryIdx ? '#34d399' : 'rgba(255,255,255,0.3)', cursor: 'pointer', transition: 'all 0.3s' }} />
+          ))}
+        </div>
+      </div>
     );
   };
 
@@ -10528,6 +11155,7 @@ export function ViewTreePage() {
         </header>
         {renderListContent()}
         {renderAdoptModal()}
+        {renderGalleryLightbox()}
       </div>
     );
   } else {
@@ -10538,6 +11166,7 @@ export function ViewTreePage() {
           <Topbar title="Tree Database" onToggleSidebar={() => setSidebarOpen(true)} />
           {renderListContent()}
           {renderAdoptModal()}
+          {renderGalleryLightbox()}
         </div>
       </div>
     );
