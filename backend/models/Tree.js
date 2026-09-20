@@ -39,6 +39,12 @@ const TreeSchema = new mongoose.Schema({
   fruitColor: { type: String },
   culturalUses: { type: String }, // traditional / cultural / medicinal uses
   conservationNotes: { type: String },
+
+  // Subscription adoption fields
+  monthlyAdoptionFee: { type: Number, default: 500 },
+  yearlyAdoptionFee: { type: Number, default: 6000 },
+  isAdopted: { type: Boolean, default: false },
+  activeSubscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Tree', TreeSchema);

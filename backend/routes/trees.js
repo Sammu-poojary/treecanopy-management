@@ -1166,7 +1166,22 @@ router.get('/', async (req, res) => {
       trees = await Tree.find().sort({ createdAt: -1 });
     }
 
-    res.json(trees);
+    const Subscription = require('../models/Subscription');
+    const activeAdoptions = await Adoption.find({ status: 'Active' });
+    const activeSubs = await Subscription.find({ status: 'active' });
+
+    const adoptedTreeIds = new Set([
+      ...activeAdoptions.map(a => (a.treeId || '').toString()),
+      ...activeSubs.map(s => (s.treeId || '').toString())
+    ]);
+
+    const enrichedTrees = trees.map(t => {
+      const obj = t.toObject ? t.toObject() : { ...t };
+      const isAdopted = adoptedTreeIds.has(obj._id.toString()) || Boolean(obj.isAdopted);
+      return { ...obj, isAdopted };
+    });
+
+    res.json(enrichedTrees);
   } catch (err) {
     console.error('Error fetching/seeding trees:', err);
     res.status(500).json({ msg: 'Server error fetching trees' });

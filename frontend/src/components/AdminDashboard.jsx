@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCog, Users, Settings, Database, Activity, CheckCircle, Trash2, RefreshCw, Download, Trees, Plus, Check, X, Pencil, Gift, Tag, Clock, ShieldCheck } from 'lucide-react';
+import { UserCog, Users, Settings, Database, Activity, CheckCircle, Trash2, RefreshCw, Download, Trees, Plus, Check, X, Pencil, Gift, Tag, Clock, ShieldCheck, Heart, CreditCard, Send, Calendar, DollarSign, ExternalLink, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -20,6 +20,14 @@ const AdminDashboard = ({ user, activeTab }) => {
   const [selectedImagePreview, setSelectedImagePreview] = useState(null);
   const [editingProposal, setEditingProposal] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', scientificName: '', locationText: '', lat: '', lng: '', notes: '' });
+
+  // Subscriptions & Tree Adoptions Admin State
+  const [adminSubscriptions, setAdminSubscriptions] = useState([]);
+  const [subPaymentReport, setSubPaymentReport] = useState(null);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
+  const [subFilter, setSubFilter] = useState('all'); // all, subscription, self, active, lapsed, cancelled
+  const [sendingReminders, setSendingReminders] = useState(false);
+  const [selectedSubDetail, setSelectedSubDetail] = useState(null);
 
   // Rewards & Redemptions Admin State
   const [adminRedemptions, setAdminRedemptions] = useState([]);
@@ -63,6 +71,66 @@ const AdminDashboard = ({ user, activeTab }) => {
       }
     } catch (err) {
       console.error('Error fetching rewards catalogue:', err);
+    }
+  };
+
+  const fetchAdminSubscriptions = async () => {
+    setLoadingSubscriptions(true);
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/all`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setAdminSubscriptions(data);
+      }
+    } catch (err) {
+      console.error('Error fetching subscriptions:', err);
+    } finally {
+      setLoadingSubscriptions(false);
+    }
+  };
+
+  const fetchSubPaymentReport = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/payment-report`);
+      const data = await res.json();
+      if (res.ok) setSubPaymentReport(data);
+    } catch (err) {
+      console.error('Error fetching payment report:', err);
+    }
+  };
+
+  const handleSendRenewalReminders = async () => {
+    setSendingReminders(true);
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/send-reminders`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(`Reminders sent: ${data.remindersSent} email(s). Lapsed subscriptions updated: ${data.lapsedMarked}`);
+        fetchAdminSubscriptions();
+        fetchSubPaymentReport();
+      } else {
+        showMsg(data.error || 'Failed to send reminders.');
+      }
+    } catch {
+      showMsg('Server error while sending reminders.');
+    } finally {
+      setSendingReminders(false);
+    }
+  };
+
+  const handleRevokeSubscription = async (subId, treeName) => {
+    if (!window.confirm(`Are you sure you want to cancel / revoke the adoption for "${treeName}"?`)) return;
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/${subId}/cancel`, { method: 'PATCH' });
+      if (res.ok) {
+        showMsg(`Adoption for "${treeName}" has been cancelled and tree released.`);
+        fetchAdminSubscriptions();
+        fetchSubPaymentReport();
+      } else {
+        showMsg('Failed to revoke adoption.');
+      }
+    } catch {
+      showMsg('Server error revoking adoption.');
     }
   };
 
@@ -212,12 +280,16 @@ const AdminDashboard = ({ user, activeTab }) => {
     fetchProposals();
     fetchAdminRedemptions();
     fetchCatalogueRewards();
+    fetchAdminSubscriptions();
+    fetchSubPaymentReport();
 
     // Auto-sync live metrics every 8 seconds
     const interval = setInterval(() => {
       fetchAttendance();
       fetchStats();
       fetchUsers();
+      fetchAdminSubscriptions();
+      fetchSubPaymentReport();
     }, 8000);
 
     return () => clearInterval(interval);
@@ -433,6 +505,31 @@ const AdminDashboard = ({ user, activeTab }) => {
     URL.revokeObjectURL(url);
   };
 
+  const exportAdoptionCSV = () => {
+    const headers = ['Certificate', 'Tree Name', 'Citizen Name', 'Citizen Email', 'Phone', 'Type', 'Plan', 'Amount', 'Status', 'Assigned Cutter', 'Renewal Date'];
+    const rows = adminSubscriptions.map(s => [
+      s.certificateNumber || '',
+      s.treeName || '',
+      s.userName || '',
+      s.userEmail || '',
+      s.userPhone || '',
+      s.adoptionType || 'subscription',
+      s.plan || 'Self-Care',
+      s.amount || 0,
+      s.status || '',
+      s.assignedCutterName || 'Unassigned',
+      s.nextRenewalDate ? new Date(s.nextRenewalDate).toLocaleDateString('en-IN') : 'N/A'
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tree-adoptions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="dashboard-content">
       {activeTab === 'overview' && (
@@ -476,6 +573,26 @@ const AdminDashboard = ({ user, activeTab }) => {
               <div className="stat-details">
                 <h3>{stats.pending}</h3>
                 <p>Pending Complaints</p>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon green-tint">
+                <Heart size={24} color="#10b981" fill="#10b98122" />
+              </div>
+              <div className="stat-details">
+                <h3>{adminSubscriptions.filter(s => ['active', 'assigned'].includes(s.status)).length}</h3>
+                <p>Adopted Trees</p>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon blue-tint">
+                <DollarSign size={24} color="#059669" />
+              </div>
+              <div className="stat-details">
+                <h3>₹{subPaymentReport?.totalRevenue?.toLocaleString('en-IN') || 0}</h3>
+                <p>Adoption Revenue</p>
               </div>
             </div>
           </div>
@@ -1273,6 +1390,410 @@ const AdminDashboard = ({ user, activeTab }) => {
               All municipal sectors are covered by satellite analysis pipelines. Sensor health check reports green across 24 regional gateway beacons.
             </p>
           </div>
+
+          {/* Tree Adoption & Care Subscriptions Governance Panel */}
+          <div
+            className="data-table-container"
+            style={{
+              marginTop: '1.5rem',
+              marginBottom: '1.5rem',
+              background: 'var(--bg-surface)',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.06)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <div className="table-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(16,185,129,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                    <Heart size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.25rem' }}>Tree Adoptions & Care Subscriptions</h2>
+                    <p className="table-subtitle" style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.85rem' }}>
+                      Monitor citizen tree adoptions, automated cutter assignments, recurring renewal dates, and revenue.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  className="btn-secondary"
+                  onClick={handleSendRenewalReminders}
+                  disabled={sendingReminders}
+                  title="Scan for upcoming renewals in next 3 days and send email notifications"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+                    borderRadius: '8px', border: '1px solid #10b981', background: 'rgba(16,185,129,0.1)',
+                    color: '#10b981', cursor: sendingReminders ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 600
+                  }}
+                >
+                  <Send size={15} /> {sendingReminders ? 'Sending...' : 'Send Renewal Reminders'}
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={exportAdoptionCSV}
+                  title="Export all adoption records to CSV"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  <Download size={15} /> Export CSV
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => { fetchAdminSubscriptions(); fetchSubPaymentReport(); }}
+                  title="Refresh adoptions list"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  <RefreshCw size={15} /> Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Total Adoptions</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{adminSubscriptions.length}</div>
+              </div>
+              <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>Active Care</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>
+                  {adminSubscriptions.filter(s => ['active', 'assigned'].includes(s.status)).length}
+                </div>
+              </div>
+              <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: '#3b82f6', textTransform: 'uppercase', fontWeight: 700 }}>Paid Subscriptions</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#3b82f6', marginTop: '4px' }}>
+                  {adminSubscriptions.filter(s => s.adoptionType === 'subscription').length}
+                </div>
+              </div>
+              <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: '#eab308', textTransform: 'uppercase', fontWeight: 700 }}>Self-Care Pledges</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#eab308', marginTop: '4px' }}>
+                  {adminSubscriptions.filter(s => s.adoptionType === 'self').length}
+                </div>
+              </div>
+              <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: '#a855f7', textTransform: 'uppercase', fontWeight: 700 }}>Revenue Collected</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#a855f7', marginTop: '4px' }}>
+                  ₹{subPaymentReport?.totalRevenue?.toLocaleString('en-IN') || 0}
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              {[
+                { id: 'all', label: `All (${adminSubscriptions.length})` },
+                { id: 'subscription', label: `Paid (${adminSubscriptions.filter(s => s.adoptionType === 'subscription').length})` },
+                { id: 'self', label: `Self-Care Pledge (${adminSubscriptions.filter(s => s.adoptionType === 'self').length})` },
+                { id: 'active', label: `Active (${adminSubscriptions.filter(s => ['active', 'assigned'].includes(s.status)).length})` },
+                { id: 'lapsed', label: `Lapsed (${adminSubscriptions.filter(s => s.status === 'lapsed').length})` },
+                { id: 'cancelled', label: `Cancelled (${adminSubscriptions.filter(s => s.status === 'cancelled').length})` },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSubFilter(tab.id)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    border: '1px solid',
+                    borderColor: subFilter === tab.id ? '#10b981' : 'var(--border)',
+                    background: subFilter === tab.id ? 'rgba(16,185,129,0.15)' : 'var(--bg-elevated)',
+                    color: subFilter === tab.id ? '#10b981' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Table */}
+            {loadingSubscriptions ? (
+              <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px' }}>Loading adoption records...</p>
+            ) : adminSubscriptions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-secondary)' }}>
+                <Heart size={40} style={{ opacity: 0.3, marginBottom: '8px' }} />
+                <p style={{ margin: 0, fontWeight: 600 }}>No trees adopted yet.</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem' }}>Citizens can adopt trees from the View Tree page with self-care pledge or municipal subscription.</p>
+              </div>
+            ) : (
+              <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                <table className="custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-elevated)', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Tree & Certificate</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Citizen</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Type / Plan</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Assigned Cutter</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Next Renewal</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Status</th>
+                      <th style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminSubscriptions
+                      .filter(s => {
+                        if (subFilter === 'subscription') return s.adoptionType === 'subscription';
+                        if (subFilter === 'self') return s.adoptionType === 'self';
+                        if (subFilter === 'active') return ['active', 'assigned'].includes(s.status);
+                        if (subFilter === 'lapsed') return s.status === 'lapsed';
+                        if (subFilter === 'cancelled') return s.status === 'cancelled';
+                        return true;
+                      })
+                      .map(sub => (
+                        <tr key={sub._id} style={{ background: 'var(--bg-card, var(--bg-surface))', borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {sub.treeImage ? (
+                                <img src={sub.treeImage} alt={sub.treeName} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+                              ) : (
+                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                                  <Trees size={20} />
+                                </div>
+                              )}
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>{sub.treeName || 'Adopted Tree'}</div>
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{sub.treeScientificName || sub.treeLocation || 'Sector Area'}</div>
+                                {sub.certificateNumber && (
+                                  <span style={{ display: 'inline-block', marginTop: '2px', fontSize: '0.72rem', background: 'rgba(16,185,129,0.12)', color: '#10b981', padding: '1px 6px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 600 }}>
+                                    {sub.certificateNumber}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{sub.userName || 'Citizen'}</div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{sub.userEmail || '-'}</div>
+                            {sub.userPhone && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>📞 {sub.userPhone}</div>}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            {sub.adoptionType === 'self' ? (
+                              <div>
+                                <span style={{ background: 'rgba(234,179,8,0.15)', color: '#ca8a04', padding: '3px 8px', borderRadius: '6px', fontSize: '0.76rem', fontWeight: 700 }}>
+                                  🌱 Self-Care Pledge
+                                </span>
+                                <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Citizen Commitment</div>
+                              </div>
+                            ) : (
+                              <div>
+                                <span style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '3px 8px', borderRadius: '6px', fontSize: '0.76rem', fontWeight: 700 }}>
+                                  💳 {sub.plan === 'monthly' ? 'Monthly' : 'Yearly'} Plan
+                                </span>
+                                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>₹{sub.amount || 0}</div>
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            {sub.assignedCutterName ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <ShieldCheck size={14} color="#10b981" />
+                                <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sub.assignedCutterName}</span>
+                              </div>
+                            ) : sub.adoptionType === 'self' ? (
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Citizen Self-Care</span>
+                            ) : (
+                              <span style={{ fontSize: '0.78rem', background: 'rgba(245,158,11,0.15)', color: '#d97706', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                Unassigned
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 14px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                            {sub.nextRenewalDate ? (
+                              <div>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{new Date(sub.nextRenewalDate).toLocaleDateString('en-IN')}</div>
+                                <div style={{ fontSize: '0.74rem', color: new Date(sub.nextRenewalDate) < new Date() ? '#ef4444' : '#10b981' }}>
+                                  {new Date(sub.nextRenewalDate) < new Date() ? 'Renewal Overdue' : 'Active Period'}
+                                </div>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                {sub.createdAt ? `Adopted ${new Date(sub.createdAt).toLocaleDateString('en-IN')}` : 'Active'}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span
+                              style={{
+                                padding: '3px 10px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                textTransform: 'capitalize',
+                                background:
+                                  sub.status === 'active' ? 'rgba(16,185,129,0.15)' :
+                                  sub.status === 'assigned' ? 'rgba(59,130,246,0.15)' :
+                                  sub.status === 'lapsed' ? 'rgba(239,68,68,0.15)' : 'rgba(107,114,128,0.15)',
+                                color:
+                                  sub.status === 'active' ? '#10b981' :
+                                  sub.status === 'assigned' ? '#3b82f6' :
+                                  sub.status === 'lapsed' ? '#ef4444' : '#6b7280',
+                              }}
+                            >
+                              {sub.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={() => setSelectedSubDetail(sub)}
+                                title="View care activity and tasks"
+                                style={{
+                                  padding: '5px 10px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border)',
+                                  background: 'var(--bg-elevated)',
+                                  color: 'var(--text-primary)',
+                                  cursor: 'pointer',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <Eye size={13} /> View
+                              </button>
+                              {['active', 'assigned'].includes(sub.status) && (
+                                <button
+                                  onClick={() => handleRevokeSubscription(sub._id, sub.treeName)}
+                                  title="Revoke adoption and release tree"
+                                  style={{
+                                    padding: '5px 10px',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(239,68,68,0.3)',
+                                    background: 'rgba(239,68,68,0.1)',
+                                    color: '#ef4444',
+                                    cursor: 'pointer',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 600
+                                  }}
+                                >
+                                  Revoke
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Adoption Detail & Care Tasks Modal */}
+          {selectedSubDetail && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.65)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                padding: '20px'
+              }}
+              onClick={() => setSelectedSubDetail(null)}
+            >
+              <div
+                style={{
+                  background: 'var(--bg-surface, #1e293b)',
+                  borderRadius: '16px',
+                  maxWidth: '650px',
+                  width: '100%',
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  padding: '24px',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-primary)',
+                  boxShadow: '0 25px 50px rgba(0,0,0,0.25)'
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Adoption & Care Record</h3>
+                    <span style={{ fontSize: '0.8rem', color: '#10b981', fontFamily: 'monospace', fontWeight: 700 }}>
+                      Certificate: {selectedSubDetail.certificateNumber || 'N/A'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedSubDetail(null)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px', background: 'var(--bg-elevated)', padding: '14px', borderRadius: '10px' }}>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TREE NAME</div>
+                    <div style={{ fontWeight: 700 }}>{selectedSubDetail.treeName}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>ADOPTER</div>
+                    <div style={{ fontWeight: 700 }}>{selectedSubDetail.userName} ({selectedSubDetail.userEmail})</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>ADOPTION TYPE</div>
+                    <div style={{ fontWeight: 700 }}>{selectedSubDetail.adoptionType === 'self' ? '🌱 Self-Care Pledge' : `💳 Paid ${selectedSubDetail.plan}`}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>ASSIGNED ARBORIST</div>
+                    <div style={{ fontWeight: 700 }}>{selectedSubDetail.assignedCutterName || 'None / Self-Care'}</div>
+                  </div>
+                </div>
+
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: 'var(--text-primary)' }}>Care Tasks & Field Proofs ({selectedSubDetail.careTasks?.length || 0})</h4>
+                {(!selectedSubDetail.careTasks || selectedSubDetail.careTasks.length === 0) ? (
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', fontStyle: 'italic', margin: '0 0 16px 0' }}>
+                    No care activity proofs uploaded yet by the arborist.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                    {selectedSubDetail.careTasks.map((task, idx) => (
+                      <div key={idx} style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', background: 'var(--bg-card, var(--bg-surface))' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, color: '#10b981' }}>{task.taskType}</span>
+                          <span style={{ fontSize: '0.75rem', background: task.status === 'Validated' ? 'rgba(16,185,129,0.15)' : 'rgba(234,179,8,0.15)', color: task.status === 'Validated' ? '#10b981' : '#ca8a04', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                            {task.status || 'Pending'}
+                          </span>
+                        </div>
+                        {task.description && <p style={{ fontSize: '0.84rem', margin: '6px 0', color: 'var(--text-secondary)' }}>{task.description}</p>}
+                        {task.proofImageUrl && (
+                          <div style={{ marginTop: '8px' }}>
+                            <img src={task.proofImageUrl} alt="Care Proof" style={{ maxHeight: '160px', borderRadius: '8px', objectFit: 'cover' }} />
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                          Uploaded by {task.uploadedByName || 'Tree Cutter'} • {new Date(task.uploadedAt).toLocaleDateString('en-IN')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button
+                    onClick={() => setSelectedSubDetail(null)}
+                    style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

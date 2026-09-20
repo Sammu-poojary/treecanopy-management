@@ -4,6 +4,7 @@ const Adoption = require('../models/Adoption');
 const Tree = require('../models/Tree');
 const User = require('../models/User');
 const EcoPointsTransaction = require('../models/EcoPointsTransaction');
+const Subscription = require('../models/Subscription');
 
 // Eco-Points rules
 const POINTS = {
@@ -54,14 +55,21 @@ router.post('/adopt', async (req, res) => {
       return res.status(400).json({ msg: 'userId and treeId are required' });
     }
 
-    // Check if user already adopted this tree
+    // Check if tree is already adopted by ANY user (Adoption or Subscription)
     const existing = await Adoption.findOne({ 
-      userId: userId.toString(), 
       treeId: treeId.toString(), 
       status: 'Active' 
     });
     if (existing) {
-      return res.status(400).json({ msg: 'You have already adopted this tree!' });
+      return res.status(400).json({ msg: 'This tree has already been adopted by another citizen!' });
+    }
+
+    const existingSub = await Subscription.findOne({
+      treeId: treeId.toString(),
+      status: 'active'
+    });
+    if (existingSub) {
+      return res.status(400).json({ msg: 'This tree has already been adopted via subscription!' });
     }
 
     // Fetch tree details safely
@@ -111,6 +119,11 @@ router.post('/adopt', async (req, res) => {
 
     const saved = await newAdoption.save();
 
+    // Mark tree as adopted in Tree collection
+    try {
+      await Tree.findByIdAndUpdate(treeId, { isAdopted: true });
+    } catch (_) {}
+
     // Log EARN transaction in Ledger
     try {
       const earnTx = new EcoPointsTransaction({
@@ -142,12 +155,89 @@ router.post('/adopt', async (req, res) => {
 // @access  Public / Citizen
 router.get('/my-adoptions', async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) {
-      return res.status(400).json({ msg: 'userId query parameter is required' });
+    const { userId, userEmail } = req.query;
+    if (!userId && !userEmail) {
+      return res.status(400).json({ msg: 'userId or userEmail query parameter is required' });
     }
 
-    const adoptions = await Adoption.find({ userId: userId.toString(), status: 'Active' }).sort({ createdAt: -1 });
+    const strUserId = (userId || '').toString();
+    const strEmail = (userEmail || (strUserId.includes('@') ? strUserId : '')).toLowerCase();
+
+    const userFilter = {
+      $or: [
+        { userId: strUserId },
+        ...(strEmail ? [{ userEmail: strEmail }] : [])
+      ],
+      status: 'Active'
+    };
+
+    let adoptions = await Adoption.find(userFilter).sort({ createdAt: -1 });
+
+    let subscriptions = [];
+    // Auto-synthesize Adoption records for any active Subscriptions that haven't synced yet
+    try {
+      const subFilter = {
+        $or: [
+          { userId: strUserId },
+          ...(strEmail ? [{ userEmail: strEmail }] : [])
+        ],
+        status: { $in: ['active', 'assigned', 'lapsed'] }
+      };
+      subscriptions = await Subscription.find(subFilter);
+
+      for (const sub of subscriptions) {
+        const exists = adoptions.some(a => Boolean(a.treeId) && Boolean(sub.treeId) && (a.treeId.toString() === sub.treeId.toString()));
+        if (!exists) {
+          const isSelf = sub.adoptionType === 'self' || !sub.plan || sub.amount === 0;
+          const autoAdoption = new Adoption({
+            userId: sub.userId ? sub.userId.toString() : strUserId,
+            userName: sub.userName || 'Eco Guardian',
+            userEmail: sub.userEmail || strEmail,
+            treeId: sub.treeId ? sub.treeId.toString() : '',
+            treeName: sub.treeName,
+            treeScientificName: sub.treeScientificName || '',
+            treeLocation: sub.treeLocation || 'Udupi Canopy',
+            treeImage: sub.treeImage || '',
+            nickname: sub.treeName,
+            planType: isSelf ? 'self' : (sub.plan === 'yearly' ? 'yearly' : 'monthly'),
+            subscriptionPlan: isSelf ? null : sub.plan,
+            amount: isSelf ? 0 : (sub.amount || (sub.plan === 'yearly' ? 6000 : 500)),
+            paymentStatus: isSelf ? 'free' : 'completed',
+            adoptionType: isSelf ? 'self' : 'subscription',
+            totalEcoPoints: 100,
+            certificateNumber: sub.certificateNumber,
+            status: 'Active',
+            careLogs: [{
+              action: 'Health Check',
+              note: 'Initial adoption health inspection completed.',
+              verificationStatus: 'Verified',
+              pointsEarned: 100,
+              timestamp: sub.startDate || sub.createdAt || new Date()
+            }]
+          });
+          await autoAdoption.save().catch(() => {});
+          adoptions.push(autoAdoption);
+
+          // Award +100 Eco-Points transaction if missing
+          const txExists = await EcoPointsTransaction.findOne({
+            $or: [{ userId: strUserId }, ...(strEmail ? [{ userEmail: strEmail }] : [])],
+            adoptionId: autoAdoption._id.toString()
+          });
+          if (!txExists) {
+            await new EcoPointsTransaction({
+              userId: strUserId,
+              userEmail: strEmail,
+              adoptionId: autoAdoption._id.toString(),
+              type: 'EARN',
+              points: 100,
+              description: `Adopted ${sub.treeName} (${sub.plan ? sub.plan + ' subscription' : 'Self-Care'})`
+            }).save().catch(() => {});
+          }
+        }
+      }
+    } catch (autoSyncErr) {
+      console.error('Error auto-syncing subscriptions to adoptions:', autoSyncErr);
+    }
 
     // Calculate user's net balance considering transactions if any exist
     const redeemTx = await EcoPointsTransaction.aggregate([
@@ -206,8 +296,37 @@ router.get('/my-adoptions', async (req, res) => {
       nextTierPoints = 300;
     }
 
+    // Enrich adoptions with active/assigned Subscription data if available
+    const enrichedAdoptions = adoptions.map(a => {
+      const aObj = a.toObject ? a.toObject() : { ...a };
+      const matchingSub = (subscriptions || []).find(s =>
+        Boolean(s.treeId) && Boolean(aObj.treeId) &&
+        s.treeId.toString() === aObj.treeId.toString() &&
+        ['active', 'assigned', 'lapsed'].includes(s.status)
+      );
+      if (matchingSub) {
+        const isSelf = matchingSub.adoptionType === 'self' || !matchingSub.plan || matchingSub.amount === 0;
+        if (isSelf) {
+          aObj.adoptionType = 'self';
+          aObj.subscriptionPlan = null;
+          aObj.planType = 'self';
+          aObj.plan = null;
+          aObj.amount = 0;
+          aObj.paymentStatus = 'free';
+        } else {
+          aObj.adoptionType = 'subscription';
+          aObj.subscriptionPlan = matchingSub.plan;
+          aObj.planType = matchingSub.plan;
+          aObj.plan = matchingSub.plan;
+          aObj.amount = matchingSub.amount || (matchingSub.plan === 'yearly' ? 6000 : 500);
+          aObj.paymentStatus = 'completed';
+        }
+      }
+      return aObj;
+    });
+
     res.json({
-      adoptions,
+      adoptions: enrichedAdoptions,
       stats: {
         totalPoints,
         rawTotalPoints,

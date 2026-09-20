@@ -25,11 +25,13 @@ if (L && L.Icon && L.Icon.Default && L.Icon.Default.prototype) {
 }
 
 import { CommunicationHub } from '../components/CommunicationHub';
-import TreeCutterDashboard from '../components/TreeCutterDashboard';
+import TreeCutterDashboard, { TreeDutyPanel } from '../components/TreeCutterDashboard';
 import TreeCutterAttendancePage from './TreeCutterAttendancePage';
 import TreeLocationPickerModal, { reverseGeocodeUdupi } from '../components/TreeLocationPickerModal';
+import CareCalendarModal from '../components/CareCalendarModal';
 
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
@@ -41,6 +43,7 @@ import {
   Building,
   CalendarDays,
   Camera,
+  CheckCircle,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -63,9 +66,11 @@ import {
   Fingerprint,
   Flame,
   FolderOpen,
+  Gavel,
   Gift,
   Grid,
   HelpCircle,
+  HeartHandshake,
   History,
   Home,
   Image,
@@ -75,7 +80,7 @@ import {
   Leaf,
   LogIn,
   LogOut,
-  Map,
+  Map as MapIcon,
   MapPin,
   Menu,
   MessageSquare,
@@ -95,12 +100,14 @@ import {
   Share2,
   Shield,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Sprout,
   Stethoscope,
   TreeDeciduous,
   TreePine,
   TrendingDown,
+  Truck,
   Upload,
   UploadCloud,
   UserCheck,
@@ -151,7 +158,6 @@ import {
   BookOpen,
   School,
   Building2,
-  Truck,
 } from 'lucide-react';
 
 // ─── Helper to check if a Tree Cutter is currently on leave ──────────────────
@@ -200,6 +206,7 @@ const ROLE_NAV = {
       section: 'Citizen Dashboard',
       items: [
         { label: 'Overview', href: '/citizen-dashboard?tab=overview', Icon: Home, desc: 'Overview & stats' },
+        { label: 'Green Store', href: '/citizen-dashboard?tab=store', Icon: ShoppingBag, desc: 'Buy organic compost & saplings' },
         { label: 'Green Rewards & My Trees', href: '/citizen-dashboard?tab=rewards', Icon: Gift, desc: 'Eco points, streaks & my trees' },
         { label: 'Report New Issue', href: '/citizen-dashboard?tab=report', Icon: AlertTriangle, desc: 'Report a tree issue' },
         { label: 'My Reported Tickets', href: '/citizen-dashboard?tab=tickets', Icon: FileText, desc: 'Track status of your tickets' },
@@ -223,6 +230,7 @@ const ROLE_NAV = {
       items: [
         { label: 'Dashboard', href: '/treecutter/dashboard', Icon: Home, desc: 'Monitoring overview' },
         { label: 'Task Board', href: '/treecutter/task', Icon: FileText, desc: 'Assigned work orders' },
+        { label: 'Tree Care Duties', href: '/treecutter/tree-duties', Icon: Leaf, desc: 'Assigned tree duties & care proofs' },
         { label: 'Communication', href: '/treecutter/communication', Icon: MessageSquare, desc: 'Chat & ask doubts' },
         { label: 'Attendance', href: '/treecutter/attendance', Icon: Fingerprint, desc: 'Clock in / out' },
       ],
@@ -242,11 +250,20 @@ const ROLE_NAV = {
       section: 'Overview',
       items: [
         { label: 'Dashboard', href: '/official/dashboard', Icon: Home, desc: 'Zone monitoring' },
+        { label: 'Tree Adoptions', href: '/official/adoptions', Icon: HeartHandshake, desc: 'Manage citizen adoptions & care' },
         { label: 'Work Schedules', href: '/official/scheduler', Icon: Calendar, desc: 'Plan & assign tasks' },
         { label: 'Communication', href: '/official/communication', Icon: MessageSquare, desc: 'Staff chat & doubts' },
         { label: 'Complaints', href: '/official/complaints', Icon: AlertTriangle, desc: 'Manage field reports' },
         { label: 'Attendance', href: '/official/attendance', Icon: Fingerprint, desc: 'Track cutter hours' },
         { label: 'View Tree Cutter', href: '/official/view-tree-cutter', Icon: Users, desc: 'Cutter analytics & ratios' },
+      ],
+    },
+    {
+      section: 'Circular Economy & Logistics',
+      items: [
+        { label: 'Biomass & Processing', href: '/processing', Icon: Recycle, desc: 'Composting & biomass yard' },
+        { label: 'Timber Auction & Dispatch', href: '/official/timber-management', Icon: Gavel, desc: 'Declare winners & manage dispatch' },
+        { label: 'Orders & Delivery Fleet', href: '/official/orders-delivery', Icon: Truck, desc: 'Eco-store dispatch & payments' },
       ],
     },
     {
@@ -266,10 +283,19 @@ const ROLE_NAV = {
       items: [
         { label: 'Dashboard', href: '/admin/dashboard', Icon: Home, desc: 'System-wide monitoring' },
         { label: 'Admin Console', href: '/admin', Icon: ShieldCheck, desc: 'Users, settings, logs' },
+        { label: 'Tree Adoptions', href: '/admin/adoptions', Icon: HeartHandshake, desc: 'Citizen tree adoptions & care' },
         { label: 'Communication', href: '/admin/communication', Icon: MessageSquare, desc: 'Staff chat & doubts' },
         { label: 'Work Schedules', href: '/admin/scheduler', Icon: Calendar, desc: 'Task scheduling' },
         { label: 'Complaints', href: '/admin/complaints', Icon: AlertTriangle, desc: 'Overlook & resolve complaints' },
         { label: 'Attendance', href: '/admin/attendance', Icon: Fingerprint, desc: 'Workforce tracking' },
+      ],
+    },
+    {
+      section: 'Circular Economy & Logistics',
+      items: [
+        { label: 'Biomass & Processing', href: '/processing', Icon: Recycle, desc: 'Composting & circular economy' },
+        { label: 'Timber Auction & Dispatch', href: '/official/timber-management', Icon: Gavel, desc: 'Declare winners & manage dispatch' },
+        { label: 'Orders & Delivery Fleet', href: '/official/orders-delivery', Icon: Truck, desc: 'Eco-store dispatch & payments' },
       ],
     },
     {
@@ -771,7 +797,9 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
           </Link>
           {[
             { id: 'overview', label: 'Overview' },
+            { id: 'store', label: '🌿 Green Store' },
             { id: 'rewards', label: 'Green Rewards & Trees' },
+            { id: 'subscriptions', label: '🌳 My Subscriptions' },
             { id: 'report', label: 'Report Issue' },
             { id: 'my-reports', label: 'My Tickets' },
             { id: 'profile', label: 'Profile' }
@@ -1269,6 +1297,36 @@ export function DashboardPage() {
                     <i className={tone} style={{ width: `${value}%` }}></i>
                   </div>
                 ))}
+              </div>
+
+              {/* Official Biomass & Circular Economy Card */}
+              <div className="cg-panel" style={{ background: 'linear-gradient(135deg, #072a22 0%, #0c3e32 100%)', border: '1px solid rgba(52, 211, 153, 0.3)', borderRadius: '16px', padding: '18px 20px', color: '#f8fafc', marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#34d399', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Recycle size={14} /> Official Biomass & Waste Yard
+                  </span>
+                  <span style={{ fontSize: '0.72rem', background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7', padding: '2px 8px', borderRadius: '8px', fontWeight: 700 }}>
+                    100% Diverted
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{ background: 'rgba(0, 0, 0, 0.25)', padding: '10px', borderRadius: '8px' }}>
+                    <small style={{ color: '#95d5b2', fontSize: '0.72rem', display: 'block' }}>Compost Batches</small>
+                    <b style={{ fontSize: '1.25rem', color: '#ffffff', fontWeight: 800 }}>5 Maturing</b>
+                  </div>
+                  <div style={{ background: 'rgba(0, 0, 0, 0.25)', padding: '10px', borderRadius: '8px' }}>
+                    <small style={{ color: '#95d5b2', fontSize: '0.72rem', display: 'block' }}>Timber Auctions</small>
+                    <b style={{ fontSize: '1.25rem', color: '#fbbf24', fontWeight: 800 }}>Live Bidding</b>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Link to="/processing" style={{ flex: 1, padding: '8px', background: '#10b981', color: '#020617', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
+                    Yard Console
+                  </Link>
+                  <Link to="/timber-auction" style={{ flex: 1, padding: '8px', background: 'rgba(255, 255, 255, 0.08)', color: '#f8fafc', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
+                    Timber Bidding
+                  </Link>
+                </div>
               </div>
             </aside>
           </section>
@@ -4371,14 +4429,75 @@ export function SchedulerPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/api/complaints`).then(r => r.json()),
-      fetch(`${API_URL}/api/auth/cutters`).then(r => r.json())
+      fetch(`${API_URL}/api/complaints`).then(r => r.json()).catch(() => ({ complaints: [] })),
+      fetch(`${API_URL}/api/auth/cutters`).then(r => r.json()).catch(() => ({ cutters: [] })),
+      fetch(`${API_URL}/api/subscriptions/all`).then(r => r.json()).catch(() => [])
     ])
-      .then(([complaintsData, cuttersData]) => {
+      .then(([complaintsData, cuttersData, subscriptionsData]) => {
         const fetchedComplaints = complaintsData.complaints || [];
         const combined = fetchedComplaints.length > 0 ? fetchedComplaints : defaultSampleTasks;
-        const active = combined.filter(c => !deletedIds.includes(c._id) && !deletedIds.includes(c.id));
-        setComplaints(active);
+        const activeComplaints = combined.filter(c => !deletedIds.includes(c._id) && !deletedIds.includes(c.id));
+
+        // Process subscription care duties into schedule items
+        const subList = Array.isArray(subscriptionsData) ? subscriptionsData : [];
+        const dutyEvents = [];
+        const now = new Date();
+
+        subList.forEach(sub => {
+          if (!['active', 'assigned'].includes(sub.status)) return;
+          const assignedCutter = sub.assignedCutterName || 'Unassigned';
+
+          // 1. Existing uploaded care tasks
+          (sub.careTasks || []).forEach(task => {
+            if (task.uploadedAt) {
+              dutyEvents.push({
+                _id: `sub_task_${task._id || Math.random()}`,
+                issueType: 'care_duty',
+                isCareDuty: true,
+                title: `🌿 Tree Care: ${sub.treeName} (${task.taskType})`,
+                location: sub.treeLocation || 'Urban Canopy Sector',
+                description: task.description || `Care activity: ${task.taskType} conducted for ${sub.userName}'s adopted tree (${sub.treeName}).`,
+                assignedTo: task.uploadedByName || assignedCutter,
+                status: task.status === 'Validated' ? 'Completed' : 'In Progress',
+                priority: 'Routine',
+                equipment: '🌿 Care Kit & Moisture Meter',
+                scheduledDate: task.uploadedAt,
+                createdAt: task.uploadedAt,
+                proofImageUrl: task.proofImageUrl || '',
+                subTreeName: sub.treeName,
+                subUserName: sub.userName,
+                subImage: sub.treeImage,
+              });
+            }
+          });
+
+          // 2. Upcoming scheduled care duty (every 7 days)
+          const doneTasks = (sub.careTasks || []).filter(t => t.uploadedAt);
+          const lastCareDate = doneTasks.length > 0
+            ? new Date(Math.max(...doneTasks.map(t => new Date(t.uploadedAt).getTime())))
+            : (sub.assignedAt ? new Date(sub.assignedAt) : (sub.createdAt ? new Date(sub.createdAt) : now));
+          const nextDue = new Date(new Date(lastCareDate).getTime() + 7 * 24 * 60 * 60 * 1000);
+
+          dutyEvents.push({
+            _id: `sub_due_${sub._id}`,
+            issueType: 'care_duty',
+            isCareDuty: true,
+            title: `🌿 Weekly Care: ${sub.treeName}`,
+            location: sub.treeLocation || 'Urban Canopy Sector',
+            description: `Scheduled weekly maintenance (Watering / Health Audit) for ${sub.userName}'s adopted tree (${sub.treeName}).`,
+            assignedTo: assignedCutter,
+            status: nextDue < now ? 'Pending' : 'Scheduled',
+            priority: 'Routine',
+            equipment: '🌿 Tree Care & Pruning Tools',
+            scheduledDate: nextDue.toISOString(),
+            createdAt: sub.createdAt || now.toISOString(),
+            subTreeName: sub.treeName,
+            subUserName: sub.userName,
+            subImage: sub.treeImage,
+          });
+        });
+
+        setComplaints([...activeComplaints, ...dutyEvents]);
 
         const fetchedCutters = cuttersData.cutters || [];
         const defaultCuttersList = [
@@ -5014,6 +5133,7 @@ export function SchedulerPage() {
                     style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '7px 12px', borderRadius: '8px', fontSize: '0.84rem', fontWeight: 600, outline: 'none' }}
                   >
                     <option value="All">📋 All Work Types</option>
+                    <option value="care_duty">🌿 Tree Care Duties</option>
                     <option value="routine">Monthly Routine</option>
                     <option value="overhanging">Overhanging Branch</option>
                     <option value="damaged">Damaged Tree</option>
@@ -5065,8 +5185,8 @@ export function SchedulerPage() {
                     >
                       <b>{cell.day}</b>
                       {dayEvents.slice(0, 2).map((ev, idx) => (
-                        <span key={ev._id || idx} className={`event ${ev.issueType === 'routine' ? 'green' : ev.status === 'Resolved' ? 'green' : ev.status === 'Scheduled' ? 'blue' : ev.status === 'Pending' ? 'red' : 'violet'}`}>
-                          {issueLabels[ev.issueType] || ev.issueType}
+                        <span key={ev._id || idx} className={`event ${ev.issueType === 'care_duty' ? 'green' : ev.issueType === 'routine' ? 'green' : ev.status === 'Resolved' || ev.status === 'Completed' ? 'green' : ev.status === 'Scheduled' ? 'blue' : ev.status === 'Pending' ? 'red' : 'violet'}`}>
+                          {ev.isCareDuty ? `🌿 ${ev.subTreeName || 'Care Duty'}` : (issueLabels[ev.issueType] || ev.issueType)}
                         </span>
                       ))}
                       {dayEvents.length > 2 && (
@@ -5088,19 +5208,26 @@ export function SchedulerPage() {
                 </div>
               ) : (
                 selectedDayComplaints.map(c => (
-                  <article key={c._id || c.id} style={{ borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
+                  <article key={c._id || c.id} style={{ borderRadius: '10px', padding: '16px', marginBottom: '12px', border: c.isCareDuty ? '1px solid rgba(16,185,129,0.35)' : undefined, background: c.isCareDuty ? 'rgba(5,150,105,0.06)' : undefined }}>
                     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <b style={{ color: c.issueType === 'routine' ? '#4ade80' : c.status === 'Pending' ? '#f87171' : '#60a5fa' }}>
-                        {issueLabels[c.issueType] || c.issueType}
+                      <b style={{ color: c.isCareDuty ? '#34d399' : c.issueType === 'routine' ? '#4ade80' : c.status === 'Pending' ? '#f87171' : '#60a5fa' }}>
+                        {c.isCareDuty ? (c.title || '🌿 Tree Care Duty') : (issueLabels[c.issueType] || c.issueType)}
                       </b>
                       <time style={{ color: 'var(--text-secondary)' }}>{getTaskDate(c).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</time>
                     </header>
                     <h3 style={{ color: 'var(--text-primary)', margin: '12px 0 6px 0', fontSize: '1rem', fontWeight: '600' }}>{c.location || 'Municipal Canopy Sector'}</h3>
                     <p style={{ color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>{c.description || 'Routine tree care, pruning, and safety inspection.'}</p>
+
+                    {c.proofImageUrl && (
+                      <div style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', height: '100px', width: '140px', border: '1px solid rgba(16,185,129,0.3)', cursor: 'pointer' }} onClick={() => window.open(c.proofImageUrl, '_blank')}>
+                        <img src={c.proofImageUrl} alt="Proof" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    )}
+
                     <footer style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
                       <span style={{ color: 'var(--text-primary)' }}><UserRound size={16} /> Cutter: <strong style={{ color: c.assignedTo && c.assignedTo !== 'Unassigned' ? 'var(--brand-accent, #10b981)' : '#ef4444' }}>{c.assignedTo || 'Unassigned'}</strong></span>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {(!c.assignedTo || c.assignedTo === 'Unassigned') && (
+                        {!c.isCareDuty && (!c.assignedTo || c.assignedTo === 'Unassigned') && (
                           <select
                             onChange={(e) => handleAssignCutterToComplaint(c._id, e.target.value)}
                             defaultValue=""
@@ -5113,13 +5240,15 @@ export function SchedulerPage() {
                             })}
                           </select>
                         )}
-                        <button
-                          onClick={() => handleDeleteComplaint(c._id || c.id, c)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
-                          title="Delete Work Schedule"
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
+                        {!c.isCareDuty && (
+                          <button
+                            onClick={() => handleDeleteComplaint(c._id || c.id, c)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                            title="Delete Work Schedule"
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        )}
                       </div>
                     </footer>
                   </article>
@@ -5149,6 +5278,7 @@ const issueLabels = {
   roots: 'Roots Damage',
   fallen: 'Fallen Branch',
   replant: 'Eco-Restore Replantation',
+  care_duty: '🌿 Tree Care Duty',
 };
 
 const cutterOptions = ['Sarah Moreno', 'Mike Arbo', 'David Chen', 'Elena Rodriguez'];
@@ -5235,9 +5365,10 @@ const initialOfficialTasks = [
   },
 ];
 
-export function OfficialManagementPage() {
+export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeView, setActiveView] = useState('complaints');
+  const [activeView, setActiveView] = useState(initialView);
 
   // Official gate (allow Admin)
   const [officialAuthed, setOfficialAuthed] = useState(() => {
@@ -5318,6 +5449,116 @@ export function OfficialManagementPage() {
     locationName: '',
     coords: [13.3409, 74.7421],
   });
+
+  // Official Adopted Trees & Care Management State
+  const [officialAdoptions, setOfficialAdoptions] = useState([]);
+  const [loadingOfficialAdoptions, setLoadingOfficialAdoptions] = useState(false);
+  const [adoptionFilter, setAdoptionFilter] = useState('all'); // all, needs_cutter, proofs_pending, self
+  const [assigningCutterId, setAssigningCutterId] = useState({}); // { [subId]: cutterId }
+  const [fullCuttersList, setFullCuttersList] = useState([]);
+  const [validatingTaskModal, setValidatingTaskModal] = useState(null); // { subId, task, treeName, userName }
+  const [validationNoteInput, setValidationNoteInput] = useState('');
+  const [validatingSubmitting, setValidatingSubmitting] = useState(false);
+  const [calendarModalSub, setCalendarModalSub] = useState(null);
+
+  const fetchOfficialAdoptions = async () => {
+    setLoadingOfficialAdoptions(true);
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/all`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setOfficialAdoptions(data);
+      }
+    } catch (err) {
+      console.error('Error fetching official adoptions:', err);
+    } finally {
+      setLoadingOfficialAdoptions(false);
+    }
+  };
+
+  const handleAssignCutterToTree = async (subId) => {
+    const cutterId = assigningCutterId[subId];
+    if (!cutterId) {
+      alert('Please select a tree cutter from the list to assign.');
+      return;
+    }
+    const cutterObj = fullCuttersList.find(c => (c._id || c.id) === cutterId);
+    const cutterName = cutterObj?.name || 'Tree Cutter';
+
+    try {
+      const currentOfficialUser = (() => {
+        try { return JSON.parse(localStorage.getItem('currentUser')) || {}; } catch { return {}; }
+      })();
+      const res = await fetch(`${API_URL}/api/subscriptions/${subId}/assign-cutter`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cutterId,
+          cutterName,
+          assignedById: currentOfficialUser._id || null,
+          assignedByName: currentOfficialUser.name || 'Municipal Official'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotice(`Tree Cutter ${cutterName} successfully assigned! Citizen notified.`);
+        fetchOfficialAdoptions();
+      } else {
+        alert(data.error || 'Failed to assign cutter.');
+      }
+    } catch {
+      alert('Network error assigning tree cutter.');
+    }
+  };
+
+  const handleValidateCareProof = async (status) => {
+    if (!validatingTaskModal) return;
+    setValidatingSubmitting(true);
+    try {
+      const currentOfficialUser = (() => {
+        try { return JSON.parse(localStorage.getItem('currentUser')) || {}; } catch { return {}; }
+      })();
+      const res = await fetch(`${API_URL}/api/subscriptions/${validatingTaskModal.subId}/tasks/${validatingTaskModal.task._id}/validate`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          validationNote: validationNoteInput,
+          validatedById: currentOfficialUser._id || null,
+          validatedByName: currentOfficialUser.name || 'Municipal Official'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotice(`Care proof ${status.toLowerCase()} successfully! Citizen notified.`);
+        setValidatingTaskModal(null);
+        setValidationNoteInput('');
+        fetchOfficialAdoptions();
+      } else {
+        alert(data.error || 'Failed to update task validation.');
+      }
+    } catch {
+      alert('Network error validating care proof.');
+    } finally {
+      setValidatingSubmitting(false);
+    }
+  };
+
+  const filteredOfficialAdoptions = useMemo(() => {
+    let list = [...officialAdoptions];
+    if (adoptionFilter === 'unassigned') {
+      list = list.filter(s => s.adoptionType === 'subscription' && !s.assignedCutterId && ['active', 'assigned'].includes(s.status));
+    } else if (adoptionFilter === 'pending_review') {
+      list = list.filter(s => s.careTasks?.some(t => t.status === 'Pending'));
+    } else if (adoptionFilter === 'subscription') {
+      list = list.filter(s => s.adoptionType === 'subscription' && ['active', 'assigned'].includes(s.status));
+    } else if (adoptionFilter === 'self') {
+      list = list.filter(s => s.adoptionType === 'self' && !['cancelled', 'lapsed'].includes(s.status));
+    } else if (adoptionFilter === 'cancelled') {
+      list = list.filter(s => ['cancelled', 'lapsed'].includes(s.status));
+    }
+    return list;
+  }, [officialAdoptions, adoptionFilter]);
 
   const resolveImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
@@ -5537,6 +5778,7 @@ export function OfficialManagementPage() {
       .then(res => res.json())
       .then(data => {
         if (data.cutters && data.cutters.length > 0) {
+          setFullCuttersList(data.cutters);
           const names = Array.from(new Set(data.cutters.map(c => typeof c === 'string' ? c : c.name || c.email).filter(Boolean)));
           setCutters(names);
           if (names.length > 0) {
@@ -5546,6 +5788,8 @@ export function OfficialManagementPage() {
         }
       })
       .catch(err => console.error('Failed to load dynamic cutters:', err));
+
+    fetchOfficialAdoptions();
 
     fetch(`${API_URL}/api/attendance/leaves`)
       .then(res => res.json())
@@ -6270,6 +6514,7 @@ export function OfficialManagementPage() {
             <article><AlertTriangle /><span>Pending complaints</span><b>{counts.pending}</b></article>
             <article><Users /><span>Active cutter tasks</span><b>{counts.active}</b></article>
             <article><Camera /><span>Proof reviews</span><b>{counts.proof}</b></article>
+            <article><Heart /><span>Adopted Trees</span><b>{officialAdoptions.length}</b></article>
             <article><ShieldCheck /><span>Closed work</span><b>{counts.closed}</b></article>
           </section>
 
@@ -6279,8 +6524,19 @@ export function OfficialManagementPage() {
               ['tasks', 'Progress'],
               ['maintenance', 'Create Task'],
               ['proofs', 'Proof Review'],
+              ['adoptions', `Tree Adoptions (${officialAdoptions.length})`],
+              ['processing', '🍂 Biomass & Compost Yard'],
+              ['timber', '🔨 Timber Salvage Bidding'],
             ].map(([id, label]) => (
-              <button key={id} className={activeView === id ? 'active' : ''} onClick={() => setActiveView(id)}>{label}</button>
+              <button key={id} className={activeView === id ? 'active' : ''} onClick={() => {
+                if (id === 'processing') {
+                  navigate('/processing');
+                } else if (id === 'timber') {
+                  navigate('/timber-auction');
+                } else {
+                  setActiveView(id);
+                }
+              }}>{label}</button>
             ))}
           </nav>
 
@@ -6907,8 +7163,812 @@ export function OfficialManagementPage() {
               )}
             </div>
           )}
+
+          {activeView === 'adoptions' && (
+            <div style={{ marginTop: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary, #ffffff)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <Heart style={{ color: '#059669', width: 24, height: 24 }} /> Municipal Tree Adoptions & Care Supervision
+                  </h2>
+                  <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary, #94a3b8)', fontSize: '0.9rem' }}>
+                    Oversee citizen adoptions, assign dedicated arborists/cutters for municipal care, and review maintenance photo proofs.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchOfficialAdoptions}
+                  disabled={loadingOfficialAdoptions}
+                  style={{
+                    padding: '0.55rem 1.1rem',
+                    background: 'var(--bg-elevated, rgba(255,255,255,0.08))',
+                    color: 'var(--text-primary, #ffffff)',
+                    border: '1px solid var(--border, rgba(255,255,255,0.18))',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  <RefreshCw size={15} className={loadingOfficialAdoptions ? 'spin' : ''} /> Refresh
+                </button>
+              </div>
+
+              {/* Filter Tabs */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                {[
+                  { id: 'all', label: `All Adoptions (${officialAdoptions.length})` },
+                  { id: 'unassigned', label: `Needs Cutter (${officialAdoptions.filter(s => s.adoptionType === 'subscription' && !s.assignedCutterId && ['active', 'assigned'].includes(s.status)).length})` },
+                  { id: 'pending_review', label: `Care Proofs for Review (${officialAdoptions.reduce((acc, s) => acc + (s.careTasks?.filter(t => t.status === 'Pending').length || 0), 0)})` },
+                  { id: 'subscription', label: `Municipal Care Subscriptions (${officialAdoptions.filter(s => s.adoptionType === 'subscription' && ['active', 'assigned'].includes(s.status)).length})` },
+                  { id: 'self', label: `Citizen Self-Care (${officialAdoptions.filter(s => s.adoptionType === 'self' && !['cancelled', 'lapsed'].includes(s.status)).length})` },
+                  { id: 'cancelled', label: `Cancelled / Expired (${officialAdoptions.filter(s => ['cancelled', 'lapsed'].includes(s.status)).length})` },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setAdoptionFilter(tab.id)}
+                    style={{
+                      padding: '0.45rem 0.9rem',
+                      borderRadius: '20px',
+                      fontSize: '0.825rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: adoptionFilter === tab.id ? '2px solid #059669' : '1px solid var(--border, rgba(255,255,255,0.15))',
+                      background: adoptionFilter === tab.id ? 'rgba(5, 150, 105, 0.25)' : 'var(--bg-elevated, rgba(255,255,255,0.05))',
+                      color: adoptionFilter === tab.id ? '#34d399' : 'var(--text-secondary, #9ca3af)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {loadingOfficialAdoptions ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary, #9ca3af)' }}>
+                  <RefreshCw size={24} className="spin" style={{ marginBottom: '0.75rem', display: 'inline-block' }} />
+                  <p>Loading adoptions & care records...</p>
+                </div>
+              ) : filteredOfficialAdoptions.length === 0 ? (
+                <div style={{ padding: '3.5rem', textAlign: 'center', background: 'var(--bg-card, #112a20)', borderRadius: '12px', border: '1px dashed var(--border, rgba(255,255,255,0.2))' }}>
+                  <TreePine size={40} style={{ color: '#9CA3AF', marginBottom: '0.75rem' }} />
+                  <h3 style={{ margin: '0 0 0.5rem', color: 'var(--text-primary, #ffffff)', fontSize: '1.1rem' }}>No adoptions found</h3>
+                  <p style={{ margin: 0, color: 'var(--text-secondary, #9ca3af)', fontSize: '0.9rem' }}>
+                    {adoptionFilter !== 'all' ? 'Try switching to a different filter tab.' : 'No citizen adoptions have been recorded yet.'}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.25rem' }}>
+                  {filteredOfficialAdoptions.map(sub => {
+                    const isSub = sub.adoptionType === 'subscription';
+                    const isCancelled = ['cancelled', 'lapsed', 'expired'].includes(sub.status?.toLowerCase());
+                    const treeName = sub.treeName || sub.treeId?.name || 'Adopted Tree';
+                    const scientificName = sub.treeScientificName || sub.treeId?.scientificName || '';
+                    const citizenName = sub.userName || sub.userId?.name || 'Citizen Adopter';
+                    const citizenEmail = sub.userEmail || sub.userId?.email || '';
+                    const location = sub.treeLocation || sub.treeId?.location || sub.treeId?.origin || 'Municipal Sector';
+                    const careTasks = sub.careTasks || [];
+                    const pendingProofTasks = careTasks.filter(t => t.status === 'Pending');
+
+                    return (
+                      <div
+                        key={sub._id}
+                        style={{
+                          background: 'var(--bg-card, #0d281e)',
+                          borderRadius: '12px',
+                          border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          padding: '1.25rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '1rem',
+                          position: 'relative',
+                          color: 'var(--text-primary, #ffffff)'
+                        }}
+                      >
+                        {/* Header: Tree & Status */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                padding: '0.2rem 0.55rem',
+                                borderRadius: '4px',
+                                background: isSub ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                                color: isSub ? '#a5b4fc' : '#6ee7b7',
+                                letterSpacing: '0.04em'
+                              }}>
+                                {isSub ? 'Municipal Care Plan' : 'Citizen Self-Care'}
+                              </span>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '4px',
+                                background: isCancelled ? 'rgba(239, 68, 68, 0.2)' : (sub.status === 'active' || sub.status === 'assigned') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                color: isCancelled ? '#fca5a5' : (sub.status === 'active' || sub.status === 'assigned') ? '#6ee7b7' : '#fcd34d'
+                              }}>
+                                {sub.status?.toUpperCase()}
+                              </span>
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary, #ffffff)' }}>
+                              {treeName}
+                            </h3>
+                            {scientificName && (
+                              <p style={{ margin: '0.15rem 0 0', fontStyle: 'italic', fontSize: '0.825rem', color: 'var(--text-secondary, #9ca3af)' }}>
+                                {scientificName}
+                              </p>
+                            )}
+                          </div>
+                          {sub.certificateNumber && (
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontFamily: 'monospace',
+                              background: 'rgba(255,255,255,0.08)',
+                              padding: '0.2rem 0.4rem',
+                              borderRadius: '4px',
+                              color: 'var(--text-secondary, #9ca3af)',
+                              border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              Cert #{sub.certificateNumber.slice(-6)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Adopter & Tree Info */}
+                        <div style={{ background: 'var(--bg-surface, rgba(0,0,0,0.25))', borderRadius: '8px', padding: '0.75rem', fontSize: '0.825rem', color: 'var(--text-primary, #ffffff)', border: '1px solid var(--border, rgba(255,255,255,0.08))' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <div>
+                              <span style={{ color: 'var(--text-secondary, #9ca3af)', display: 'block', fontSize: '0.725rem' }}>CITIZEN ADOPTER</span>
+                              <strong style={{ color: 'var(--text-primary, #ffffff)' }}>{citizenName}</strong>
+                              <div style={{ color: 'var(--text-secondary, #9ca3af)', fontSize: '0.75rem', textOverflow: 'ellipsis', overflow: 'hidden' }}>{citizenEmail}</div>
+                            </div>
+                            <div>
+                              <span style={{ color: 'var(--text-secondary, #9ca3af)', display: 'block', fontSize: '0.725rem' }}>LOCATION / WARD</span>
+                              <span style={{ color: 'var(--text-primary, #ffffff)', fontWeight: 600 }}>{location}</span>
+                              <div style={{ color: 'var(--text-secondary, #9ca3af)', fontSize: '0.75rem' }}>Adopted: {sub.startDate ? new Date(sub.startDate).toLocaleDateString() : 'Active'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Arborist / Cutter Assignment Section */}
+                        {isSub && isCancelled && (
+                          <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,0.1))', paddingTop: '0.75rem' }}>
+                            <div style={{
+                              padding: '0.65rem 0.85rem',
+                              borderRadius: '8px',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#f87171',
+                              fontSize: '0.825rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.6rem'
+                            }}>
+                              <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+                              <div>
+                                <strong style={{ display: 'block', color: '#fca5a5', marginBottom: '0.1rem' }}>Subscription Cancelled</strong>
+                                <span style={{ fontSize: '0.775rem', opacity: 0.9 }}>
+                                  Municipal tree care service terminated. No arborist assignment required.
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {isSub && !isCancelled && (
+                          <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,0.1))', paddingTop: '0.75rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary, #9ca3af)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Assigned Arborist / Cutter
+                              </span>
+                              {sub.assignedCutterName ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#34d399', fontSize: '0.75rem', fontWeight: 600 }}>
+                                  <CheckCircle size={13} /> Active: {sub.assignedCutterName}
+                                </span>
+                              ) : (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#f87171', fontSize: '0.75rem', fontWeight: 600 }}>
+                                  <AlertCircle size={13} /> Needs Assignment
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <select
+                                value={assigningCutterId[sub._id] !== undefined ? assigningCutterId[sub._id] : (sub.assignedCutterId || '')}
+                                onChange={(e) => setAssigningCutterId(prev => ({ ...prev, [sub._id]: e.target.value }))}
+                                style={{
+                                  flex: 1,
+                                  padding: '0.45rem 0.65rem',
+                                  fontSize: '0.825rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border, rgba(255,255,255,0.2))',
+                                  background: 'var(--bg-elevated, #061a14)',
+                                  color: 'var(--text-primary, #ffffff)'
+                                }}
+                              >
+                                <option value="">-- Choose Municipal Cutter --</option>
+                                {fullCuttersList.map(c => {
+                                  const cId = c._id || c.id;
+                                  const cName = c.name || c.email || (typeof c === 'string' ? c : 'Arborist');
+                                  return (
+                                    <option key={cId || cName} value={cId || cName}>
+                                      {cName} {c.email ? `(${c.email})` : ''}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                              <button
+                                onClick={() => handleAssignCutterToTree(sub._id)}
+                                style={{
+                                  padding: '0.45rem 0.85rem',
+                                  background: '#059669',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {sub.assignedCutterId ? 'Reassign' : 'Assign'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Self Care Note */}
+                        {!isSub && (
+                          <div style={{ background: 'rgba(5, 150, 105, 0.12)', border: '1px solid rgba(5, 150, 105, 0.3)', borderRadius: '8px', padding: '0.65rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <Heart size={16} style={{ color: '#34d399', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8rem', color: '#6ee7b7' }}>
+                              Citizen pledged to personally water, prune, and tend this tree every week.
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Care Proofs / Activities Overview */}
+                        <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,0.1))', paddingTop: '0.75rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary, #9ca3af)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              Care Activity & Proofs ({careTasks.length})
+                            </span>
+                            {pendingProofTasks.length > 0 && (
+                              <span style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#fcd34d', padding: '0.15rem 0.45rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700 }}>
+                                {pendingProofTasks.length} for Review
+                              </span>
+                            )}
+                          </div>
+
+                          {careTasks.length === 0 ? (
+                            <p style={{ margin: 0, fontSize: '0.775rem', color: 'var(--text-secondary, #9ca3af)', fontStyle: 'italic' }}>
+                              No maintenance activities logged yet for this adoption period.
+                            </p>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '180px', overflowY: 'auto' }}>
+                              {careTasks.slice().reverse().map(task => {
+                                const isPending = task.status === 'Pending';
+                                const isValidated = task.status === 'Validated';
+                                const isRejected = task.status === 'Rejected';
+                                const proofImg = task.proofImageUrl || task.proofPhoto;
+
+                                return (
+                                  <div
+                                    key={task._id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      background: 'var(--bg-surface, rgba(0,0,0,0.25))',
+                                      borderRadius: '6px',
+                                      padding: '0.45rem 0.65rem',
+                                      border: '1px solid var(--border, rgba(255,255,255,0.08))',
+                                      gap: '0.5rem'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                      {proofImg ? (
+                                        <img
+                                          src={proofImg}
+                                          alt="proof thumbnail"
+                                          style={{ width: 32, height: 32, borderRadius: '4px', objectFit: 'cover', border: '1px solid var(--border, rgba(255,255,255,0.2))', flexShrink: 0, cursor: 'pointer' }}
+                                          onClick={() => {
+                                            setValidatingTaskModal({ subId: sub._id, task, treeName, userName: citizenName, currentStatus: 'Validated' });
+                                            setValidationNoteInput(task.validationNote || '');
+                                          }}
+                                        />
+                                      ) : (
+                                        <Camera size={20} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+                                      )}
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary, #ffffff)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                          {task.taskType || 'Tree Care'}
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary, #9ca3af)' }}>
+                                          {task.uploadedByName || task.cutterName || 'Arborist'} • {task.uploadedAt ? new Date(task.uploadedAt).toLocaleDateString() : ''}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                                      <span style={{
+                                        fontSize: '0.675rem',
+                                        fontWeight: 700,
+                                        padding: '0.15rem 0.4rem',
+                                        borderRadius: '4px',
+                                        background: isValidated ? 'rgba(16, 185, 129, 0.2)' : isRejected ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                        color: isValidated ? '#6ee7b7' : isRejected ? '#fca5a5' : '#fcd34d'
+                                      }}>
+                                        {task.status || 'Pending'}
+                                      </span>
+
+                                      <button
+                                        onClick={() => {
+                                          setValidatingTaskModal({ subId: sub._id, task, treeName, userName: citizenName, currentStatus: task.status === 'Pending' ? 'Validated' : task.status });
+                                          setValidationNoteInput(task.validationNote || '');
+                                        }}
+                                        style={{
+                                          padding: '0.25rem 0.55rem',
+                                          borderRadius: '4px',
+                                          fontSize: '0.725rem',
+                                          fontWeight: 600,
+                                          background: isPending ? '#059669' : 'rgba(255,255,255,0.1)',
+                                          color: isPending ? '#FFFFFF' : 'var(--text-primary, #ffffff)',
+                                          border: 'none',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        {isPending ? 'Review' : 'View'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setCalendarModalSub(sub)}
+                            style={{
+                              marginTop: '0.4rem',
+                              width: '100%',
+                              padding: '0.5rem',
+                              background: 'rgba(5, 150, 105, 0.15)',
+                              border: '1px solid rgba(5, 150, 105, 0.3)',
+                              color: '#34d399',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.4rem'
+                            }}
+                          >
+                            <Calendar size={15} /> View Care Schedule & Timeline
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
+
+      {/* Official Care Activity Proof Review Lightbox Modal */}
+      {validatingTaskModal && validatingTaskModal.task && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99999,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '560px',
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldCheck style={{ color: '#059669', width: 22, height: 22 }} />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>
+                  Review Tree Care Maintenance Proof
+                </h3>
+              </div>
+              <button
+                onClick={() => setValidatingTaskModal(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem' }}>
+              {(validatingTaskModal.task.proofImageUrl || validatingTaskModal.task.proofPhoto) ? (
+                <div style={{ borderRadius: '10px', overflow: 'hidden', maxHeight: '280px', background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                  <img
+                    src={validatingTaskModal.task.proofImageUrl || validatingTaskModal.task.proofPhoto}
+                    alt="Care Proof"
+                    style={{ maxWidth: '100%', maxHeight: '280px', objectFit: 'contain' }}
+                  />
+                </div>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', background: '#F3F4F6', borderRadius: '8px', color: '#6B7280', marginBottom: '1rem' }}>
+                  No photo attached to this task.
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem', background: '#F9FAFB', padding: '0.75rem', borderRadius: '8px', fontSize: '0.825rem' }}>
+                <div>
+                  <span style={{ color: '#9CA3AF', display: 'block', fontSize: '0.725rem' }}>TASK TYPE</span>
+                  <strong style={{ color: '#111827' }}>{validatingTaskModal.task.taskType}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#9CA3AF', display: 'block', fontSize: '0.725rem' }}>LOGGED BY</span>
+                  <strong style={{ color: '#111827' }}>{validatingTaskModal.task.uploadedByName || validatingTaskModal.task.cutterName || 'Arborist'}</strong>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={{ color: '#9CA3AF', display: 'block', fontSize: '0.725rem' }}>TASK DESCRIPTION</span>
+                  <span style={{ color: '#374151' }}>{validatingTaskModal.task.description || validatingTaskModal.task.notes || 'No extra notes provided by arborist.'}</span>
+                </div>
+              </div>
+
+              {/* Status Decision Buttons */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                  Official Audit Decision
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setValidatingTaskModal(prev => ({ ...prev, currentStatus: 'Validated' }))}
+                    style={{
+                      padding: '0.6rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      border: validatingTaskModal.currentStatus === 'Validated' ? '2px solid #059669' : '1px solid #E5E7EB',
+                      background: validatingTaskModal.currentStatus === 'Validated' ? '#DCFCE7' : '#FFFFFF',
+                      color: validatingTaskModal.currentStatus === 'Validated' ? '#166534' : '#4B5563',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <CheckCircle size={16} /> Approve & Validate
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setValidatingTaskModal(prev => ({ ...prev, currentStatus: 'Rejected' }))}
+                    style={{
+                      padding: '0.6rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      border: validatingTaskModal.currentStatus === 'Rejected' ? '2px solid #DC2626' : '1px solid #E5E7EB',
+                      background: validatingTaskModal.currentStatus === 'Rejected' ? '#FEE2E2' : '#FFFFFF',
+                      color: validatingTaskModal.currentStatus === 'Rejected' ? '#991B1B' : '#4B5563',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <AlertCircle size={16} /> Reject Proof
+                  </button>
+                </div>
+              </div>
+
+              {/* Validation / Review Remark */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', marginBottom: '0.3rem' }}>
+                  Official Remarks / Feedback for Citizen & Arborist
+                </label>
+                <textarea
+                  rows={3}
+                  value={validationNoteInput}
+                  onChange={(e) => setValidationNoteInput(e.target.value)}
+                  placeholder="e.g., Verified thorough root watering and health check completed satisfactorily."
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    borderRadius: '8px',
+                    border: '1px solid #D1D5DB',
+                    fontSize: '0.85rem',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ padding: '0.85rem 1.25rem', background: '#F9FAFB', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setValidatingTaskModal(null)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#FFFFFF',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#374151',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={validatingSubmitting}
+                onClick={() => handleValidateCareProof(validatingTaskModal.currentStatus || 'Validated')}
+                style={{
+                  padding: '0.5rem 1.25rem',
+                  background: validatingTaskModal.currentStatus === 'Rejected' ? '#DC2626' : '#059669',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  opacity: validatingSubmitting ? 0.7 : 1
+                }}
+              >
+                {validatingSubmitting ? 'Submitting...' : 'Submit Decision'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Official Care Schedule & Timeline Calendar Modal */}
+      {calendarModalSub && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9998,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '680px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #E2E8F0',
+            padding: '24px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #E2E8F0', paddingBottom: '16px', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Calendar size={22} color="#059669" />
+                  Care Activity Schedule & History
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
+                  Tree: <strong>{calendarModalSub.tree?.name || calendarModalSub.tree?.treeId || 'N/A'}</strong> (Plan: {calendarModalSub.plan?.name || calendarModalSub.planType || 'Standard'})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCalendarModalSub(null)}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} color="#64748B" />
+              </button>
+            </div>
+
+            {/* Sub summary pill stats */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+              gap: '10px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ background: '#F8FAFC', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Total Tasks</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A' }}>
+                  {(calendarModalSub.careSchedule || []).length}
+                </span>
+              </div>
+              <div style={{ background: '#ECFDF5', padding: '10px', borderRadius: '8px', border: '1px solid #A7F3D0' }}>
+                <span style={{ fontSize: '0.72rem', color: '#047857', display: 'block' }}>Completed</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#065F46' }}>
+                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'completed' || t.status === 'verified').length}
+                </span>
+              </div>
+              <div style={{ background: '#FEF3C7', padding: '10px', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                <span style={{ fontSize: '0.72rem', color: '#B45309', display: 'block' }}>Pending Validation</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#92400E' }}>
+                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'pending_verification' || (t.proofImage && t.status !== 'verified')).length}
+                </span>
+              </div>
+              <div style={{ background: '#EFF6FF', padding: '10px', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
+                <span style={{ fontSize: '0.72rem', color: '#1D4ED8', display: 'block' }}>Upcoming</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1E40AF' }}>
+                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'scheduled' || (!t.status && !t.proofImage)).length}
+                </span>
+              </div>
+            </div>
+
+            {/* Care Schedule Timeline */}
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1E293B', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Clock size={16} color="#475569" /> Timeline of Scheduled Tasks
+            </div>
+
+            {(!calendarModalSub.careSchedule || calendarModalSub.careSchedule.length === 0) ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#94A3B8', fontStyle: 'italic', background: '#F8FAFC', borderRadius: '8px' }}>
+                No care activities currently scheduled for this adoption.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {calendarModalSub.careSchedule.map((task, idx) => {
+                  const isDone = task.status === 'completed' || task.status === 'verified';
+                  const isPending = task.status === 'pending_verification' || (task.proofImage && task.status !== 'verified');
+                  const dueDate = task.dueDate || task.date;
+                  const formattedDate = dueDate ? new Date(dueDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : `Milestone #${idx + 1}`;
+                  
+                  return (
+                    <div
+                      key={task._id || idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        border: isDone ? '1px solid #BBF7D0' : isPending ? '1px solid #FDE68A' : '1px solid #E2E8F0',
+                        background: isDone ? '#F0FDF4' : isPending ? '#FFFBEB' : '#FFFFFF'
+                      }}
+                    >
+                      <div style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        background: isDone ? '#22C55E' : isPending ? '#F59E0B' : '#E2E8F0',
+                        color: '#FFFFFF'
+                      }}>
+                        {isDone ? <CheckCircle size={16} /> : isPending ? <Clock size={16} /> : <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B' }}>{idx + 1}</span>}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1E293B' }}>
+                            {task.title || task.activityType || `Activity #${idx + 1}`}
+                          </span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            textTransform: 'uppercase',
+                            background: isDone ? '#DCFCE7' : isPending ? '#FEF3C7' : '#F1F5F9',
+                            color: isDone ? '#15803D' : isPending ? '#B45309' : '#64748B'
+                          }}>
+                            {isDone ? 'Verified' : isPending ? 'Pending Review' : 'Scheduled'}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: '3px' }}>
+                          📅 Due: {formattedDate}
+                        </div>
+
+                        {task.notes && (
+                          <div style={{ fontSize: '0.76rem', color: '#475569', marginTop: '4px', fontStyle: 'italic', background: 'rgba(0,0,0,0.02)', padding: '4px 8px', borderRadius: '4px' }}>
+                            "{task.notes}"
+                          </div>
+                        )}
+
+                        {task.proofImage && (
+                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <img
+                              src={task.proofImage}
+                              alt="Proof preview"
+                              style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #CBD5E1' }}
+                              onClick={() => {
+                                setPreviewModal({
+                                  isOpen: true,
+                                  imageUrl: task.proofImage,
+                                  title: `Proof: ${task.title || task.activityType || 'Care Activity'}`
+                                });
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCalendarModalSub(null);
+                                handleOpenValidationModal(calendarModalSub, task);
+                              }}
+                              style={{
+                                padding: '4px 10px',
+                                background: '#3B82F6',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                borderRadius: '5px',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              Inspect Proof & Verify
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setCalendarModalSub(null)}
+                style={{
+                  padding: '8px 18px',
+                  background: '#F1F5F9',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '8px',
+                  color: '#475569',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Close Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Proof Photo Lightbox Preview Modal */}
       {previewModal.isOpen && (
@@ -9438,6 +10498,15 @@ export function TreeInventoryPage() {
                     <span className="badge-pill healthy-badge">
                       <Heart size={14} style={{ fill: '#ffffff', marginRight: '4px' }} /> Healthy
                     </span>
+                    {selectedTree?.isAdopted ? (
+                      <span className="badge-pill adopted-badge" style={{ background: '#0284c7', color: '#ffffff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckCircle size={14} /> Already Adopted
+                      </span>
+                    ) : (
+                      <span className="badge-pill available-badge" style={{ background: '#10b981', color: '#ffffff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Sprout size={14} /> Available for Adoption
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -9947,7 +11016,7 @@ export function TreeInventoryPage() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      <Map size={15} /> 🗺️ Select Location on Map
+                      <MapIcon size={15} /> 🗺️ Select Location on Map
                     </button>
                     <button
                       type="button"
@@ -10295,9 +11364,12 @@ export function ViewTreePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [adoptingId, setAdoptingId] = useState(null);
   const [adoptModalTree, setAdoptModalTree] = useState(null);
-  const [adoptNickname, setAdoptNickname] = useState('');
+  const [adoptPlan, setAdoptPlan] = useState('monthly'); // 'monthly' | 'yearly' | 'self'
   const [isSubmittingAdoption, setIsSubmittingAdoption] = useState(false);
   const [adoptSuccessMsg, setAdoptSuccessMsg] = useState(null);
+  const [adoptStep, setAdoptStep] = useState('plan'); // 'plan' | 'processing' | 'success'
+  const [showPledgeModal, setShowPledgeModal] = useState(false);
+  const [pledgeAgreed, setPledgeAgreed] = useState(false);
 
   const currentUser = (() => {
     try {
@@ -10366,42 +11438,153 @@ export function ViewTreePage() {
     }
 
     setAdoptModalTree(tree);
-    setAdoptNickname(tree.name || '');
+    setAdoptPlan('monthly');
+    setAdoptStep('plan');
   };
 
-  const handleConfirmAdoption = async (e) => {
-    if (e) e.preventDefault();
+  const loadRazorpay = () => new Promise(resolve => {
+    if (window.Razorpay) return resolve(true);
+    const s = document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+
+  const handleConfirmAdoption = async () => {
     if (!adoptModalTree) return;
+    const treeId = adoptModalTree._id || adoptModalTree.id;
+
+    if (adoptPlan === 'self') {
+      // Show promise/pledge declaration popup first
+      setPledgeAgreed(false);
+      setShowPledgeModal(true);
+      return;
+    }
+
+    // Paid subscription via Razorpay
     setIsSubmittingAdoption(true);
-    setAdoptingId(adoptModalTree._id || adoptModalTree.id);
+    setAdoptStep('processing');
     try {
-      const res = await fetch(`${API_URL}/api/adoptions/adopt`, {
+      const ok = await loadRazorpay();
+      if (!ok) throw new Error('Razorpay SDK failed to load');
+
+      const orderRes = await fetch(`${API_URL}/api/subscriptions/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ treeId, plan: adoptPlan, userId: effectiveUserId })
+      });
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) throw new Error(orderData.error || 'Could not create order');
+
+      // If Razorpay live keys failed authentication (401) or demo mode is triggered:
+      if (orderData.isDemo) {
+        const verifyRes = await fetch(`${API_URL}/api/subscriptions/verify-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id: orderData.orderId,
+            razorpay_payment_id: `pay_test_${Date.now()}`,
+            razorpay_signature: 'sandbox_test_signature',
+            isDemo: true,
+            treeId, plan: adoptPlan,
+            userId: effectiveUserId, userName: effectiveUserName,
+            userEmail: effectiveUserEmail,
+            userPhone: currentUser.phone || ''
+          })
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+        setAdoptStep('success');
+        setAdoptSuccessMsg(`🌳 Adoption confirmed! (Test Mode) Certificate: ${verifyData.subscription?.certificateNumber || ''}`);
+        setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
+        if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
+          setSelectedTree(prev => ({ ...prev, isAdopted: true }));
+        }
+        setTimeout(() => { setAdoptModalTree(null); setAdoptStep('plan'); navigate('/citizen-dashboard?tab=subscriptions'); }, 2500);
+        return;
+      }
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'TreeCanopy Management',
+        description: `${adoptPlan === 'monthly' ? 'Monthly' : 'Yearly'} Tree Adoption – ${adoptModalTree.name}`,
+        image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&q=80',
+        order_id: orderData.orderId,
+        handler: async (response) => {
+          try {
+            const verifyRes = await fetch(`${API_URL}/api/subscriptions/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...response,
+                treeId, plan: adoptPlan,
+                userId: effectiveUserId, userName: effectiveUserName,
+                userEmail: effectiveUserEmail,
+                userPhone: currentUser.phone || ''
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+            setAdoptStep('success');
+            setAdoptSuccessMsg(`🌳 Adoption confirmed! Certificate: ${verifyData.subscription?.certificateNumber || ''}`);
+            setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
+            if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
+              setSelectedTree(prev => ({ ...prev, isAdopted: true }));
+            }
+            setTimeout(() => { setAdoptModalTree(null); setAdoptStep('plan'); navigate('/citizen-dashboard?tab=subscriptions'); }, 2500);
+          } catch (err) { alert('Payment verification error: ' + err.message); setAdoptStep('plan'); }
+          finally { setIsSubmittingAdoption(false); setAdoptingId(null); }
+        },
+        prefill: { name: effectiveUserName, email: effectiveUserEmail, contact: currentUser.phone || '' },
+        theme: { color: '#10b981' },
+        modal: { ondismiss: () => { setAdoptStep('plan'); setIsSubmittingAdoption(false); setAdoptingId(null); } }
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert(err.message || 'Error initiating payment');
+      setAdoptStep('plan');
+      setIsSubmittingAdoption(false);
+      setAdoptingId(null);
+    }
+  };
+ 
+  const executeSelfAdopt = async () => {
+    if (!adoptModalTree) return;
+    const treeId = adoptModalTree._id || adoptModalTree.id;
+    setIsSubmittingAdoption(true);
+    setAdoptStep('processing');
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/self-adopt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          treeId,
           userId: effectiveUserId,
           userName: effectiveUserName,
           userEmail: effectiveUserEmail,
-          treeId: adoptModalTree._id || adoptModalTree.id,
-          treeName: adoptModalTree.name,
-          treeScientificName: adoptModalTree.scientificName,
-          treeFamily: adoptModalTree.family,
-          treeLocation: adoptModalTree.origin || 'Udupi Canopy',
-          treeImage: adoptModalTree.image || '',
-          nickname: (adoptNickname || adoptModalTree.name).trim()
+          userPhone: currentUser.phone || ''
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.msg || 'Could not adopt tree');
-
-      setAdoptSuccessMsg(data.msg || 'Tree adopted successfully!');
+      if (!res.ok) throw new Error(data.error || 'Failed to complete self-adoption');
+      setAdoptStep('success');
+      setAdoptSuccessMsg(`🌱 Self-Adoption Confirmed! Certificate: ${data.subscription?.certificateNumber || ''}`);
+      setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
+      if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
+        setSelectedTree(prev => ({ ...prev, isAdopted: true }));
+      }
       setTimeout(() => {
-        setAdoptSuccessMsg(null);
         setAdoptModalTree(null);
-        navigate('/citizen-dashboard?tab=rewards');
-      }, 1500);
+        setAdoptStep('plan');
+        navigate('/citizen-dashboard?tab=subscriptions');
+      }, 2500);
     } catch (err) {
-      alert(err.message || 'Error adopting tree');
+      alert('Self-adoption error: ' + err.message);
+      setAdoptStep('plan');
     } finally {
       setIsSubmittingAdoption(false);
       setAdoptingId(null);
@@ -10991,105 +12174,169 @@ export function ViewTreePage() {
 
   const renderAdoptModal = () => {
     if (!adoptModalTree) return null;
+    const monthlyPrice = adoptModalTree.monthlyAdoptionFee || 500;
+    const yearlyPrice = adoptModalTree.yearlyAdoptionFee || 6000;
     return (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 99999,
-        background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+        background: 'rgba(4,20,15,0.82)', backdropFilter: 'blur(12px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
-      }}>
+      }} onClick={() => { setAdoptModalTree(null); setAdoptStep('plan'); }}>
         <div style={{
-          background: '#ffffff', borderRadius: '24px', maxWidth: '460px', width: '100%',
-          overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
-          border: '1px solid rgba(255,255,255,0.2)', animation: 'scaleUp 0.2s ease-out'
-        }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #043224 0%, #065f46 100%)',
-            padding: '24px', color: '#ffffff', position: 'relative'
-          }}>
-            <button
-              onClick={() => setAdoptModalTree(null)}
-              style={{
-                position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.15)',
-                border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.2rem', fontWeight: 'bold'
-              }}
-            >✕</button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
-              <div style={{
-                width: '56px', height: '56px', borderRadius: '14px', overflow: 'hidden',
-                background: 'rgba(255,255,255,0.2)', flexShrink: 0, border: '2px solid rgba(255,255,255,0.3)'
-              }}>
+          background: 'linear-gradient(160deg, #061e14 0%, #0b2e1e 100%)',
+          borderRadius: '24px', maxWidth: '500px', width: '100%',
+          overflow: 'hidden', boxShadow: '0 32px 64px -12px rgba(0,0,0,0.6)',
+          border: '1px solid rgba(52,211,153,0.25)', animation: 'scaleUp 0.25s cubic-bezier(0.34,1.56,0.64,1)'
+        }} onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, #043224 0%, #065f46 60%, #059669 100%)', padding: '24px 24px 20px', position: 'relative' }}>
+            <button onClick={() => { setAdoptModalTree(null); setAdoptStep('plan'); }} style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '14px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
                 <img src={getTreeDisplayImage(adoptModalTree)} alt={adoptModalTree.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>Adopt {adoptModalTree.name}</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#a7f3d0', fontStyle: 'italic' }}>{adoptModalTree.scientificName || 'Canopy Tree'}</p>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>Adopt {adoptModalTree.name}</h3>
+                <p style={{ margin: '3px 0 0', fontSize: '0.83rem', color: '#a7f3d0', fontStyle: 'italic' }}>{adoptModalTree.scientificName || 'Canopy Tree'} · {adoptModalTree.origin || 'Udupi'}</p>
               </div>
-            </div>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              background: 'rgba(16, 185, 129, 0.25)', border: '1px solid #10b981',
-              padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, color: '#ecfdf5', marginTop: '6px'
-            }}>
-              ✨ Earns +100 Eco-Points Upon Adoption
             </div>
           </div>
 
-          <form onSubmit={handleConfirmAdoption} style={{ padding: '24px' }}>
-            {adoptSuccessMsg ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎉</div>
-                <h4 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800, color: '#065f46' }}>{adoptSuccessMsg}</h4>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#4b5563' }}>Redirecting to your Adopted Trees & Rewards...</p>
+          {/* Body */}
+          <div style={{ padding: '24px' }}>
+            {adoptStep === 'success' ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ fontSize: '3.5rem', marginBottom: '14px' }}>🎉</div>
+                <h4 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800, color: '#34d399' }}>{adoptSuccessMsg}</h4>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#95d5b2' }}>Redirecting to your Subscriptions dashboard...</p>
+              </div>
+            ) : adoptStep === 'processing' ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '14px', animation: 'spin 1s linear infinite', display: 'inline-block' }}>🌀</div>
+                <p style={{ color: '#95d5b2', fontWeight: 600 }}>Processing your payment...</p>
               </div>
             ) : (
               <>
-                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', color: '#1f2937', marginBottom: '8px' }}>
-                  Give your adopted tree a nickname:
-                </label>
-                <input
-                  type="text"
-                  value={adoptNickname}
-                  onChange={(e) => setAdoptNickname(e.target.value)}
-                  placeholder="e.g. Sunny Neem, Mighty Oak"
-                  required
-                  style={{
-                    width: '100%', padding: '12px 14px', borderRadius: '10px',
-                    border: '2px solid #e5e7eb', fontSize: '0.95rem', fontWeight: 600,
-                    color: '#111827', background: '#f9fafb', outline: 'none',
-                    transition: 'all 0.2s', marginBottom: '20px', boxSizing: 'border-box'
-                  }}
-                  onFocus={e => e.target.style.borderColor = '#059669'}
-                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                />
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={() => setAdoptModalTree(null)}
-                    style={{
-                      padding: '10px 18px', borderRadius: '10px', border: '1px solid #d1d5db',
-                      background: '#ffffff', color: '#374151', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer'
-                    }}
+                <p style={{ margin: '0 0 18px', color: '#95d5b2', fontSize: '0.9rem' }}>Choose your adoption plan. A tree cutter will be assigned to care for your tree and you'll receive monthly/yearly care proof photos.</p>
+
+                {/* Plan Cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  {/* Monthly */}
+                  <div
+                    onClick={() => setAdoptPlan('monthly')}
+                    style={{ padding: '14px 16px', borderRadius: '14px', border: `2px solid ${adoptPlan === 'monthly' ? '#10b981' : 'rgba(52,211,153,0.2)'}`, background: adoptPlan === 'monthly' ? 'rgba(16,185,129,0.12)' : 'rgba(11,40,26,0.6)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '14px' }}
                   >
-                    Cancel
-                  </button>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: adoptPlan === 'monthly' ? '#10b981' : 'rgba(52,211,153,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'monthly' ? <Check size={18} color='#fff' /> : <span style={{ color: '#34d399', fontSize: '0.75rem', fontWeight: 800 }}>M</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>Monthly Subscription</div>
+                      <div style={{ color: '#95d5b2', fontSize: '0.8rem' }}>Tree cutter assigned • Monthly care proofs</div>
+                    </div>
+                    <div style={{ fontWeight: 900, color: '#34d399', fontSize: '1.15rem' }}>₹{monthlyPrice}<span style={{ fontSize: '0.7rem', color: '#95d5b2', fontWeight: 600 }}>/mo</span></div>
+                  </div>
+
+                  {/* Yearly */}
+                  <div
+                    onClick={() => setAdoptPlan('yearly')}
+                    style={{ padding: '14px 16px', borderRadius: '14px', border: `2px solid ${adoptPlan === 'yearly' ? '#10b981' : 'rgba(52,211,153,0.2)'}`, background: adoptPlan === 'yearly' ? 'rgba(16,185,129,0.12)' : 'rgba(11,40,26,0.6)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '14px', position: 'relative' }}
+                  >
+                    <div style={{ position: 'absolute', top: '-10px', right: '14px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', padding: '2px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800 }}>SAVE 17%</div>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: adoptPlan === 'yearly' ? '#10b981' : 'rgba(52,211,153,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'yearly' ? <Check size={18} color='#fff' /> : <span style={{ color: '#34d399', fontSize: '0.75rem', fontWeight: 800 }}>Y</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>Yearly Subscription</div>
+                      <div style={{ color: '#95d5b2', fontSize: '0.8rem' }}>Priority care • Annual certificate • Best value</div>
+                    </div>
+                    <div style={{ fontWeight: 900, color: '#34d399', fontSize: '1.15rem' }}>₹{yearlyPrice}<span style={{ fontSize: '0.7rem', color: '#95d5b2', fontWeight: 600 }}>/yr</span></div>
+                  </div>
+
+                  {/* Self */}
+                  <div
+                    onClick={() => setAdoptPlan('self')}
+                    style={{ padding: '14px 16px', borderRadius: '14px', border: `2px solid ${adoptPlan === 'self' ? '#6366f1' : 'rgba(99,102,241,0.2)'}`, background: adoptPlan === 'self' ? 'rgba(99,102,241,0.1)' : 'rgba(11,40,26,0.6)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '14px' }}
+                  >
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: adoptPlan === 'self' ? '#6366f1' : 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'self' ? <Check size={18} color='#fff' /> : <span style={{ color: '#818cf8', fontSize: '0.75rem', fontWeight: 800 }}>S</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>Self Adoption (Free)</div>
+                      <div style={{ color: '#a5b4fc', fontSize: '0.8rem' }}>You personally care for this tree. No monthly fee.</div>
+                    </div>
+                    <div style={{ fontWeight: 900, color: '#818cf8', fontSize: '1.1rem' }}>FREE</div>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setAdoptModalTree(null); setAdoptStep('plan'); }} style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid rgba(52,211,153,0.3)', background: 'transparent', color: '#95d5b2', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}>Cancel</button>
                   <button
-                    type="submit"
+                    onClick={handleConfirmAdoption}
                     disabled={isSubmittingAdoption}
-                    style={{
-                      padding: '10px 20px', borderRadius: '10px', border: 'none',
-                      background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                      color: '#ffffff', fontWeight: 700, fontSize: '0.875rem', cursor: isSubmittingAdoption ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)'
-                    }}
+                    style={{ padding: '10px 22px', borderRadius: '10px', border: 'none', background: adoptPlan === 'self' ? 'linear-gradient(135deg,#4f46e5,#4338ca)' : 'linear-gradient(135deg,#059669,#047857)', color: '#fff', fontWeight: 700, fontSize: '0.875rem', cursor: isSubmittingAdoption ? 'not-allowed' : 'pointer', boxShadow: '0 4px 14px rgba(5,150,105,0.35)', display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
-                    {isSubmittingAdoption ? 'Adopting...' : '🎉 Confirm Adoption (+100 Pts)'}
+                    <Heart size={15} fill='currentColor' />
+                    {isSubmittingAdoption ? 'Processing...' : adoptPlan === 'self' ? 'Confirm Self-Adoption' : `Pay ₹${adoptPlan === 'monthly' ? monthlyPrice : yearlyPrice} & Adopt`}
                   </button>
                 </div>
               </>
             )}
-          </form>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPledgeModal = () => {
+    if (!showPledgeModal) return null;
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 99999,
+        background: 'rgba(4,20,15,0.82)', backdropFilter: 'blur(12px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+      }} onClick={() => setShowPledgeModal(false)}>
+        <div style={{
+          background: 'linear-gradient(160deg, #061e14 0%, #0b2e1e 100%)',
+          borderRadius: '24px', maxWidth: '480px', width: '100%',
+          overflow: 'hidden', boxShadow: '0 32px 64px -12px rgba(0,0,0,0.6)',
+          border: '1px solid rgba(52,211,153,0.25)', animation: 'scaleUp 0.25s cubic-bezier(0.34,1.56,0.64,1)'
+        }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'linear-gradient(135deg, #043224 0%, #065f46 60%, #059669 100%)', padding: '20px 24px', position: 'relative' }}>
+            <button onClick={() => setShowPledgeModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Tree Guardian Pledge 🌱</h3>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <p style={{ margin: '0 0 14px', color: '#95d5b2', fontSize: '0.9rem', lineHeight: '1.6' }}>
+              I, <strong style={{ color: '#fff' }}>{effectiveUserName}</strong>, solemnly declare that I will personally take responsibility for the care and well-being of this tree. I commit to regular watering, reporting any damage, and ensuring its healthy growth as part of the Udupi Municipal TreeCanopy Programme.
+            </p>
+            <p style={{ margin: '0 0 16px', color: '#6ee7b7', fontSize: '0.82rem', fontStyle: 'italic' }}>
+              I understand that failure to fulfil this commitment may result in the revocation of my adoption status.
+            </p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', cursor: 'pointer', color: '#fff', fontSize: '0.9rem', fontWeight: 600 }}>
+              <input
+                type="checkbox"
+                checked={pledgeAgreed}
+                onChange={e => setPledgeAgreed(e.target.checked)}
+                style={{ width: '18px', height: '18px', accentColor: '#10b981', cursor: 'pointer' }}
+              />
+              I solemnly take this pledge to protect and care for this tree.
+            </label>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowPledgeModal(false)} style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid rgba(52,211,153,0.3)', background: 'transparent', color: '#95d5b2', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}>Cancel</button>
+              <button
+                disabled={!pledgeAgreed}
+                onClick={async () => {
+                  setShowPledgeModal(false);
+                  await executeSelfAdopt();
+                }}
+                style={{ padding: '10px 22px', borderRadius: '10px', border: 'none', background: pledgeAgreed ? 'linear-gradient(135deg,#059669,#047857)' : 'rgba(255,255,255,0.1)', color: pledgeAgreed ? '#fff' : 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: '0.875rem', cursor: pledgeAgreed ? 'pointer' : 'not-allowed', boxShadow: pledgeAgreed ? '0 4px 14px rgba(5,150,105,0.35)' : 'none' }}
+              >
+                Accept & Complete Adoption
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -11118,6 +12365,7 @@ export function ViewTreePage() {
           </header>
           {renderDetailContent()}
           {renderAdoptModal()}
+          {renderPledgeModal()}
         </div>
       );
     } else {
@@ -11128,6 +12376,7 @@ export function ViewTreePage() {
             <Topbar title="Tree Details" onToggleSidebar={() => setSidebarOpen(true)} />
             {renderDetailContent()}
             {renderAdoptModal()}
+            {renderPledgeModal()}
           </div>
         </div>
       );
@@ -11155,6 +12404,7 @@ export function ViewTreePage() {
         </header>
         {renderListContent()}
         {renderAdoptModal()}
+        {renderPledgeModal()}
         {renderGalleryLightbox()}
       </div>
     );
@@ -11166,6 +12416,7 @@ export function ViewTreePage() {
           <Topbar title="Tree Database" onToggleSidebar={() => setSidebarOpen(true)} />
           {renderListContent()}
           {renderAdoptModal()}
+          {renderPledgeModal()}
           {renderGalleryLightbox()}
         </div>
       </div>
@@ -16184,4 +17435,52 @@ export function CommunicationPage() {
     </div>
   );
 }
+export function OfficialAdoptionsPage() {
+  return <OfficialManagementPage initialView="adoptions" />;
+}
+
+export function TreeCutterDutiesPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
+    catch { return {}; }
+  })();
+
+  const cutterId = currentUser.id || currentUser._id || '';
+  const cutterName = currentUser.name || currentUser.username || 'Snow';
+
+  const theme = {
+    bg: 'var(--bg-page, #051d18)',
+    cardBg: 'var(--bg-surface, #072a22)',
+    elevatedBg: 'var(--bg-elevated, #0a382e)',
+    border: 'var(--border, rgba(52, 211, 153, 0.2))',
+    title: 'var(--text-primary, #ffffff)',
+    subText: 'var(--text-secondary, #95d5b2)',
+  };
+
+  return (
+    <div className="cg-app">
+      <Sidebar active="Tree Care Duties" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <div className="cg-workspace">
+        <Topbar title="Assigned Tree Care Duties & Pledges" search="Search tree species, locations..." onToggleSidebar={() => setSidebarOpen(true)} />
+        <main className="cg-page" style={{ padding: '24px' }}>
+          <div style={{
+            background: theme.cardBg, border: `1px solid ${theme.border}`,
+            borderRadius: '20px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
+          }}>
+            <TreeDutyPanel
+              cutterId={cutterId}
+              cutterName={cutterName}
+              theme={theme}
+              darkMode={true}
+              onNavigate={(task) => {}}
+            />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 

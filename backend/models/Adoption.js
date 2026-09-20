@@ -109,6 +109,23 @@ const adoptionSchema = new mongoose.Schema(
       type: Number,
       default: 100, // 100 welcome points on adoption
     },
+    planType: {
+      type: String,
+      enum: ['self', 'monthly', 'yearly'],
+      default: 'self',
+    },
+    subscriptionPlan: {
+      type: String,
+      default: '',
+    },
+    amount: {
+      type: Number,
+      default: 0,
+    },
+    paymentStatus: {
+      type: String,
+      default: 'free',
+    },
     status: {
       type: String,
       enum: ['Active', 'Relinquished'],

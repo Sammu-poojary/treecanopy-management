@@ -9,6 +9,11 @@ import TreeEncyclopediaPage from './pages/TreeEncyclopediaPage';
 import OfficialLoginPage from './pages/OfficialLoginPage';
 import TreeCutterTaskPage from './pages/TreeCutterTaskPage';
 import TreeCutterAttendancePage from './pages/TreeCutterAttendancePage';
+import TimberAuctionPage from './pages/TimberAuctionPage';
+import ProcessingConsolePage from './pages/ProcessingConsolePage';
+import OfficialDeliveryAndPaymentsPage from './pages/OfficialDeliveryAndPaymentsPage';
+import DeliveryDashboardPage from './pages/DeliveryDashboardPage';
+import OfficialTimberManagementPage from './pages/OfficialTimberManagementPage';
 import {
   AddPropertyPage,
   AdminConsolePage,
@@ -28,6 +33,8 @@ import {
   CitizenDashboardPage,
   VerifyCertificatePage,
   CommunicationPage,
+  OfficialAdoptionsPage,
+  TreeCutterDutiesPage,
 } from './pages/CanopyPages';
 
 function App() {
@@ -98,6 +105,7 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminOnly><DashboardPage /></AdminOnly>} />
         <Route path="/admin/communication" element={<AdminOnly><CommunicationPage /></AdminOnly>} />
         <Route path="/admin/scheduler" element={<AdminOnly><SchedulerPage /></AdminOnly>} />
+        <Route path="/admin/adoptions" element={<AdminOnly><OfficialAdoptionsPage /></AdminOnly>} />
         <Route path="/admin-complaints" element={<AdminOnly><AdminComplaintsPage /></AdminOnly>} />
         <Route path="/admin/complaints" element={<AdminOnly><AdminComplaintsPage /></AdminOnly>} />
         <Route path="/admin/attendance" element={<AdminOnly><AdminAttendancePage /></AdminOnly>} />
@@ -115,6 +123,8 @@ function App() {
         <Route path="/official-login" element={<Navigate to="/login?portal=Official" replace />} />
         <Route path="/official" element={<OfficialOnly><DashboardPage /></OfficialOnly>} />
         <Route path="/official/dashboard" element={<OfficialOnly><DashboardPage /></OfficialOnly>} />
+        <Route path="/official/adoptions" element={<OfficialOnly><OfficialAdoptionsPage /></OfficialOnly>} />
+        <Route path="/official-adoptions" element={<OfficialOnly><OfficialAdoptionsPage /></OfficialOnly>} />
         <Route path="/official/communication" element={<OfficialOnly><CommunicationPage /></OfficialOnly>} />
         <Route path="/official/scheduler" element={<OfficialOnly><SchedulerPage /></OfficialOnly>} />
         <Route path="/official/complaints" element={<OfficialOnly><OfficialManagementPage /></OfficialOnly>} />
@@ -138,6 +148,8 @@ function App() {
         <Route path="/cutter/communication" element={<CutterOnly><CommunicationPage /></CutterOnly>} />
         <Route path="/treecutter/task" element={<CutterOnly><TreeCutterTaskPage /></CutterOnly>} />
         <Route path="/cutter/task" element={<CutterOnly><TreeCutterTaskPage /></CutterOnly>} />
+        <Route path="/treecutter/tree-duties" element={<CutterOnly><TreeCutterDutiesPage /></CutterOnly>} />
+        <Route path="/cutter/tree-duties" element={<CutterOnly><TreeCutterDutiesPage /></CutterOnly>} />
         <Route path="/treecutter/attendance" element={<CutterOnly><TreeCutterAttendancePage /></CutterOnly>} />
         <Route path="/cutter/attendance" element={<CutterOnly><TreeCutterAttendancePage /></CutterOnly>} />
         <Route path="/treecutter/view-tree" element={<CutterOnly><ViewTreePage /></CutterOnly>} />
@@ -149,11 +161,34 @@ function App() {
         <Route path="/treecutter/property-inventory" element={<CutterOnly><PropertyInventoryPage /></CutterOnly>} />
         <Route path="/cutter/property-inventory" element={<CutterOnly><PropertyInventoryPage /></CutterOnly>} />
 
+        {/* ── Circular Economy, Waste Processing & Timber Auction Routes ── */}
+        <Route path="/timber-auction" element={<TimberAuctionPage />} />
+        <Route path="/timber-auctions" element={<TimberAuctionPage />} />
+        <Route path="/official/timber-management" element={<OfficialOnly><OfficialTimberManagementPage /></OfficialOnly>} />
+        <Route path="/official/timber-auction" element={<OfficialOnly><OfficialTimberManagementPage /></OfficialOnly>} />
+        <Route path="/admin/timber-management" element={<AdminOnly><OfficialTimberManagementPage /></AdminOnly>} />
+        <Route path="/admin/timber-auction" element={<AdminOnly><OfficialTimberManagementPage /></AdminOnly>} />
+        <Route path="/processing" element={<OfficialOnly><ProcessingConsolePage /></OfficialOnly>} />
+        <Route path="/processing/dashboard" element={<OfficialOnly><ProcessingConsolePage /></OfficialOnly>} />
+        <Route path="/official/processing" element={<OfficialOnly><ProcessingConsolePage /></OfficialOnly>} />
+        <Route path="/eco-store" element={<Navigate to="/citizen-dashboard?tab=store" replace />} />
+
+        {/* ── Green Logistics, Delivery Fleet & Payment Desk Routes ── */}
+        <Route path="/official/orders-delivery" element={<OfficialOnly><OfficialDeliveryAndPaymentsPage /></OfficialOnly>} />
+        <Route path="/official/delivery" element={<OfficialOnly><OfficialDeliveryAndPaymentsPage /></OfficialOnly>} />
+        <Route path="/admin/orders-delivery" element={<AdminOnly><OfficialDeliveryAndPaymentsPage /></AdminOnly>} />
+        <Route path="/admin/payments-delivery" element={<AdminOnly><OfficialDeliveryAndPaymentsPage /></AdminOnly>} />
+        <Route path="/delivery" element={<DeliveryDashboardPage />} />
+        <Route path="/delivery/dashboard" element={<DeliveryDashboardPage />} />
+        <Route path="/delivery/tasks" element={<DeliveryDashboardPage />} />
+        <Route path="/delivery/attendance" element={<DeliveryDashboardPage />} />
+
         {/* ── Standard / Fallback Routes ── */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/citizen-dashboard" element={<CitizenDashboardPage />} />
         <Route path="/communication" element={<CommunicationPage />} />
         <Route path="/task" element={<CutterOnly><TreeCutterTaskPage /></CutterOnly>} />
+        <Route path="/tree-duties" element={<CutterOnly><TreeCutterDutiesPage /></CutterOnly>} />
         <Route path="/report-issue" element={<ReportIssuePage />} />
         <Route path="/scheduler" element={<OfficialOnly><SchedulerPage /></OfficialOnly>} />
         <Route path="/attendance" element={<DynamicAttendanceRoute />} />

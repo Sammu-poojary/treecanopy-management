@@ -64,8 +64,8 @@ router.post('/mark', async (req, res) => {
       return res.status(400).json({ msg: 'userId, userName and role are required' });
     }
 
-    if (!['Official', 'Tree Cutter'].includes(role)) {
-      return res.status(403).json({ msg: 'Only Officials and Tree Cutters can mark attendance' });
+    if (!['Official', 'Tree Cutter', 'Delivery Partner', 'Delivery'].includes(role)) {
+      return res.status(403).json({ msg: 'Only Officials, Tree Cutters, and Delivery Partners can mark attendance' });
     }
 
     if (!shift) {
