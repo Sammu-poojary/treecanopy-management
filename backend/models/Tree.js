@@ -26,11 +26,25 @@ const TreeSchema = new mongoose.Schema({
   benefits: [{ type: String }],
   diseases: [{ type: String }],
   pests: [{ type: String }],
-  image: { type: String }, // stores base64 data URL or uploaded file URL
+  image: { type: String }, // primary / thumbnail image URL (backward compat)
+  images: [{ type: String }], // multi-photo gallery array (Cloudinary URLs)
   lat: { type: Number, default: 13.3409 },
   lng: { type: Number, default: 74.7421 },
-  addedAt: { type: String } // date string formatted for UI, e.g. "29 Jun 2026"
+  addedAt: { type: String }, // e.g. "29 Jun 2026"
+
+  // Extended taxonomy & ecology fields
+  nativeRegion: { type: String },
+  iucnStatus: { type: String }, // e.g. "Least Concern", "Vulnerable", "Endangered"
+  flowerColor: { type: String },
+  fruitColor: { type: String },
+  culturalUses: { type: String }, // traditional / cultural / medicinal uses
+  conservationNotes: { type: String },
+
+  // Subscription adoption fields
+  monthlyAdoptionFee: { type: Number, default: 500 },
+  yearlyAdoptionFee: { type: Number, default: 6000 },
+  isAdopted: { type: Boolean, default: false },
+  activeSubscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Tree', TreeSchema);
-

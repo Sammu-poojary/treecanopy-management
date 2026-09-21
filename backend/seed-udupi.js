@@ -372,7 +372,7 @@ const defaultUdupiTrees = [
     benefits: ['High culinary fruit production', 'Excellent windbreak and storm protection', 'Very high carbon storage capability', 'Deep shade reduces local ground heat'],
     diseases: ['Stem rot (monitored)'],
     pests: ['Tamarind seed borer'],
-    image: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
     lat: 13.3215,
     lng: 74.8050,
     addedAt: '14 Aug 2026'
@@ -682,7 +682,7 @@ const defaultUdupiTrees = [
     benefits: ['High carbon capture volume', 'Thick microclimate temperature cooling', 'Culinary fruit production'],
     diseases: ['Bacterial canker'],
     pests: ['Scale insects'],
-    image: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
     lat: 13.3380,
     lng: 74.7455,
     addedAt: '14 Aug 2026'

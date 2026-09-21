@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2, User, Mail, Phone, Shield, Camera, Edit3, Save, ExternalLink, Gift, Tag, QrCode, History, Target, TrendingUp, CheckCircle2, ListOrdered, UploadCloud } from 'lucide-react';
+import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2, User, Mail, Phone, Shield, Camera, Edit3, Save, ExternalLink, Gift, Tag, QrCode, History, Target, TrendingUp, CheckCircle2, ListOrdered, UploadCloud, ShoppingBag } from 'lucide-react';
 import Swal from 'sweetalert2';
 import TreeGuardianCertificateModal from './TreeGuardianCertificateModal';
 import CanopyLensModal from './CanopyLensModal';
+import CitizenEcoStore from './CitizenEcoStore';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -16,24 +17,39 @@ const issueLabels = {
 };
 
 const speciesImages = {
-  mango: 'https://images.unsplash.com/photo-1598512752271-33f913a5af13?auto=format&fit=crop&w=600&q=80',
-  oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
-  neem: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
+  chiku: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=600&q=80',
+  sapota: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=600&q=80',
+  mango: 'https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=600&q=80',
+  guava: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=600&q=80',
+  pomegranate: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80',
   banyan: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=600&q=80',
+  neem: 'https://images.unsplash.com/photo-1603569283847-aa295f0d016a?auto=format&fit=crop&w=600&q=80',
   peepal: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
-  rosewood: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-  eucalyptus: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
-  tamarind: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=600&q=80',
-  jackfruit: 'https://images.unsplash.com/photo-1590005354167-6da97870c913?auto=format&fit=crop&w=600&q=80',
+  rosewood: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
+  eucalyptus: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+  tamarind: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  jackfruit: 'https://images.unsplash.com/photo-1618897996318-5a901fa6ca71?auto=format&fit=crop&w=600&q=80',
   ashoka: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=600&q=80',
-  gulmohar: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  gulmohar: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=600&q=80',
   honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-  coconut: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=600&q=80',
+  oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=600&q=80',
+  coconut: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80',
   default: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80'
 };
 
 const getTreeDisplayImage = (tree) => {
   if (!tree) return speciesImages.default;
+
+  if (tree.images && Array.isArray(tree.images) && tree.images.length > 0) {
+    let firstImg = tree.images[0];
+    if (typeof firstImg === 'object' && firstImg?.url) firstImg = firstImg.url;
+    if (typeof firstImg === 'string' && firstImg.trim() !== '') {
+      let img = firstImg.trim();
+      if (img.startsWith('/uploads/')) img = `${API_URL}${img}`;
+      return img;
+    }
+  }
+
   // Always display the actual uploaded image
   if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
     let img = tree.image.trim();
@@ -44,6 +60,7 @@ const getTreeDisplayImage = (tree) => {
   }
   // Species image fallback only when no image was uploaded
   const nameStr = `${tree.name || ''} ${tree.scientificName || ''} ${tree.family || ''}`.toLowerCase();
+  if (nameStr.includes('chiku') || nameStr.includes('sapota') || nameStr.includes('manilkara') || nameStr.includes('zapota')) return speciesImages.chiku;
   if (nameStr.includes('mango') || nameStr.includes('mangifera')) return speciesImages.mango;
   if (nameStr.includes('oak')) return speciesImages.oak;
   if (nameStr.includes('neem') || nameStr.includes('azadirachta')) return speciesImages.neem;
@@ -81,6 +98,306 @@ const resolveImageUrl = (rawUrl) => {
   return `${apiBase}/uploads/${cleanUrl.split('/').pop()}`;
 };
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SubscriptionsTabPanel — standalone component to manage hooks for the tab
+// ─────────────────────────────────────────────────────────────────────────────
+function SubscriptionsTabPanel({ user, onTabChange }) {
+  const [subs, setSubs] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [expandedId, setExpandedId] = React.useState(null);
+  const [renewingId, setRenewingId] = React.useState(null);
+  const [cancellingId, setCancellingId] = React.useState(null);
+
+  const userId = user?.id || user?._id || user?.userId;
+  const userEmail = user?.email || '';
+
+  React.useEffect(() => {
+    if (!userId && !userEmail) { setLoading(false); return; }
+    fetch(`${API_URL}/api/subscriptions/my?userId=${encodeURIComponent(userId || '')}&userEmail=${encodeURIComponent(userEmail || '')}`)
+      .then(r => r.json())
+      .then(data => { setSubs(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [userId, userEmail]);
+
+  const loadRazorpay = () => new Promise(resolve => {
+    if (window.Razorpay) return resolve(true);
+    const s = document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+
+  const handleRenew = async (sub) => {
+    setRenewingId(sub._id);
+    try {
+      const ok = await loadRazorpay();
+      if (!ok) throw new Error('Razorpay SDK could not be loaded');
+
+      const orderRes = await fetch(`${API_URL}/api/subscriptions/${sub._id}/renew-order`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) throw new Error(orderData.error || 'Could not create renewal order');
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'TreeCanopy Management',
+        description: `Renewal – ${sub.treeName}`,
+        order_id: orderData.orderId,
+        handler: async (response) => {
+          try {
+            const vRes = await fetch(`${API_URL}/api/subscriptions/${sub._id}/verify-renewal`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(response)
+            });
+            const vData = await vRes.json();
+            if (!vRes.ok) throw new Error(vData.error);
+            setSubs(prev => prev.map(s => s._id === sub._id ? vData.subscription : s));
+            alert('✅ Renewal confirmed! Your subscription has been extended.');
+          } catch (err) { alert('Renewal verification failed: ' + err.message); }
+          finally { setRenewingId(null); }
+        },
+        prefill: { name: user?.name || '', email: user?.email || '' },
+        theme: { color: '#10b981' },
+        modal: { ondismiss: () => setRenewingId(null) }
+      };
+      new window.Razorpay(options).open();
+    } catch (err) { alert(err.message); setRenewingId(null); }
+  };
+
+  const handleCancel = async (sub) => {
+    if (!window.confirm(`Cancel your ${sub.plan || 'self'} subscription for ${sub.treeName}? This action cannot be undone.`)) return;
+    setCancellingId(sub._id);
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/${sub._id}/cancel`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSubs(prev => prev.map(s => s._id === sub._id ? data.subscription : s));
+    } catch (err) { alert(err.message); }
+    finally { setCancellingId(null); }
+  };
+
+  const statusColor = (s) => {
+    if (s === 'active') return { bg: 'rgba(16,185,129,0.15)', color: '#34d399', border: 'rgba(16,185,129,0.3)' };
+    if (s === 'assigned') return { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: 'rgba(59,130,246,0.3)' };
+    if (s === 'lapsed') return { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: 'rgba(245,158,11,0.3)' };
+    if (s === 'cancelled') return { bg: 'rgba(239,68,68,0.15)', color: '#f87171', border: 'rgba(239,68,68,0.3)' };
+    return { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8', border: 'rgba(100,116,139,0.3)' };
+  };
+
+  const taskStatusColor = (s) => {
+    if (s === 'Validated') return '#34d399';
+    if (s === 'Rejected') return '#f87171';
+    return '#fbbf24';
+  };
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 0', color: '#95d5b2' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🌳</div>
+        <p>Loading your subscriptions...</p>
+      </div>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 0' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔒</div>
+        <h3 style={{ color: '#34d399', margin: '0 0 8px' }}>Login Required</h3>
+        <p style={{ color: '#95d5b2' }}>Please log in to view your tree adoptions.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Header */}
+      <div style={{ background: 'linear-gradient(135deg, #043224 0%, #065f46 60%, #059669 100%)', borderRadius: '20px', padding: '28px 32px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h1 style={{ margin: '0 0 6px', fontSize: 'clamp(1.3rem, 3vw, 2rem)', fontWeight: 800 }}>🌳 My Adopted Trees</h1>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.95rem' }}>Manage your tree subscriptions, view care reports, and renew plans.</p>
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: '14px', padding: '12px 20px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.2)', minWidth: '100px' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 900 }}>{subs.filter(s => ['active','assigned'].includes(s.status)).length}</div>
+          <div style={{ fontSize: '0.78rem', opacity: 0.85 }}>Active Adoptions</div>
+        </div>
+      </div>
+
+      {subs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 24px', background: 'var(--bg-surface)', borderRadius: '20px', border: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '16px' }}>🌱</div>
+          <h3 style={{ color: '#34d399', margin: '0 0 8px', fontWeight: 800 }}>No Adoptions Yet</h3>
+          <p style={{ color: '#95d5b2', margin: '0 0 20px', fontSize: '0.95rem' }}>Adopt a tree from the Tree Database to start your journey as a Tree Guardian!</p>
+          <button
+            onClick={() => onTabChange && onTabChange('browse-trees')}
+            style={{ padding: '12px 28px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem', boxShadow: '0 4px 14px rgba(5,150,105,0.35)' }}
+          >
+            🌳 Browse Trees to Adopt
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {subs.map(sub => {
+            const sc = statusColor(sub.status);
+            const isExpanded = expandedId === sub._id;
+            const renewalDate = sub.nextRenewalDate ? new Date(sub.nextRenewalDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
+            const isLapsedOrCancelled = ['lapsed', 'cancelled'].includes(sub.status);
+            const canRenew = sub.adoptionType === 'subscription' && ['active', 'assigned', 'lapsed'].includes(sub.status);
+            const canCancel = !['cancelled'].includes(sub.status);
+
+            return (
+              <div key={sub._id} style={{ background: 'var(--bg-surface)', borderRadius: '18px', border: `1px solid ${isExpanded ? 'rgba(52,211,153,0.4)' : 'var(--border)'}`, overflow: 'hidden', transition: 'border-color 0.2s', boxShadow: isExpanded ? '0 8px 32px rgba(16,185,129,0.08)' : 'none' }}>
+                {/* Card Header */}
+                <div
+                  style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flexWrap: 'wrap' }}
+                  onClick={() => setExpandedId(isExpanded ? null : sub._id)}
+                >
+                  {/* Tree image */}
+                  <div style={{ width: '60px', height: '60px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)' }}>
+                    <img src={sub.treeImage || 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=80'} alt={sub.treeName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.src = 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=80'; }} />
+                  </div>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{sub.treeName}</span>
+                      <span style={{ background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase' }}>{sub.status}</span>
+                      {sub.adoptionType === 'subscription' && (
+                        <span style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700 }}>{sub.plan === 'monthly' ? 'Monthly ₹500' : 'Yearly ₹6,000'}</span>
+                      )}
+                      {sub.adoptionType === 'self' && (
+                        <span style={{ background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.25)', padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700 }}>Self Adopted</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      {sub.treeLocation && <span>📍 {sub.treeLocation}</span>}
+                      {sub.treeScientificName && <span style={{ fontStyle: 'italic' }}>{sub.treeScientificName}</span>}
+                    </div>
+                    {renewalDate && !isLapsedOrCancelled && (
+                      <div style={{ fontSize: '0.78rem', color: '#fbbf24', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        🗓️ Renewal: {renewalDate}
+                      </div>
+                    )}
+                    {sub.assignedCutterName && (
+                      <div style={{ fontSize: '0.78rem', color: '#60a5fa', marginTop: '4px' }}>✂️ Tree Cutter: {sub.assignedCutterName}</div>
+                    )}
+                    {sub.certificateNumber && (
+                      <div style={{ fontSize: '0.75rem', color: '#95d5b2', marginTop: '2px' }}>🏅 Certificate: {sub.certificateNumber}</div>
+                    )}
+                  </div>
+                  {/* Actions */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {canRenew && (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleRenew(sub); }}
+                          disabled={renewingId === sub._id}
+                          style={{ padding: '7px 14px', borderRadius: '9px', border: 'none', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {renewingId === sub._id ? '⏳ Processing...' : '🔄 Renew'}
+                        </button>
+                      )}
+                      {canCancel && (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleCancel(sub); }}
+                          disabled={cancellingId === sub._id}
+                          style={{ padding: '7px 14px', borderRadius: '9px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {cancellingId === sub._id ? '...' : 'Cancel'}
+                        </button>
+                      )}
+                    </div>
+                    <span style={{ fontSize: '0.8rem', color: '#95d5b2', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {isExpanded ? '▲ Hide Details' : '▼ View Care Reports'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Expanded: Care Tasks */}
+                {isExpanded && (
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '20px 24px' }}>
+                    <h4 style={{ margin: '0 0 16px', color: '#34d399', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      📸 Care Activity Log
+                      <span style={{ background: 'rgba(52,211,153,0.12)', color: '#95d5b2', padding: '2px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
+                        {sub.careTasks?.length || 0} records
+                      </span>
+                    </h4>
+                    {!sub.careTasks || sub.careTasks.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '28px 0', color: '#95d5b2', fontSize: '0.9rem' }}>
+                        <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🌿</div>
+                        No care tasks recorded yet. A cutter will begin uploading proof photos once assigned.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+                        {sub.careTasks.slice().reverse().map((task, i) => (
+                          <div key={i} style={{ background: 'var(--bg-elevated, #061a14)', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border)', transition: 'transform 0.2s' }}>
+                            {task.proofImageUrl ? (
+                              <div style={{ height: '130px', overflow: 'hidden', cursor: 'pointer' }} onClick={() => window.open(task.proofImageUrl, '_blank')}>
+                                <img src={task.proofImageUrl} alt="care proof" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }} onMouseEnter={e => e.target.style.transform = 'scale(1.07)'} onMouseLeave={e => e.target.style.transform = 'scale(1)'} />
+                              </div>
+                            ) : (
+                              <div style={{ height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(52,211,153,0.05)', color: '#95d5b2', fontSize: '2rem' }}>🌱</div>
+                            )}
+                            <div style={{ padding: '12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{task.taskType}</span>
+                                <span style={{ color: taskStatusColor(task.status), fontSize: '0.72rem', fontWeight: 800, background: `${taskStatusColor(task.status)}22`, padding: '2px 8px', borderRadius: '8px' }}>{task.status}</span>
+                              </div>
+                              {task.description && <p style={{ margin: '0 0 6px', fontSize: '0.78rem', color: '#95d5b2', lineHeight: 1.4 }}>{task.description}</p>}
+                              <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                {task.uploadedByName && <span>By: {task.uploadedByName}</span>}
+                                {task.uploadedAt && <span>{new Date(task.uploadedAt).toLocaleDateString('en-IN')}</span>}
+                                {task.validationNote && <span style={{ color: '#f87171' }}>Note: {task.validationNote}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Payment History */}
+                    {sub.paymentHistory && sub.paymentHistory.length > 0 && (
+                      <div style={{ marginTop: '20px' }}>
+                        <h4 style={{ margin: '0 0 12px', color: '#818cf8', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>💳 Payment History</h4>
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                            <thead>
+                              <tr style={{ background: 'rgba(99,102,241,0.08)' }}>
+                                {['Plan', 'Amount', 'Paid On', 'Period'].map(h => (
+                                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#818cf8', fontWeight: 700, borderBottom: '1px solid rgba(99,102,241,0.2)' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sub.paymentHistory.slice().reverse().map((p, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td style={{ padding: '8px 12px', color: '#a5b4fc', textTransform: 'capitalize' }}>{p.plan}</td>
+                                  <td style={{ padding: '8px 12px', color: '#34d399', fontWeight: 700 }}>₹{p.amount?.toLocaleString('en-IN')}</td>
+                                  <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-IN') : '-'}</td>
+                                  <td style={{ padding: '8px 12px', color: '#94a3b8' }}>
+                                    {p.periodStart ? new Date(p.periodStart).toLocaleDateString('en-IN', { day:'2-digit', month:'short' }) : ''} – {p.periodEnd ? new Date(p.periodEnd).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : ''}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [tickets, setTickets] = useState([]);
   const [formData, setFormData] = useState({
@@ -104,10 +421,6 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [treeHealthFilter, setTreeHealthFilter] = useState('all');
   const [favTreeId, setFavTreeId] = useState(() => localStorage.getItem('citizenFavTree') || null);
 
-  // Adoption modal state
-  const [adoptionModalTree, setAdoptionModalTree] = useState(null);
-  const [adoptionNickname, setAdoptionNickname] = useState('');
-  const [submittingAdoption, setSubmittingAdoption] = useState(false);
 
   // Enhanced Green Rewards & Verification System State
   const [rewardsList, setRewardsList] = useState([]);
@@ -202,6 +515,14 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [careActionLoading, setCareActionLoading] = useState(false);
   const [careAlert, setCareAlert] = useState('');
   const [scanModalOpen, setScanModalOpen] = useState(false);
+
+  // Tree Adoption Modal State
+  const [adoptionModalTree, setAdoptionModalTree] = useState(null);
+  const [adoptionNickname, setAdoptionNickname] = useState('');
+  const [submittingAdoption, setSubmittingAdoption] = useState(false);
+  const [adoptPlan, setAdoptPlan] = useState('self'); // 'self', 'monthly', 'yearly'
+  const [pledgeAgreed, setPledgeAgreed] = useState(false);
+  const [showPledgeModal, setShowPledgeModal] = useState(false);
 
   // Profile Management State
   const [profileData, setProfileData] = useState(() => {
@@ -378,9 +699,9 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   };
 
   const fetchAdoptions = () => {
-    if (!effectiveUserId) return;
+    if (!effectiveUserId && !effectiveUserEmail) return;
     setAdoptionsLoading(true);
-    fetch(`${API_URL}/api/adoptions/my-adoptions?userId=${encodeURIComponent(effectiveUserId)}`)
+    fetch(`${API_URL}/api/adoptions/my-adoptions?userId=${encodeURIComponent(effectiveUserId)}&userEmail=${encodeURIComponent(effectiveUserEmail)}`)
       .then(res => res.json())
       .then(data => {
         setAdoptions(data.adoptions || []);
@@ -404,37 +725,115 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
     if (e && e.stopPropagation) e.stopPropagation();
     setAdoptionModalTree(tree);
     setAdoptionNickname(tree?.name || '');
+    setAdoptPlan('self');
+    setPledgeAgreed(false);
   };
 
-  const submitTreeAdoption = async () => {
+  const handleConfirmAdoptionClick = () => {
+    if (adoptPlan === 'self') {
+      setShowPledgeModal(true);
+    } else {
+      executePaidAdoption();
+    }
+  };
+
+  const executeSelfAdopt = async () => {
     if (!adoptionModalTree) return;
     setSubmittingAdoption(true);
     try {
-      const res = await fetch(`${API_URL}/api/adoptions/adopt`, {
+      const res = await fetch(`${API_URL}/api/subscriptions/self-adopt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: effectiveUserId,
-          userName: effectiveUserName,
           userEmail: effectiveUserEmail,
+          userName: effectiveUserName,
           treeId: adoptionModalTree._id || adoptionModalTree.id,
           treeName: adoptionModalTree.name,
           treeScientificName: adoptionModalTree.scientificName,
-          treeFamily: adoptionModalTree.family,
-          treeLocation: adoptionModalTree.origin || 'Udupi Canopy',
+          treeLocation: adoptionModalTree.origin || 'Udupi Zone',
           treeImage: adoptionModalTree.image || '',
           nickname: adoptionNickname.trim() || adoptionModalTree.name
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.msg || 'Could not adopt tree');
-      alert(`🎉 ${data.msg}\nYou earned +${data.pointsAwarded || 100} Eco-Points! Check the "Green Rewards & My Trees" tab.`);
+      if (!res.ok) throw new Error(data.error || 'Could not complete self-adoption');
+      alert(`🌱 Self-Adoption Confirmed!\nCertificate Number: ${data.subscription?.certificateNumber || 'Generated'}\nYou earned +100 Eco-Points! View it under "My Subscriptions".`);
       setAdoptionModalTree(null);
+      setShowPledgeModal(false);
       fetchAdoptions();
       fetchLeaderboard();
-      if (onTabChange) onTabChange('rewards');
+      if (onTabChange) onTabChange('subscriptions');
     } catch (err) {
-      alert(err.message || 'Error adopting tree');
+      alert('Self-adoption error: ' + err.message);
+    } finally {
+      setSubmittingAdoption(false);
+    }
+  };
+
+  const executePaidAdoption = async () => {
+    if (!adoptionModalTree) return;
+    setSubmittingAdoption(true);
+    try {
+      const initRes = await fetch(`${API_URL}/api/subscriptions/create-checkout-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: effectiveUserId,
+          userEmail: effectiveUserEmail,
+          userName: effectiveUserName,
+          treeId: adoptionModalTree._id || adoptionModalTree.id,
+          treeName: adoptionModalTree.name,
+          treeScientificName: adoptionModalTree.scientificName,
+          treeLocation: adoptionModalTree.origin || 'Udupi Zone',
+          treeImage: adoptionModalTree.image || '',
+          plan: adoptPlan,
+          nickname: adoptionNickname.trim() || adoptionModalTree.name
+        })
+      });
+      const initData = await initRes.json();
+      if (!initRes.ok) throw new Error(initData.error || 'Failed to initiate payment');
+
+      if (!window.Razorpay) {
+        throw new Error('Razorpay SDK failed to load. Please check network connection.');
+      }
+
+      const options = {
+        key: initData.keyId,
+        amount: initData.amount,
+        currency: initData.currency,
+        name: 'Udupi TreeCanopy Management',
+        description: `Tree Adoption - ${adoptionModalTree.name} (${adoptPlan.toUpperCase()})`,
+        order_id: initData.orderId,
+        handler: async function (response) {
+          try {
+            const vRes = await fetch(`${API_URL}/api/subscriptions/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(response)
+            });
+            const vData = await vRes.json();
+            if (!vRes.ok) throw new Error(vData.error || 'Payment verification failed');
+            alert(`🎉 Payment Successful! Tree Adopted.\nCertificate Number: ${vData.subscription?.certificateNumber || 'Generated'}`);
+            setAdoptionModalTree(null);
+            fetchAdoptions();
+            fetchLeaderboard();
+            if (onTabChange) onTabChange('subscriptions');
+          } catch (verr) {
+            alert('Verification Error: ' + verr.message);
+          }
+        },
+        prefill: {
+          name: effectiveUserName,
+          email: effectiveUserEmail
+        },
+        theme: { color: '#059669' }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert('Adoption Error: ' + err.message);
     } finally {
       setSubmittingAdoption(false);
     }
@@ -448,16 +847,16 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   };
 
   const fetchMyRedemptions = () => {
-    if (!effectiveUserId) return;
-    fetch(`${API_URL}/api/rewards/my-redemptions?userId=${effectiveUserId}`)
+    if (!effectiveUserId && !effectiveUserEmail) return;
+    fetch(`${API_URL}/api/rewards/my-redemptions?userId=${encodeURIComponent(effectiveUserId)}&userEmail=${encodeURIComponent(effectiveUserEmail)}`)
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setMyRedemptions(data); })
       .catch(() => {});
   };
 
   const fetchPointsHistory = () => {
-    if (!effectiveUserId) return;
-    fetch(`${API_URL}/api/rewards/points-history?userId=${effectiveUserId}`)
+    if (!effectiveUserId && !effectiveUserEmail) return;
+    fetch(`${API_URL}/api/rewards/points-history?userId=${encodeURIComponent(effectiveUserId)}&userEmail=${encodeURIComponent(effectiveUserEmail)}`)
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data.transactions)) {
@@ -469,8 +868,8 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   };
 
   const fetchGoals = () => {
-    if (!effectiveUserId) return;
-    fetch(`${API_URL}/api/goals?userId=${effectiveUserId}`)
+    if (!effectiveUserId && !effectiveUserEmail) return;
+    fetch(`${API_URL}/api/goals?userId=${encodeURIComponent(effectiveUserId)}&userEmail=${encodeURIComponent(effectiveUserEmail)}`)
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setGoalsList(data); })
       .catch(() => {});
@@ -998,6 +1397,18 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
         </>
       )}
 
+      {/* ── Citizen Green Marketplace / Compost Store Tab ─────────────── */}
+      {activeTab === 'store' && (
+        <CitizenEcoStore
+          user={user}
+          userEcoPoints={rewardsStats.totalPoints || netEcoPoints || 0}
+          onPointsUpdated={(rem) => {
+            setRewardsStats(prev => ({ ...prev, totalPoints: rem }));
+            setNetEcoPoints(rem);
+          }}
+        />
+      )}
+
       {/* ── Green Rewards & Tree Adoption Tab ────────────────────────── */}
       {activeTab === 'rewards' && (
         <div className="green-rewards-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1100,7 +1511,9 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                 </p>
               </div>
               <button
-                onClick={() => onTabChange && onTabChange('browse-trees')}
+                onClick={() => {
+                  window.location.href = '/view-tree';
+                }}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '6px',
                   background: '#046b4e', color: '#ffffff', padding: '9px 18px',
@@ -1120,7 +1533,7 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                   Browse our city inventory to adopt a tree in your neighborhood. You will earn +100 Eco-Points and receive a formal Tree Guardian Certificate!
                 </p>
                 <button
-                  onClick={() => onTabChange && onTabChange('browse-trees')}
+                  onClick={() => { window.location.href = '/view-tree'; }}
                   style={{ background: '#043224', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}
                 >
                   Explore Trees to Adopt
@@ -1174,9 +1587,24 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
 
                       {/* Card Content */}
                       <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <h4 style={{ margin: '0 0 2px', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                          {item.nickname ? `"${item.nickname}"` : item.treeName}
-                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+                          <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                            {item.nickname ? `"${item.nickname}"` : item.treeName}
+                          </h4>
+                          {item.adoptionType === 'self' || item.planType === 'self' || (!item.planType && !item.subscriptionPlan && !item.plan && (!item.amount || item.amount === 0) && item.adoptionType !== 'subscription') ? (
+                            <span style={{ background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700 }}>
+                              🌱 Self Cared (Pledge)
+                            </span>
+                          ) : item.planType === 'yearly' || item.subscriptionPlan === 'yearly' || item.plan === 'yearly' || item.amount === 6000 ? (
+                            <span style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '12px', padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700 }}>
+                              🏆 Yearly Subscribed (₹6,000/yr)
+                            </span>
+                          ) : (
+                            <span style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700 }}>
+                              💳 Monthly Subscribed (₹500/mo)
+                            </span>
+                          )}
+                        </div>
                         <p style={{ margin: '0 0 8px', fontStyle: 'italic', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                           {item.treeScientificName || item.treeName}
                         </p>
@@ -2520,7 +2948,29 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                             {tree.benefits.length > 1 && <span style={{ fontSize: '0.68rem', color: '#6b7280', background: '#f9fafb', padding: '1px 7px', borderRadius: '20px' }}>+{tree.benefits.length - 1} more</span>}
                           </div>
                         )}
-                        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <button
+                            onClick={(e) => handleAdoptTree(tree, e)}
+                            style={{
+                              background: 'linear-gradient(135deg, #059669, #047857)',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '6px 14px',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              boxShadow: '0 2px 8px rgba(5,150,105,0.25)',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                          >
+                            <Heart size={13} fill="#ffffff" /> 🌱 Adopt Tree
+                          </button>
                           <span style={{ fontSize: '0.78rem', color: '#065f46', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px' }}>View Details <ChevronRight size={13} /></span>
                         </div>
                       </div>
@@ -2531,6 +2981,12 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
             )}
           </div>
         );
+      })()}
+
+      {/* ── My Subscriptions Tab ───────────────────────────────────────── */}
+      {activeTab === 'subscriptions' && (() => {
+        // Inline hook-compatible state via a sub-component pattern rendered inline
+        return <SubscriptionsTabPanel user={user} onTabChange={onTabChange} />;
       })()}
 
       {/* ── Citizen Profile Tab ───────────────────────────────────── */}
@@ -3044,63 +3500,66 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
         onClose={() => setScanModalOpen(false)}
       />
 
-      {/* Tree Adoption Custom Popup Modal */}
+      {/* ── Tree Adoption & Subscription Selection Modal ── */}
       {adoptionModalTree && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
-        }}>
-          <div style={{
-            background: 'var(--bg-surface, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: '20px', width: '100%', maxWidth: '480px',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
-            overflow: 'hidden', animation: 'fadeIn 0.25s ease-out'
-          }}>
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(15, 23, 42, 0.82)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+          }}
+          onClick={() => setAdoptionModalTree(null)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface, #ffffff)',
+              borderRadius: '24px', maxWidth: '520px', width: '100%',
+              overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              border: '1px solid var(--border, #e2e8f0)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div style={{
-              background: 'linear-gradient(135deg, #043224 0%, #065f46 100%)',
-              color: '#ffffff', padding: '20px 24px',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              background: 'linear-gradient(135deg, #043224 0%, #065f46 60%, #059669 100%)',
+              padding: '20px 24px', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Sparkles size={22} color="#fde68a" />
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Adopt &amp; Protect Tree</h3>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>🌱 Adopt & Protect Tree</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>Select your preferred adoption & care plan</p>
               </div>
               <button
                 type="button"
                 onClick={() => setAdoptionModalTree(null)}
-                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', opacity: 0.8 }}
+                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#ffffff', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Tree Details Card */}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Tree Details Summary Card */}
               <div style={{
                 display: 'flex', gap: '14px', alignItems: 'center',
                 background: 'var(--bg-page, #f8fafc)', padding: '12px 16px',
-                borderRadius: '12px', border: '1px solid var(--border, #e2e8f0)'
+                borderRadius: '14px', border: '1px solid var(--border, #e2e8f0)'
               }}>
-                {adoptionModalTree.image ? (
-                  <img src={getTreeDisplayImage(adoptionModalTree)} alt={adoptionModalTree.name} style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '64px', height: '64px', borderRadius: '10px', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <TreePine size={32} color="#047857" />
-                  </div>
-                )}
-                <div>
+                <img
+                  src={getTreeDisplayImage(adoptionModalTree)}
+                  alt={adoptionModalTree.name}
+                  style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }}
+                  onError={(e) => { e.currentTarget.src = speciesImages.default; }}
+                />
+                <div style={{ flex: 1 }}>
                   <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary, #0f172a)' }}>
                     {adoptionModalTree.name}
                   </h4>
                   <i style={{ fontSize: '0.82rem', color: 'var(--text-muted, #64748b)' }}>
                     {adoptionModalTree.scientificName || adoptionModalTree.family || 'Botanical Specimen'}
                   </i>
-                  <div style={{ marginTop: '6px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#047857', background: '#d1fae5', padding: '3px 8px', borderRadius: '20px' }}>
+                  <div style={{ marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#047857', background: '#d1fae5', padding: '2px 8px', borderRadius: '20px' }}>
                       ✨ +100 Eco-Points Reward
                     </span>
                   </div>
@@ -3109,7 +3568,7 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
 
               {/* Nickname Input */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary, #0f172a)', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary, #0f172a)', marginBottom: '6px' }}>
                   Give Your Tree a Nickname ✏️
                 </label>
                 <input
@@ -3126,29 +3585,97 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                 />
               </div>
 
-              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted, #64748b)', lineHeight: 1.5 }}>
-                🌱 By adopting this tree, you become an official CanopyGuard Guardian! You earn <b>+100 Eco-Points</b> instantly towards green certificates and rewards.
-              </p>
+              {/* Plan Options Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary, #0f172a)', marginBottom: '8px' }}>
+                  Choose Adoption Type:
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* Self Adoption */}
+                  <div
+                    onClick={() => setAdoptPlan('self')}
+                    style={{
+                      padding: '12px 16px', borderRadius: '12px',
+                      border: `2px solid ${adoptPlan === 'self' ? '#059669' : '#e2e8f0'}`,
+                      background: adoptPlan === 'self' ? '#f0fdf4' : '#ffffff',
+                      cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '12px'
+                    }}
+                  >
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: adoptPlan === 'self' ? '#059669' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'self' ? <Check size={16} color="#fff" /> : <span style={{ color: '#64748b', fontSize: '0.7rem', fontWeight: 800 }}>S</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>🌱 Self Adoption (Free Pledge)</div>
+                      <div style={{ color: '#64748b', fontSize: '0.78rem' }}>You personally water and care for this tree. Solemn pledge required.</div>
+                    </div>
+                    <div style={{ fontWeight: 800, color: '#059669', fontSize: '0.95rem' }}>FREE</div>
+                  </div>
+
+                  {/* Monthly Sub */}
+                  <div
+                    onClick={() => setAdoptPlan('monthly')}
+                    style={{
+                      padding: '12px 16px', borderRadius: '12px',
+                      border: `2px solid ${adoptPlan === 'monthly' ? '#2563eb' : '#e2e8f0'}`,
+                      background: adoptPlan === 'monthly' ? '#eff6ff' : '#ffffff',
+                      cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '12px'
+                    }}
+                  >
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: adoptPlan === 'monthly' ? '#2563eb' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'monthly' ? <Check size={16} color="#fff" /> : <span style={{ color: '#64748b', fontSize: '0.7rem', fontWeight: 800 }}>M</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>💳 Monthly Care Plan</div>
+                      <div style={{ color: '#64748b', fontSize: '0.78rem' }}>Municipal arborists handle scheduled watering & maintenance</div>
+                    </div>
+                    <div style={{ fontWeight: 800, color: '#2563eb', fontSize: '0.95rem' }}>₹500/mo</div>
+                  </div>
+
+                  {/* Yearly Sub */}
+                  <div
+                    onClick={() => setAdoptPlan('yearly')}
+                    style={{
+                      padding: '12px 16px', borderRadius: '12px',
+                      border: `2px solid ${adoptPlan === 'yearly' ? '#d97706' : '#e2e8f0'}`,
+                      background: adoptPlan === 'yearly' ? '#fffbeb' : '#ffffff',
+                      cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '12px', position: 'relative'
+                    }}
+                  >
+                    <div style={{ position: 'absolute', top: '-8px', right: '12px', background: '#d97706', color: '#fff', padding: '1px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800 }}>SAVE 17%</div>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: adoptPlan === 'yearly' ? '#d97706' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'yearly' ? <Check size={16} color="#fff" /> : <span style={{ color: '#64748b', fontSize: '0.7rem', fontWeight: 800 }}>Y</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>🏆 Yearly Care Plan</div>
+                      <div style={{ color: '#64748b', fontSize: '0.78rem' }}>Priority municipal maintenance + Annual Guardian Certificate</div>
+                    </div>
+                    <div style={{ fontWeight: 800, color: '#d97706', fontSize: '0.95rem' }}>₹6,000/yr</div>
+                  </div>
+                </div>
+              </div>
 
               {/* Modal Actions */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                 <button
                   type="button"
-                  className="cg-btn outline"
                   onClick={() => setAdoptionModalTree(null)}
                   disabled={submittingAdoption}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, padding: '11px', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#fff', color: '#64748b', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="cg-btn primary"
-                  onClick={submitTreeAdoption}
+                  onClick={handleConfirmAdoptionClick}
                   disabled={submittingAdoption}
-                  style={{ flex: 2 }}
+                  style={{
+                    flex: 2, padding: '11px', borderRadius: '10px', border: 'none',
+                    background: adoptPlan === 'self' ? 'linear-gradient(135deg, #059669, #047857)' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    color: '#fff', fontWeight: 700, cursor: submittingAdoption ? 'not-allowed' : 'pointer', fontSize: '0.88rem',
+                    boxShadow: '0 4px 12px rgba(5,150,105,0.3)'
+                  }}
                 >
-                  {submittingAdoption ? 'Adopting...' : '🎉 Confirm Adoption (+100 Pts)'}
+                  {submittingAdoption ? 'Processing...' : adoptPlan === 'self' ? 'Proceed to Solemn Pledge' : `Pay & Adopt (${adoptPlan === 'monthly' ? '₹500' : '₹6,000'})`}
                 </button>
               </div>
             </div>

@@ -6,6 +6,316 @@ const TreeRegistration = require('../models/TreeRegistration');
 const Notification = require('../models/Notification');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+
+// @route   GET /api/trees/lookup?name=mango
+// @desc    Proxy search to Perenual plant API and return normalized results for auto-fill
+// @access  Public
+router.get('/lookup', async (req, res) => {
+  const name = (req.query.name || '').trim();
+  if (!name || name.length < 2) {
+    return res.status(400).json({ msg: 'Query too short', results: [] });
+  }
+
+  const apiKey = process.env.PERENUAL_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ msg: 'Perenual API key not configured', results: [] });
+  }
+
+  const url = `https://perenual.com/api/species-list?key=${apiKey}&q=${encodeURIComponent(name)}&page=1`;
+
+  try {
+    const data = await new Promise((resolve, reject) => {
+      https.get(url, (response) => {
+        let raw = '';
+        response.on('data', chunk => raw += chunk);
+        response.on('end', () => {
+          try { resolve(JSON.parse(raw)); }
+          catch (e) { reject(new Error('Invalid JSON from Perenual')); }
+        });
+      }).on('error', reject);
+    });
+
+    if (!data || !data.data) {
+      return res.json({ results: [] });
+    }
+
+    // Normalize to what the frontend expects
+    const results = data.data.slice(0, 8).map(plant => ({
+      id: plant.id,
+      common_name: plant.common_name || '',
+      scientific_name: Array.isArray(plant.scientific_name) ? plant.scientific_name[0] : (plant.scientific_name || ''),
+      family: plant.family || '',
+      image_url: plant.default_image?.medium_url || plant.default_image?.regular_url || plant.default_image?.original_url || '',
+      sunlight: Array.isArray(plant.sunlight) ? plant.sunlight.join(', ') : (plant.sunlight || ''),
+      watering: plant.watering || '',
+      growth_rate: plant.growth_rate || '',
+      tropical: plant.tropical || false,
+      leaf_color: Array.isArray(plant.leaf_color) ? plant.leaf_color.join(', ') : '',
+      flowering_season: plant.flowering_season || '',
+      description: plant.description || '',
+    }));
+
+    return res.json({ results });
+  } catch (err) {
+    console.error('[Perenual Lookup Error]', err.message);
+    return res.status(500).json({ msg: 'Perenual lookup failed', results: [], error: err.message });
+  }
+});
+
+// @route   POST /api/trees/ai-autofill
+// @desc    Use AI / OpenRouter (or smart taxonomy lookup) to generate complete tree details by name
+// @access  Public
+router.post('/ai-autofill', async (req, res) => {
+  const { name } = req.body;
+  if (!name || name.trim().length < 2) {
+    return res.status(400).json({ msg: 'Please enter a valid tree name' });
+  }
+
+  const cleanName = name.trim();
+
+  // 1. Built-in instant taxonomy dictionary for instant response on popular Indian/global species
+  const knownTrees = {
+    'chiku': {
+      scientificName: 'Manilkara zapota',
+      family: 'Sapotaceae',
+      category: 'Tropical Evergreen Fruit Tree',
+      height: '10 – 30 m',
+      lifespan: '100 – 300 years',
+      canopySpread: '8 – 15 m',
+      healthScore: 90,
+      canopyCoverage: 85,
+      waterRequirement: 'Medium',
+      sunlight: 'Full Sun',
+      growthRate: 'Slow to Moderate',
+      floweringSeason: 'All Year (Peak Mar – May)',
+      fruitingSeason: 'May – September',
+      nativeRegion: 'Central America, Southern Mexico & South Asia',
+      iucnStatus: 'Least Concern',
+      flowerColor: 'White, Bell-shaped',
+      leafType: 'Simple, Glossy, Elliptic',
+      soilType: 'Deep, Well-drained Loamy Soil',
+      climate: 'Tropical monsoonal',
+      description: 'Chiku (Sapodilla / Manilkara zapota) is a long-lived, evergreen tree native to southern Mexico and Central America, widely cultivated in India and tropical regions. It produces sweet, grainy brown fruit with a malt-caramel flavor and dense dark green glossy foliage.',
+      culturalUses: 'High nutritional edible fruit rich in dietary fiber and tannins; historically tapped for chicle latex used in chewing gum manufacturing.',
+      benefits: 'Substantial canopy cooling, Soil erosion prevention, Habitat for urban birds & pollinators',
+      diseases: 'Leaf spot, Root rot, Powdery mildew',
+      pests: 'Sapodilla moth, Scale insects, Mealybugs',
+      image: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80'
+    },
+    'sapota': {
+      scientificName: 'Manilkara zapota',
+      family: 'Sapotaceae',
+      category: 'Tropical Evergreen Fruit Tree',
+      height: '10 – 30 m',
+      lifespan: '100 – 300 years',
+      canopySpread: '8 – 15 m',
+      healthScore: 90,
+      canopyCoverage: 85,
+      waterRequirement: 'Medium',
+      sunlight: 'Full Sun',
+      growthRate: 'Slow to Moderate',
+      floweringSeason: 'All Year (Peak Mar – May)',
+      fruitingSeason: 'May – September',
+      nativeRegion: 'Central America & South Asia',
+      iucnStatus: 'Least Concern',
+      flowerColor: 'White, Bell-shaped',
+      leafType: 'Simple, Glossy, Elliptic',
+      soilType: 'Deep, Well-drained Loamy Soil',
+      climate: 'Tropical monsoonal',
+      description: 'Sapota (Chiku) is a sturdy tropical fruit tree valued for its sweet, brownish, sugary pulp and dense shade canopy.',
+      culturalUses: 'Popular dessert fruit; bark contains latex used in chicle production.',
+      benefits: 'Microclimate cooling, Bird nesting site, CO2 sequestration',
+      diseases: 'Leaf spot, Root rot',
+      pests: 'Scale insects, Mealybugs',
+      image: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80'
+    },
+    'mango': {
+      scientificName: 'Mangifera indica',
+      family: 'Anacardiaceae',
+      category: 'Evergreen Fruit Tree / Canopy Shade',
+      height: '15 – 30 m',
+      lifespan: '100 – 300 years',
+      canopySpread: '10 – 20 m',
+      healthScore: 92,
+      canopyCoverage: 90,
+      waterRequirement: 'Medium',
+      sunlight: 'Full Sun',
+      growthRate: 'Moderate to Fast',
+      floweringSeason: 'Jan – Mar',
+      fruitingSeason: 'Apr – Jul',
+      nativeRegion: 'South Asia (India, Myanmar)',
+      iucnStatus: 'Least Concern',
+      flowerColor: 'Yellowish-pink in panicles',
+      leafType: 'Simple, Lanceolate, Leather-like',
+      soilType: 'Deep alluvial loamy soil',
+      climate: 'Tropical to Subtropical',
+      description: 'Mangifera indica, commonly known as mango, is a species of flowering plant in the sumac and cashew family Anacardiaceae. It is native to South Asia and produces the national fruit of India.',
+      culturalUses: 'Culinary uses (ripe & raw mangoes), leaf torans for traditional rituals, timber for rustic furniture.',
+      benefits: 'High carbon sequestration, Urban cooling, Dense shade canopy, Pollinator food source',
+      diseases: 'Anthracnose, Powdery mildew, Mango malformation',
+      pests: 'Mango hopper, Stem borer, Fruit fly'
+    },
+    'banyan': {
+      scientificName: 'Ficus benghalensis',
+      family: 'Moraceae',
+      category: 'Sacred / Massive Canopy Shade Tree',
+      height: '20 – 30 m',
+      lifespan: '200 – 500+ years',
+      canopySpread: '30 – 50 m',
+      healthScore: 95,
+      canopyCoverage: 98,
+      waterRequirement: 'Low (Established)',
+      sunlight: 'Full Sun',
+      growthRate: 'Slow to Moderate',
+      floweringSeason: 'Feb – May',
+      fruitingSeason: 'Apr – Jul',
+      nativeRegion: 'Indian Subcontinent',
+      iucnStatus: 'Least Concern',
+      flowerColor: 'Enclosed within fig syconia',
+      leafType: 'Large, Leathery, Oval',
+      soilType: 'Alluvial and loamy soil',
+      climate: 'Tropical monsoonal',
+      description: 'Ficus benghalensis, the Indian Banyan, is a tree native to the Indian Subcontinent. It is considered sacred in Hinduism and Buddhism, forming prop roots that develop into thick woody trunks over centuries.',
+      culturalUses: 'National Tree of India; sacred worship sites, shade assemblies, bark used in Ayurvedic formulations.',
+      benefits: 'Substantial canopy cooling, Nesting habitat for over 15 bird species, Prevents soil erosion, Traditional significance',
+      diseases: 'Leaf spot, Root rot',
+      pests: 'Banyan thrips, Scale insects'
+    },
+    'neem': {
+      scientificName: 'Azadirachta indica',
+      family: 'Meliaceae',
+      category: 'Medicinal / Evergreen Shade Tree',
+      height: '15 – 25 m',
+      lifespan: '150 – 300 years',
+      canopySpread: '10 – 18 m',
+      healthScore: 94,
+      canopyCoverage: 88,
+      waterRequirement: 'Low',
+      sunlight: 'Full Sun',
+      growthRate: 'Fast',
+      floweringSeason: 'Mar – May',
+      fruitingSeason: 'Jun – Aug',
+      nativeRegion: 'Indian Subcontinent & SE Asia',
+      iucnStatus: 'Least Concern',
+      flowerColor: 'Small White, Fragrant',
+      leafType: 'Pinnate, Serrated',
+      soilType: 'Well-drained sandy/clay soil',
+      climate: 'Tropical & Subtropical',
+      description: 'Azadirachta indica (Neem) is a fast-growing evergreen tree famous for its potent anti-bacterial, bio-pesticidal, and medicinal properties.',
+      culturalUses: 'Ayurvedic medicine, organic biopesticide, dental twigs (datun), skin care products.',
+      benefits: 'Air purification, Natural bio-pesticide, Anti-bacterial shade, Soil fertility enrichment',
+      diseases: 'Tip blight, Leaf spot',
+      pests: 'Neem tea mosquito bug, Scale insects'
+    }
+  };
+
+  const key = cleanName.toLowerCase();
+  for (const k in knownTrees) {
+    if (key.includes(k) || k.includes(key)) {
+      return res.json({ success: true, source: 'dictionary', data: knownTrees[k] });
+    }
+  }
+
+  // 2. Try OpenRouter AI for any other tree species
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'HTTP-Referer': 'https://treecanopy-management.local',
+          'X-Title': 'TreeCanopy AI AutoFill'
+        },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-3.3-70b-instruct:free',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a botanical and forestry expert. Respond ONLY with a valid JSON object (no markdown, no backticks, no text outside JSON) for the requested tree. JSON schema:
+{
+  "scientificName": "string",
+  "family": "string",
+  "category": "string",
+  "height": "string",
+  "lifespan": "string",
+  "canopySpread": "string",
+  "healthScore": 90,
+  "canopyCoverage": 85,
+  "waterRequirement": "Low | Medium | High",
+  "sunlight": "string",
+  "growthRate": "Slow | Moderate | Fast",
+  "floweringSeason": "string",
+  "fruitingSeason": "string",
+  "nativeRegion": "string",
+  "iucnStatus": "Least Concern | Vulnerable | Endangered | Near Threatened | Data Deficient",
+  "flowerColor": "string",
+  "leafType": "string",
+  "soilType": "string",
+  "climate": "string",
+  "description": "2-3 sentences botanical description",
+  "culturalUses": "1-2 sentences traditional or ecological uses",
+  "benefits": "comma-separated ecological benefits",
+  "diseases": "comma-separated susceptible diseases",
+  "pests": "comma-separated common pests"
+}`
+            },
+            {
+              role: 'user',
+              content: `Provide accurate botanical info for the tree: "${cleanName}"`
+            }
+          ],
+          temperature: 0.2
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const content = result.choices?.[0]?.message?.content || '';
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return res.json({ success: true, source: 'openrouter', data: parsed });
+        }
+      }
+    } catch (aiErr) {
+      console.error('[AI AutoFill Error]', aiErr.message);
+    }
+  }
+
+  // 3. Fallback generic response if offline
+  return res.json({
+    success: true,
+    source: 'fallback',
+    data: {
+      scientificName: `${cleanName.split(' ')[0]} species`,
+      family: 'Rosaceae / Fabaceae',
+      category: 'Canopy Shade Tree',
+      height: '10 – 25 m',
+      lifespan: '80 – 200 years',
+      canopySpread: '8 – 15 m',
+      healthScore: 90,
+      canopyCoverage: 80,
+      waterRequirement: 'Medium',
+      sunlight: 'Full Sun',
+      growthRate: 'Moderate',
+      floweringSeason: 'Spring – Summer',
+      fruitingSeason: 'Summer – Autumn',
+      nativeRegion: 'Tropical & Subtropical regions',
+      iucnStatus: 'Least Concern',
+      flowerColor: 'White / Yellow',
+      leafType: 'Simple, Ovate',
+      soilType: 'Well-drained loamy soil',
+      climate: 'Tropical monsoonal',
+      description: `${cleanName} is a broad-canopy tree species known for its environmental shade, carbon sequestration benefits, and dense foliage.`,
+      culturalUses: 'Landscaping, urban forestry shade, and erosion prevention.',
+      benefits: 'Substantial canopy cooling, CO2 absorption, Bird nesting site',
+      diseases: 'Leaf spot, Root rot',
+      pests: 'Scale insects, Aphids'
+    }
+  });
+});
 
 // @route   GET /api/trees
 // @desc    Get all tree inventory items
@@ -411,7 +721,7 @@ router.get('/', async (req, res) => {
           benefits: ['High culinary fruit production', 'Excellent windbreak and storm protection', 'Very high carbon storage capability', 'Deep shade reduces local ground heat'],
           diseases: ['Stem rot (monitored)'],
           pests: ['Tamarind seed borer'],
-          image: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=800&q=80',
+          image: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
           lat: 13.3215,
           lng: 74.8050,
           addedAt: '14 Aug 2026'
@@ -721,7 +1031,7 @@ router.get('/', async (req, res) => {
           benefits: ['High carbon capture volume', 'Thick microclimate temperature cooling', 'Culinary fruit production'],
           diseases: ['Bacterial canker'],
           pests: ['Scale insects'],
-          image: 'https://images.unsplash.com/photo-1596436889106-be35e843f974?auto=format&fit=crop&w=800&q=80',
+          image: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
           lat: 13.3380,
           lng: 74.7455,
           addedAt: '14 Aug 2026'
@@ -856,7 +1166,22 @@ router.get('/', async (req, res) => {
       trees = await Tree.find().sort({ createdAt: -1 });
     }
 
-    res.json(trees);
+    const Subscription = require('../models/Subscription');
+    const activeAdoptions = await Adoption.find({ status: 'Active' });
+    const activeSubs = await Subscription.find({ status: 'active' });
+
+    const adoptedTreeIds = new Set([
+      ...activeAdoptions.map(a => (a.treeId || '').toString()),
+      ...activeSubs.map(s => (s.treeId || '').toString())
+    ]);
+
+    const enrichedTrees = trees.map(t => {
+      const obj = t.toObject ? t.toObject() : { ...t };
+      const isAdopted = adoptedTreeIds.has(obj._id.toString()) || Boolean(obj.isAdopted);
+      return { ...obj, isAdopted };
+    });
+
+    res.json(enrichedTrees);
   } catch (err) {
     console.error('Error fetching/seeding trees:', err);
     res.status(500).json({ msg: 'Server error fetching trees' });
@@ -1744,5 +2069,100 @@ router.put('/register-proposals/:id/reject', async (req, res) => {
   }
 });
 
-module.exports = router;
+// @route   GET /api/trees/lookup?name=<query>
+// @desc    Auto-fill tree details from Perenual plant database
+// @access  Public
+router.get('/lookup', async (req, res) => {
+  const { name } = req.query;
+  if (!name || name.trim().length < 2) {
+    return res.status(400).json({ msg: 'Please provide a tree name (at least 2 characters)' });
+  }
 
+  const apiKey = process.env.PERENUAL_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ msg: 'Plant lookup API is not configured' });
+  }
+
+  try {
+    const searchUrl = `https://perenual.com/api/species-list?key=${apiKey}&q=${encodeURIComponent(name.trim())}&page=1`;
+    const response = await fetch(searchUrl);
+    if (!response.ok) {
+      return res.status(502).json({ msg: 'Plant database API unavailable' });
+    }
+    const data = await response.json();
+
+    if (!data.data || data.data.length === 0) {
+      return res.json({ results: [] });
+    }
+
+    // Map top 5 results to a clean structure
+    const results = data.data.slice(0, 5).map(plant => ({
+      id: plant.id,
+      common_name: plant.common_name || '',
+      scientific_name: Array.isArray(plant.scientific_name) ? plant.scientific_name[0] : (plant.scientific_name || ''),
+      family: plant.family || '',
+      origin: Array.isArray(plant.origin) ? plant.origin.join(', ') : (plant.origin || ''),
+      cycle: plant.cycle || '',
+      sunlight: Array.isArray(plant.sunlight) ? plant.sunlight.join(', ') : (plant.sunlight || ''),
+      watering: plant.watering || '',
+      growth_rate: plant.growth_rate || '',
+      maintenance: plant.maintenance || '',
+      leaf_color: Array.isArray(plant.leaf_color) ? plant.leaf_color.join(', ') : '',
+      flowers: plant.flowers || false,
+      flowering_season: plant.flowering_season || '',
+      fruit_edible: plant.fruit_edible || false,
+      description: plant.description || '',
+      image_url: plant.default_image ? (plant.default_image.medium_url || plant.default_image.original_url || plant.default_image.thumbnail || '') : '',
+      drought_tolerant: plant.drought_tolerant || false,
+      invasive: plant.invasive || false,
+      tropical: plant.tropical || false,
+    }));
+
+    return res.json({ results });
+  } catch (err) {
+    console.error('Perenual lookup error:', err.message);
+    return res.status(500).json({ msg: 'Failed to fetch plant data', error: err.message });
+  }
+});
+
+// @route   POST /api/trees/:id/images
+// @desc    Append image URLs to a tree's gallery
+// @access  Admin
+router.post('/:id/images', async (req, res) => {
+  try {
+    const { urls } = req.body; // array of image URLs
+    if (!Array.isArray(urls) || urls.length === 0) {
+      return res.status(400).json({ msg: 'urls array is required' });
+    }
+    const tree = await Tree.findByIdAndUpdate(
+      req.params.id,
+      { $push: { images: { $each: urls } } },
+      { new: true }
+    );
+    if (!tree) return res.status(404).json({ msg: 'Tree not found' });
+    res.json({ msg: `${urls.length} image(s) added to gallery`, images: tree.images });
+  } catch (err) {
+    res.status(500).json({ msg: 'Failed to add images', error: err.message });
+  }
+});
+
+// @route   DELETE /api/trees/:id/images/:index
+// @desc    Remove an image from tree gallery by index
+// @access  Admin
+router.delete('/:id/images/:index', async (req, res) => {
+  try {
+    const tree = await Tree.findById(req.params.id);
+    if (!tree) return res.status(404).json({ msg: 'Tree not found' });
+    const idx = parseInt(req.params.index);
+    if (isNaN(idx) || idx < 0 || idx >= (tree.images || []).length) {
+      return res.status(400).json({ msg: 'Invalid image index' });
+    }
+    tree.images.splice(idx, 1);
+    await tree.save();
+    res.json({ msg: 'Image removed from gallery', images: tree.images });
+  } catch (err) {
+    res.status(500).json({ msg: 'Failed to remove image', error: err.message });
+  }
+});
+
+module.exports = router;

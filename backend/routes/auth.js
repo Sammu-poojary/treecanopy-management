@@ -91,7 +91,21 @@ router.post('/google', async (req, res) => {
 // @access  Public
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, phone, password, role } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      password,
+      role,
+      businessName,
+      company,
+      businessType,
+      gstin,
+      tradeLicense,
+      panNumber,
+      authorizedPersonName,
+      address
+    } = req.body;
 
     if (!name || !email || !password || !phone) {
       return res.status(400).json({ msg: 'Please enter all fields' });
@@ -113,6 +127,7 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ msg: 'User with this email already exists' });
     }
 
+    const isTimberBuyer = role === 'Timber Buyer' || role === 'Timber Merchant';
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       name,
@@ -121,10 +136,20 @@ router.post('/register', async (req, res) => {
       password: hashedPassword,
       role: role || 'Citizen',
       status: role === 'Tree Cutter' ? 'Pending' : 'Verified',
+      businessName: businessName || company || (isTimberBuyer ? name : ''),
+      company: company || businessName || (isTimberBuyer ? name : ''),
+      businessType: businessType || (isTimberBuyer ? 'Sawmill / Lumber Mill' : ''),
+      gstin: gstin || '',
+      tradeLicense: tradeLicense || '',
+      panNumber: panNumber || '',
+      authorizedPersonName: authorizedPersonName || name,
+      address: address || '',
     });
 
     res.status(201).json({
-      msg: 'User registered successfully',
+      msg: isTimberBuyer
+        ? `Timber Merchant Account for "${user.businessName || user.name}" registered successfully!`
+        : 'User registered successfully',
       user: {
         id: user._id,
         name: user.name,
@@ -132,6 +157,11 @@ router.post('/register', async (req, res) => {
         phone: user.phone,
         role: user.role,
         status: user.status,
+        businessName: user.businessName,
+        company: user.company,
+        businessType: user.businessType,
+        gstin: user.gstin,
+        tradeLicense: user.tradeLicense,
         profileImage: user.profileImage || user.avatar || '',
         avatar: user.avatar || user.profileImage || '',
         address: user.address || '',
@@ -141,6 +171,69 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ msg: 'Registration failed', error: error.message });
   }
 });
+
+// Auto-seed default convenience accounts if missing
+const seedDefaultRoleAccounts = async () => {
+  try {
+    const defaultAccounts = [
+      {
+        email: 'delivery@canopy.gov.in',
+        name: 'Raghavendra Rao (Delivery Exec)',
+        phone: '9845012345',
+        password: await bcrypt.hash('delivery123', 10),
+        role: 'Delivery Partner',
+        status: 'Verified',
+        address: 'Municipal EV Cargo Hub, Udupi'
+      },
+      {
+        email: 'processing@canopy.gov.in',
+        name: 'Ajjarkadu Yard Manager',
+        phone: '9845099881',
+        password: await bcrypt.hash('yard123', 10),
+        role: 'Processing Officer',
+        status: 'Verified',
+        address: 'Ajjarkadu Municipal Biomass Processing Center'
+      },
+      {
+        email: 'merchant@canopy.gov.in',
+        name: 'Coastal Woodcrafts & Sawmills',
+        phone: '9845077665',
+        password: await bcrypt.hash('merchant123', 10),
+        role: 'Timber Merchant',
+        status: 'Verified',
+        address: 'Industrial Area, Manipal Road, Udupi'
+      },
+      {
+        email: 'cutter@canopy.gov.in',
+        name: 'Manjunath Arborist',
+        phone: '9845033442',
+        password: await bcrypt.hash('cutter123', 10),
+        role: 'Tree Cutter',
+        status: 'Verified',
+        address: 'Ward 12, Udupi'
+      },
+      {
+        email: 'citizen@example.com',
+        name: 'Suresh Prabhu',
+        phone: '9845066778',
+        password: await bcrypt.hash('citizen123', 10),
+        role: 'Citizen',
+        status: 'Verified',
+        address: 'Kunjibettu, Udupi'
+      }
+    ];
+
+    for (const acc of defaultAccounts) {
+      const existing = await User.findOne({ email: acc.email });
+      if (!existing) {
+        await User.create(acc);
+      }
+    }
+  } catch (err) {
+    console.warn('Default role account seed notice:', err.message);
+  }
+};
+seedDefaultRoleAccounts();
 
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token
@@ -192,7 +285,62 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email: normalizedEmail });
+    let user = await User.findOne({ email: normalizedEmail });
+
+    // Auto-create on demand for demo accounts if missing
+    if (!user) {
+      if (normalizedEmail === 'delivery@canopy.gov.in' && password === 'delivery123') {
+        user = await User.create({
+          name: 'Raghavendra Rao (Delivery Exec)',
+          email: normalizedEmail,
+          phone: '9845012345',
+          password: await bcrypt.hash('delivery123', 10),
+          role: 'Delivery Partner',
+          status: 'Verified',
+          address: 'Municipal EV Cargo Hub, Udupi'
+        });
+      } else if (normalizedEmail === 'processing@canopy.gov.in' && password === 'yard123') {
+        user = await User.create({
+          name: 'Ajjarkadu Yard Manager',
+          email: normalizedEmail,
+          phone: '9845099881',
+          password: await bcrypt.hash('yard123', 10),
+          role: 'Processing Officer',
+          status: 'Verified',
+          address: 'Ajjarkadu Municipal Biomass Processing Center'
+        });
+      } else if (normalizedEmail === 'merchant@canopy.gov.in' && password === 'merchant123') {
+        user = await User.create({
+          name: 'Coastal Woodcrafts & Sawmills',
+          email: normalizedEmail,
+          phone: '9845077665',
+          password: await bcrypt.hash('merchant123', 10),
+          role: 'Timber Merchant',
+          status: 'Verified',
+          address: 'Industrial Area, Manipal Road, Udupi'
+        });
+      } else if (normalizedEmail === 'cutter@canopy.gov.in' && password === 'cutter123') {
+        user = await User.create({
+          name: 'Manjunath Arborist',
+          email: normalizedEmail,
+          phone: '9845033442',
+          password: await bcrypt.hash('cutter123', 10),
+          role: 'Tree Cutter',
+          status: 'Verified',
+          address: 'Ward 12, Udupi'
+        });
+      } else if (normalizedEmail === 'citizen@example.com' && password === 'citizen123') {
+        user = await User.create({
+          name: 'Suresh Prabhu',
+          email: normalizedEmail,
+          phone: '9845066778',
+          password: await bcrypt.hash('citizen123', 10),
+          role: 'Citizen',
+          status: 'Verified',
+          address: 'Kunjibettu, Udupi'
+        });
+      }
+    }
 
     if (!user) {
       return res.status(401).json({ msg: 'Invalid email or password' });
@@ -213,7 +361,10 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    if (portal && user.role !== portal) {
+    // Allow flexible role matching for Delivery Partner & Processing Officer
+    const normPortal = (portal || '').toLowerCase();
+    const normRole = (user.role || '').toLowerCase();
+    if (portal && normPortal !== normRole && !normRole.includes(normPortal) && !normPortal.includes(normRole)) {
       return res.status(403).json({ msg: `This account is registered as ${user.role}` });
     }
 
@@ -226,6 +377,13 @@ router.post('/login', async (req, res) => {
         phone: user.phone,
         role: user.role,
         status: user.status || 'Verified',
+        businessName: user.businessName || user.company || user.name,
+        company: user.company || user.businessName || user.name,
+        businessType: user.businessType || (user.role?.includes('Timber') ? 'Sawmill / Lumber Mill' : ''),
+        gstin: user.gstin || '',
+        tradeLicense: user.tradeLicense || '',
+        panNumber: user.panNumber || '',
+        merchantStatus: user.merchantStatus || 'Verified',
         profileImage: user.profileImage || user.avatar || '',
         avatar: user.avatar || user.profileImage || '',
         address: user.address || '',
@@ -648,6 +806,88 @@ router.patch('/users/:id', async (req, res) => {
     res.json({ msg: 'User updated successfully', user });
   } catch (error) {
     res.status(500).json({ msg: 'Failed to update user', error: error.message });
+  }
+});
+
+// @route   GET /api/auth/delivery-partners
+// @desc    Get all registered and active delivery personnel
+router.get('/delivery-partners', async (req, res) => {
+  try {
+    const partners = await User.find({
+      role: { $in: ['Delivery Partner', 'Delivery'] }
+    }).select('-password').sort({ createdAt: -1 });
+    res.json({ success: true, partners });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to fetch delivery partners', error: error.message });
+  }
+});
+
+// @route   POST /api/auth/register-delivery-partner
+// @desc    Official/Admin quick registration of delivery personnel
+router.post('/register-delivery-partner', async (req, res) => {
+  try {
+    const { name, email, phone, password, vehicleType, vehicleNumber, deliveryZone } = req.body;
+    if (!name || !email || !phone) {
+      return res.status(400).json({ msg: 'Name, email, and phone are required' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const existing = await User.findOne({ email: cleanEmail });
+    if (existing) {
+      return res.status(400).json({ msg: 'A user with this email address already exists' });
+    }
+
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password || 'Delivery@123', salt);
+
+    const partner = new User({
+      name,
+      email: cleanEmail,
+      phone,
+      password: hashedPassword,
+      role: 'Delivery Partner',
+      status: 'Verified',
+      vehicleType: vehicleType || 'Three-Wheeler EV Cargo',
+      vehicleNumber: vehicleNumber || 'KA-20-EV-4091',
+      deliveryZone: deliveryZone || 'Udupi Central & Manipal Sector',
+      isAvailable: true
+    });
+
+    await partner.save();
+
+    res.status(201).json({
+      success: true,
+      partner: {
+        _id: partner._id,
+        name: partner.name,
+        email: partner.email,
+        phone: partner.phone,
+        role: partner.role,
+        vehicleType: partner.vehicleType,
+        vehicleNumber: partner.vehicleNumber,
+        deliveryZone: partner.deliveryZone,
+        isAvailable: partner.isAvailable
+      },
+      msg: 'Delivery partner registered and verified successfully!'
+    });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to register delivery partner', error: error.message });
+  }
+});
+
+// @route   PATCH /api/auth/delivery-partners/:id/toggle-availability
+router.patch('/delivery-partners/:id/toggle-availability', async (req, res) => {
+  try {
+    const partner = await User.findById(req.params.id);
+    if (!partner) return res.status(404).json({ msg: 'Delivery partner not found' });
+
+    partner.isAvailable = req.body.isAvailable !== undefined ? req.body.isAvailable : !partner.isAvailable;
+    await partner.save();
+
+    res.json({ success: true, isAvailable: partner.isAvailable, partner });
+  } catch (error) {
+    res.status(500).json({ msg: 'Failed to toggle availability', error: error.message });
   }
 });
 

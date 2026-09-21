@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Scissors, Truck, Gavel, ShieldCheck } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import AuthLayout from '../components/AuthLayout';
 
@@ -23,6 +23,8 @@ const LoginPage = () => {
     if (portalParam === 'official') return 'Official';
     if (portalParam === 'admin') return 'Admin';
     if (portalParam === 'cutter' || portalParam === 'tree cutter') return 'Tree Cutter';
+    if (portalParam === 'delivery' || portalParam === 'delivery partner') return 'Delivery Partner';
+    if (portalParam === 'merchant' || portalParam === 'timber merchant' || portalParam === 'timber') return 'Timber Merchant';
     if (portalParam === 'citizen') return 'Citizen';
     return appModule === 'cutter' ? 'Tree Cutter' : 'Citizen';
   };
@@ -33,12 +35,18 @@ const LoginPage = () => {
     const tab = getInitialTab();
     if (tab === 'Official') return OFFICIAL_EMAIL;
     if (tab === 'Admin') return ADMIN_EMAIL;
+    if (tab === 'Delivery Partner') return 'delivery@canopy.gov.in';
+    if (tab === 'Timber Merchant') return 'merchant@canopy.gov.in';
+    if (tab === 'Tree Cutter') return 'cutter@canopy.gov.in';
     return '';
   });
   const [password, setPassword] = useState(() => {
     const tab = getInitialTab();
     if (tab === 'Official') return OFFICIAL_PASSWORD;
     if (tab === 'Admin') return ADMIN_PASSWORD;
+    if (tab === 'Delivery Partner') return 'delivery123';
+    if (tab === 'Timber Merchant') return 'merchant123';
+    if (tab === 'Tree Cutter') return 'cutter123';
     return '';
   });
   const [loginError, setLoginError] = useState('');
@@ -46,6 +54,39 @@ const LoginPage = () => {
 
   const isCutterOnly = appModule === 'cutter';
   const isCitizenOnly = appModule === 'citizen';
+
+  const roleRedirects = {
+    Official: '/official-management',
+    'Tree Cutter': '/treecutter/dashboard',
+    Admin: '/admin',
+    Citizen: '/home',
+    'Delivery Partner': '/delivery',
+    Delivery: '/delivery',
+    'Timber Merchant': '/timber-auction',
+    'Timber Buyer': '/timber-auction',
+    Merchant: '/timber-auction'
+  };
+
+  const fillDemoCredentials = (role) => {
+    setActiveTab(role);
+    setLoginError('');
+    if (role === 'Delivery Partner') {
+      setEmail('delivery@canopy.gov.in');
+      setPassword('delivery123');
+    } else if (role === 'Timber Merchant' || role === 'Timber Buyer') {
+      setEmail('merchant@canopy.gov.in');
+      setPassword('merchant123');
+    } else if (role === 'Tree Cutter') {
+      setEmail('cutter@canopy.gov.in');
+      setPassword('cutter123');
+    } else if (role === 'Citizen') {
+      setEmail('citizen@example.com');
+      setPassword('citizen123');
+    } else if (role === 'Official') {
+      setEmail(OFFICIAL_EMAIL);
+      setPassword(OFFICIAL_PASSWORD);
+    }
+  };
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setLoginError('');
@@ -73,13 +114,19 @@ const LoginPage = () => {
       }
 
       localStorage.setItem('currentUser', JSON.stringify(data.user));
-
-      const roleRedirects = {
-        Official: '/official-management',
-        'Tree Cutter': '/treecutter/dashboard',
-        Admin: '/admin',
-        Citizen: '/home',
-      };
+      if (data.user.role === 'Timber Buyer' || data.user.role === 'Timber Merchant') {
+        localStorage.setItem('timber_merchant_profile', JSON.stringify({
+          bidderId: data.user.id || data.user._id,
+          bidderName: data.user.name,
+          companyName: data.user.businessName || data.user.company || data.user.name,
+          bidderEmail: data.user.email,
+          bidderPhone: data.user.phone,
+          businessType: data.user.businessType || 'Sawmill / Lumber Mill',
+          gstin: data.user.gstin || '',
+          tradeLicense: data.user.tradeLicense || '',
+          isRegistered: true
+        }));
+      }
       navigate(roleRedirects[data.user.role] || '/home');
     } catch (err) {
       setLoginError(err.message);
@@ -138,7 +185,7 @@ const LoginPage = () => {
         throw new Error(data.msg || 'Login failed');
       }
 
-      // Enforce role restriction per dedicated website
+      // Enforce role restriction per dedicated website if specified
       if (isCutterOnly && data.user.role !== 'Tree Cutter') {
         throw new Error('Access denied: This portal is exclusively for Tree Cutters & Arborists.');
       }
@@ -147,13 +194,19 @@ const LoginPage = () => {
       }
 
       localStorage.setItem('currentUser', JSON.stringify(data.user));
-
-      const roleRedirects = {
-        Official: '/official-management',
-        'Tree Cutter': '/treecutter/dashboard',
-        Admin: '/admin',
-        Citizen: '/home',
-      };
+      if (data.user.role === 'Timber Buyer' || data.user.role === 'Timber Merchant') {
+        localStorage.setItem('timber_merchant_profile', JSON.stringify({
+          bidderId: data.user.id || data.user._id,
+          bidderName: data.user.name,
+          companyName: data.user.businessName || data.user.company || data.user.name,
+          bidderEmail: data.user.email,
+          bidderPhone: data.user.phone,
+          businessType: data.user.businessType || 'Sawmill / Lumber Mill',
+          gstin: data.user.gstin || '',
+          tradeLicense: data.user.tradeLicense || '',
+          isRegistered: true
+        }));
+      }
       navigate(roleRedirects[data.user.role] || '/home');
     } catch (error) {
       setLoginError(error.message);
@@ -166,13 +219,13 @@ const LoginPage = () => {
     ? 'Tree Cutter Field Portal'
     : isCitizenOnly
     ? 'Citizen Portal'
-    : 'Login to Portal';
+    : `${activeTab} Portal Login`;
 
   const portalSubtitle = isCutterOnly
     ? 'Authorized access for arborists, field operations, and task execution.'
     : isCitizenOnly
     ? 'Report tree hazards, track community requests, and explore the urban canopy.'
-    : 'Please enter your credentials to access your dashboard.';
+    : 'Please enter your credentials to access your dedicated workspace.';
 
   return (
     <AuthLayout>
@@ -192,23 +245,48 @@ const LoginPage = () => {
       )}
 
       {!isCutterOnly && !isCitizenOnly && (
-        <div className="portal-tabs">
-          <label>Select Portal</label>
-          <div className="tabs-grid">
-            {['Citizen', 'Tree Cutter'].map((tab) => (
-              <button
-                key={tab}
-                className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveTab(tab);
-                  setEmail('');
-                  setPassword('');
-                }}
-                type="button"
-              >
-                {tab}
-              </button>
-            ))}
+        <div className="portal-tabs" style={{ marginBottom: '1.25rem' }}>
+          <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Select Dedicated Workspace
+          </label>
+          <div className="tabs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+            {[
+              { id: 'Citizen', label: 'Citizen', icon: User },
+              { id: 'Tree Cutter', label: 'Cutter', icon: Scissors },
+              { id: 'Delivery Partner', label: 'Delivery', icon: Truck },
+              { id: 'Timber Merchant', label: 'Timber', icon: Gavel }
+            ].map((tab) => {
+              const IconComp = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  className={`tab-btn ${isActive ? 'active' : ''}`}
+                  style={{
+                    padding: '8px 10px',
+                    fontSize: '0.82rem',
+                    fontWeight: isActive ? 700 : 500,
+                    borderRadius: '8px',
+                    border: isActive ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isActive ? 'rgba(16, 185, 129, 0.16)' : 'rgba(255, 255, 255, 0.04)',
+                    color: isActive ? '#34d399' : '#94a3b8',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: isActive ? '0 0 14px rgba(16, 185, 129, 0.25)' : 'none',
+                    backdropFilter: 'blur(8px)'
+                  }}
+                  onClick={() => fillDemoCredentials(tab.id)}
+                  type="button"
+                >
+                  <IconComp size={14} style={{ color: isActive ? '#34d399' : '#64748b', strokeWidth: isActive ? 2.5 : 2 }} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

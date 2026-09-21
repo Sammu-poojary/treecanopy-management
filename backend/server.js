@@ -1,6 +1,9 @@
+// ⚠️ dotenv MUST be first — before any require() that reads process.env
+const dotenv = require('dotenv');
+dotenv.config(); // Reloaded with active Razorpay credentials
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
@@ -17,8 +20,12 @@ const adoptionRoutes = require('./routes/adoptions');
 const rewardRoutes = require('./routes/rewards');
 const goalRoutes = require('./routes/goals');
 const chatRoutes = require('./routes/chat');
-
-dotenv.config();
+const subscriptionRoutes = require('./routes/subscriptions');
+const wasteIntakeRoutes = require('./routes/wasteIntakes');
+const compostBatchRoutes = require('./routes/compostBatches');
+const ecoProductRoutes = require('./routes/ecoProducts');
+const ecoOrderRoutes = require('./routes/ecoOrders');
+const timberAuctionRoutes = require('./routes/timberAuctions');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -32,8 +39,8 @@ app.use(cors({
     const isAllowed =
       origin.includes('localhost') ||
       origin.includes('127.0.0.1') ||
-      origin.endsWith('.vercel.app') ||
-      (process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGINS.split(',').includes(origin));
+      origin.includes('vercel.app') ||
+      origin.includes('onrender.com');
 
     if (isAllowed) {
       return callback(null, true);
@@ -75,6 +82,12 @@ app.use('/api/adoptions', adoptionRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/waste-intakes', wasteIntakeRoutes);
+app.use('/api/compost-batches', compostBatchRoutes);
+app.use('/api/eco-products', ecoProductRoutes);
+app.use('/api/eco-orders', ecoOrderRoutes);
+app.use('/api/timber-auctions', timberAuctionRoutes);
 
 // Health check route
 app.get('/', (req, res) => {

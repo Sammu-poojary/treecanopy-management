@@ -477,6 +477,11 @@ export default function TreeCutterTaskPage() {
   const [cutterLiveCoords, setCutterLiveCoords] = useState(null);
   const [borrowedEquipment, setBorrowedEquipment] = useState([]);
   const [timeNow, setTimeNow] = useState(new Date());
+  const [treeDuties, setTreeDuties] = useState([]);
+  const [dutiesLoading, setDutiesLoading] = useState(false);
+  const [expandedDutyId, setExpandedDutyId] = useState(null);
+  const [dutiesUploadForm, setDutiesUploadForm] = useState({});
+  const [dutiesUploading, setDutiesUploading] = useState({});
 
   const currentUser = useMemo(() => {
     try {
@@ -545,7 +550,69 @@ export default function TreeCutterTaskPage() {
 
   useEffect(() => {
     fetchBorrowedEquipment();
+    fetchTreeDuties();
   }, []);
+
+  const fetchTreeDuties = async () => {
+    const cutterId = currentUser.id || currentUser._id || '';
+    if (!cutterId && !cutterName) return;
+    setDutiesLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/cutter-duties?cutterId=${encodeURIComponent(cutterId)}&cutterName=${encodeURIComponent(cutterName)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTreeDuties(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Duties fetch error:', err);
+    } finally {
+      setDutiesLoading(false);
+    }
+  };
+
+  const handleDutyProofUpload = async (sub, file) => {
+    if (!file) return;
+    const subId = sub._id;
+    setDutiesUploading(prev => ({ ...prev, [subId]: true }));
+    try {
+      const reader = new FileReader();
+      const imageBase64 = await new Promise((resolve, reject) => {
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const form = dutiesUploadForm[subId] || {};
+      const cutterId = currentUser.id || currentUser._id;
+      const res = await fetch(`${API_URL}/api/subscriptions/${subId}/upload-proof`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskType: form.taskType || 'Watering',
+          description: form.description || '',
+          uploadedBy: cutterId,
+          uploadedByName: cutterName,
+          uploadedByRole: 'Tree Cutter',
+          imageBase64,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      setDutiesUploadForm(prev => { const n = { ...prev }; delete n[subId]; return n; });
+      await fetchTreeDuties();
+      Swal.fire({
+        icon: 'success',
+        title: '✅ Care Proof Submitted!',
+        html: `<p>Your <strong>${form.taskType || 'Watering'}</strong> proof for <strong>${sub.treeName}</strong> is pending official review.</p>`,
+        confirmButtonColor: '#10b981',
+        timer: 3500,
+        timerProgressBar: true,
+      });
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Upload Failed', text: err.message, confirmButtonColor: '#ef4444' });
+    } finally {
+      setDutiesUploading(prev => ({ ...prev, [subId]: false }));
+    }
+  };
 
   const EquipmentImage = ({ src, alt, category, name, size = '48px' }) => {
     const [hasErr, setHasErr] = useState(false);
@@ -934,6 +1001,7 @@ export default function TreeCutterTaskPage() {
   const userAssignedCount = tasks.filter(t => (t.cutter || '').toLowerCase().includes(myCutterNameLower)).length;
   const userCompletedCount = tasks.filter(t => (t.cutter || '').toLowerCase().includes(myCutterNameLower) && ['Work Completed', 'Waste Disposed', 'Closed'].includes(t.status)).length;
   const totalOrdersCount = tasks.length;
+  const treeDutiesCount = treeDuties.length;
 
   const statusTone = (status) => {
     if (status === 'Closed' || status === 'Waste Disposed') return 'ok';
@@ -1193,9 +1261,37 @@ export default function TreeCutterTaskPage() {
             body: JSON.stringify({ status: task.status, wasteProofUrl: serverUrl, wasteGps: finalGps }),
           }).catch(err => console.error('Sync waste proof error:', err));
         }
+
+        // Post official circular economy waste shipment record
+        fetch(`${API_URL}/api/waste-intakes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            complaintId: task.complaintId || null,
+            workOrderTitle: task.title || 'Tree Maintenance & Clearance',
+            cutterId: currentUser.id || currentUser._id || 'cutter_id',
+            cutterName: cutterName,
+            disposalYard: task.dumpingLocation || dumpingLocations[0],
+            vehicleNumber: task.vehicleNumber || 'KA-20-TR-4821',
+            vehicleType: task.vehicleType || 'Mini Tipper Truck',
+            biomass: {
+              leavesWeightKg: Number(task.biomassLeavesKg || 120),
+              branchesWeightKg: Number(task.biomassBranchesKg || 180),
+              logsCount: Number(task.biomassLogCount || 2),
+              logsWeightKg: Number(task.biomassLogsKg || 400),
+              treeSpecies: task.biomassSpecies || task.treeSpecies || 'Mixed Municipal Species',
+              approxLogDiameterCm: Number(task.biomassDiameterCm || 35),
+              approxLogLengthMeters: 2.5,
+              isDiseased: Boolean(task.isDiseasedBiomass)
+            },
+            proofImageBase64: serverUrl,
+            gpsLocation: finalGps
+          })
+        }).catch(e => console.warn('Waste intake logging warning:', e));
+
         return updated;
       });
-      showNotice('Waste disposal proof uploaded!');
+      showNotice('Waste disposal proof & biomass shipment logged successfully!');
     } catch (err) {
       console.error(err);
       const finalGps = (coords && coords.lat && coords.lat !== '0' && coords.lat !== '0.000000')
@@ -1465,6 +1561,10 @@ export default function TreeCutterTaskPage() {
               <span>Total Orders</span>
               <strong>{totalOrdersCount}</strong>
             </div>
+            <div className="task-stat-chip" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
+              <span style={{ color: '#34d399' }}>🌿 Tree Duties</span>
+              <strong style={{ color: '#34d399' }}>{treeDutiesCount}</strong>
+            </div>
           </div>
         </section>
 
@@ -1566,7 +1666,151 @@ export default function TreeCutterTaskPage() {
               )}
             </div>
 
-            {/* Permanent Site Location Map Card */}
+            {/* ── 🌿 Tree Care Duties Section (Subscription Adoptions) ── */}
+            <div className="cg-panel" style={{ padding: '16px', border: '1px solid rgba(16,185,129,0.3)', background: 'linear-gradient(135deg, rgba(5,150,105,0.06), rgba(2,44,34,0.3))' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Leaf size={18} color="#10b981" /> Tree Care Duties
+                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399', padding: '2px 10px', borderRadius: '10px', fontSize: '0.72rem', fontWeight: 800 }}>
+                    {treeDuties.length} Trees
+                  </span>
+                  <button onClick={fetchTreeDuties} title="Refresh" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#34d399', padding: '2px' }}>
+                    <RefreshCw size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {dutiesLoading ? (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: '#34d399', fontSize: '0.85rem' }}>🌳 Loading duties...</div>
+              ) : treeDuties.length === 0 ? (
+                <div style={{ padding: '14px 10px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.82rem', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px dashed rgba(16,185,129,0.25)' }}>
+                  <div style={{ fontSize: '1.8rem', marginBottom: '6px' }}>🌱</div>
+                  No subscription trees assigned yet.
+                  <div style={{ fontSize: '0.72rem', marginTop: '4px', color: '#34d399' }}>Check once an official assigns you a tree.</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '420px', overflowY: 'auto', paddingRight: '2px' }}>
+                  {treeDuties.map(sub => {
+                    const sched = sub._scheduleInfo || {};
+                    const isOverdue = sched.isOverdue;
+                    const daysUntilDue = sched.daysUntilDue;
+                    const pendingCount = sched.pendingTaskCount || 0;
+                    const isExpanded = expandedDutyId === sub._id;
+                    const form = dutiesUploadForm[sub._id] || {};
+                    const isUploading = dutiesUploading[sub._id];
+
+                    return (
+                      <div key={sub._id} style={{
+                        borderRadius: '12px', border: `1px solid ${isOverdue ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.25)'}`,
+                        overflow: 'hidden', background: 'rgba(2,44,34,0.4)'
+                      }}>
+                        {/* Duty Card Header */}
+                        <div
+                          style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+                          onClick={() => setExpandedDutyId(isExpanded ? null : sub._id)}
+                        >
+                          <div style={{ width: '38px', height: '38px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(16,185,129,0.25)' }}>
+                            <img src={sub.treeImage || 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=100&q=70'} alt={sub.treeName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.src = 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=100&q=70'} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.treeName}</div>
+                            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>👤 {sub.userName} · {sub.treeLocation || 'Location N/A'}</div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0 }}>
+                            {typeof daysUntilDue === 'number' && (
+                              <span style={{
+                                fontSize: '0.65rem', fontWeight: 800, padding: '1px 6px', borderRadius: '8px',
+                                background: isOverdue ? 'rgba(239,68,68,0.2)' : daysUntilDue <= 2 ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.15)',
+                                color: isOverdue ? '#f87171' : daysUntilDue <= 2 ? '#fbbf24' : '#34d399'
+                              }}>
+                                {isOverdue ? `🔴 Overdue ${Math.abs(daysUntilDue)}d` : `📅 ${daysUntilDue}d`}
+                              </span>
+                            )}
+                            {pendingCount > 0 && (
+                              <span style={{ fontSize: '0.62rem', color: '#fbbf24', background: 'rgba(245,158,11,0.15)', padding: '1px 5px', borderRadius: '6px' }}>⏳ {pendingCount} pending</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Expanded: Quick Upload Form */}
+                        {isExpanded && (
+                          <div style={{ borderTop: '1px solid rgba(16,185,129,0.15)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {/* Info row */}
+                            <div style={{ fontSize: '0.74rem', color: '#94a3b8', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                              <span>📅 Assigned: {sub.assignedAt ? new Date(sub.assignedAt).toLocaleDateString('en-IN') : '—'}</span>
+                              <span>⏰ Due: {sched.nextCareDue ? new Date(sched.nextCareDue).toLocaleDateString('en-IN') : '—'}</span>
+                              <span>📸 Total: {sched.totalTaskCount || 0} · ✅ {sched.validatedTaskCount || 0}</span>
+                            </div>
+
+                            {/* Activity select */}
+                            <select
+                              value={form.taskType || 'Watering'}
+                              onChange={e => setDutiesUploadForm(prev => ({ ...prev, [sub._id]: { ...form, taskType: e.target.value } }))}
+                              style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.3)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}
+                            >
+                              {['Watering', 'Pruning', 'Inspection', 'Fertilizing', 'Pest Control', 'Mulching', 'Cleaning', 'Other'].map(t => (
+                                <option key={t} value={t}>{t}</option>
+                              ))}
+                            </select>
+
+                            {/* Notes */}
+                            <textarea
+                              rows={2}
+                              value={form.description || ''}
+                              onChange={e => setDutiesUploadForm(prev => ({ ...prev, [sub._id]: { ...form, description: e.target.value } }))}
+                              placeholder="Care notes (optional)..."
+                              style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.25)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: '0.8rem', resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                            />
+
+                            {/* Photo upload */}
+                            <label style={{
+                              display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '10px',
+                              border: '2px dashed rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.05)',
+                              cursor: 'pointer', fontSize: '0.8rem', color: '#34d399', fontWeight: 700
+                            }}>
+                              <Camera size={14} /> Tap to choose proof photo → Cloudinary
+                              <input
+                                type="file" accept="image/*" capture="environment"
+                                style={{ display: 'none' }}
+                                onChange={e => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleDutyProofUpload(sub, file);
+                                }}
+                              />
+                            </label>
+
+                            {isUploading && (
+                              <div style={{ textAlign: 'center', color: '#34d399', fontSize: '0.8rem', fontWeight: 700 }}>⏳ Uploading to Cloudinary...</div>
+                            )}
+
+                            {/* Proof history mini-gallery */}
+                            {(sub.careTasks || []).length > 0 && (
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                                {[...(sub.careTasks || [])].reverse().slice(0, 4).map((task, i) => (
+                                  <div key={i} style={{ position: 'relative', width: '52px', height: '40px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${task.status === 'Validated' ? 'rgba(52,211,153,0.5)' : task.status === 'Rejected' ? 'rgba(248,113,113,0.5)' : 'rgba(148,163,184,0.3)'}`, cursor: 'pointer' }} onClick={() => task.proofImageUrl && window.open(task.proofImageUrl, '_blank')}>
+                                    {task.proofImageUrl ? (
+                                      <img src={task.proofImageUrl} alt="care" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(52,211,153,0.06)', fontSize: '1rem' }}>🌱</div>
+                                    )}
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, fontSize: '0.5rem', textAlign: 'center', background: 'rgba(0,0,0,0.6)', color: task.status === 'Validated' ? '#34d399' : task.status === 'Rejected' ? '#f87171' : '#fbbf24', fontWeight: 800, padding: '1px' }}>{task.status?.[0]}</div>
+                                  </div>
+                                ))}
+                                {(sub.careTasks || []).length > 4 && (
+                                  <div style={{ width: '52px', height: '40px', borderRadius: '6px', border: '1px solid rgba(148,163,184,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700 }}>+{(sub.careTasks || []).length - 4}</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <div className="cg-panel" style={{ padding: '16px' }}>
               <h3 style={{ margin: '0 0 8px', fontSize: '0.98rem', fontWeight: 800, color: 'var(--title)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <MapPin size={18} color="#10b981" /> Site Location
@@ -2123,18 +2367,144 @@ export default function TreeCutterTaskPage() {
                   Record green waste volume, select government dumping site, upload disposal proof, and submit confirmation.
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  
+                  {/* Biomass Multi-Stream Segregation Card */}
+                  <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '14px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        🌿 Multi-Stream Biomass Segregation
+                      </h4>
+                      <span style={{ fontSize: '0.72rem', background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                        Circular Economy Intake
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      {/* Leaves & Foliage Weight */}
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        🍃 Green Leaves & Foliage (kg)
+                        <input
+                          type="number"
+                          min="0"
+                          value={selectedTask?.biomassLeavesKg ?? (selectedTask?.biomass?.leavesWeightKg || '')}
+                          onChange={e => updateTask(selectedTask.id, { biomassLeavesKg: e.target.value })}
+                          placeholder="e.g. 150 kg"
+                          style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                        />
+                        <span style={{ fontSize: '0.7rem', color: '#10b981' }}>→ Routed for Organic Compost</span>
+                      </label>
+
+                      {/* Branches & Twigs Weight */}
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        🌿 Branches & Twigs (kg)
+                        <input
+                          type="number"
+                          min="0"
+                          value={selectedTask?.biomassBranchesKg ?? (selectedTask?.biomass?.branchesWeightKg || '')}
+                          onChange={e => updateTask(selectedTask.id, { biomassBranchesKg: e.target.value })}
+                          placeholder="e.g. 200 kg"
+                          style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                        />
+                        <span style={{ fontSize: '0.7rem', color: '#60a5fa' }}>→ Routed for Wood Chipping & Mulch</span>
+                      </label>
+                    </div>
+
+                    {/* Heavy Wood Logs & Timber */}
+                    <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '12px' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#f59e0b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        🪵 Heavy Timber Logs & Trunks (For Municipal Auction)
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          Log Count
+                          <input
+                            type="number"
+                            min="0"
+                            value={selectedTask?.biomassLogCount ?? (selectedTask?.biomass?.logsCount || '')}
+                            onChange={e => updateTask(selectedTask.id, { biomassLogCount: e.target.value })}
+                            placeholder="e.g. 3 logs"
+                            style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                          />
+                        </label>
+
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          Tree Species
+                          <input
+                            type="text"
+                            value={selectedTask?.biomassSpecies || selectedTask?.treeSpecies || 'Neem / Rosewood'}
+                            onChange={e => updateTask(selectedTask.id, { biomassSpecies: e.target.value })}
+                            placeholder="e.g. Rosewood / Neem"
+                            style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                          />
+                        </label>
+
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          Total Log Weight (kg)
+                          <input
+                            type="number"
+                            min="0"
+                            value={selectedTask?.biomassLogsKg ?? (selectedTask?.biomass?.logsWeightKg || '')}
+                            onChange={e => updateTask(selectedTask.id, { biomassLogsKg: e.target.value })}
+                            placeholder="e.g. 650 kg"
+                            style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                          />
+                        </label>
+
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          Avg Diameter (cm)
+                          <input
+                            type="number"
+                            min="0"
+                            value={selectedTask?.biomassDiameterCm || ''}
+                            onChange={e => updateTask(selectedTask.id, { biomassDiameterCm: e.target.value })}
+                            placeholder="e.g. 45 cm"
+                            style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Diseased / Quarantine Checkbox */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: '#f87171', fontWeight: 600 }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedTask?.isDiseasedBiomass)}
+                        onChange={e => updateTask(selectedTask.id, { isDiseasedBiomass: e.target.checked })}
+                      />
+                      ☣️ Mark as Diseased / Pest-Infested Wood (Requires Bio-Quarantine & Incineration)
+                    </label>
+                  </div>
+
+                  {/* Vehicle & Yard Selection */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Transport Vehicle Registration
+                      <input
+                        value={selectedTask?.vehicleNumber || 'KA-20-TR-4821'}
+                        onChange={e => updateTask(selectedTask.id, { vehicleNumber: e.target.value })}
+                        placeholder="e.g. KA-20-TR-4821"
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                      />
+                    </label>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Vehicle Type
+                      <select
+                        value={selectedTask?.vehicleType || 'Mini Tipper Truck'}
+                        onChange={e => updateTask(selectedTask.id, { vehicleType: e.target.value })}
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                      >
+                        <option>Mini Tipper Truck</option>
+                        <option>Tractor Trailer</option>
+                        <option>Utility Pickup</option>
+                        <option>Heavy Dump Truck</option>
+                      </select>
+                    </label>
+                  </div>
+
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Waste Volume (est. cubic meters)
-                    <input
-                      value={selectedTask?.wasteVolume || ''}
-                      onChange={e => updateTask(selectedTask.id, { wasteVolume: e.target.value })}
-                      placeholder="e.g. 2.5 m³"
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Government Dumping Location
+                    Government Processing Yard
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <select
                         value={selectedTask?.dumpingLocation || dumpingLocations[0]}

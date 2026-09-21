@@ -25,11 +25,13 @@ if (L && L.Icon && L.Icon.Default && L.Icon.Default.prototype) {
 }
 
 import { CommunicationHub } from '../components/CommunicationHub';
-import TreeCutterDashboard from '../components/TreeCutterDashboard';
+import TreeCutterDashboard, { TreeDutyPanel } from '../components/TreeCutterDashboard';
 import TreeCutterAttendancePage from './TreeCutterAttendancePage';
 import TreeLocationPickerModal, { reverseGeocodeUdupi } from '../components/TreeLocationPickerModal';
+import CareCalendarModal from '../components/CareCalendarModal';
 
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
@@ -41,6 +43,7 @@ import {
   Building,
   CalendarDays,
   Camera,
+  CheckCircle,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -63,9 +66,11 @@ import {
   Fingerprint,
   Flame,
   FolderOpen,
+  Gavel,
   Gift,
   Grid,
   HelpCircle,
+  HeartHandshake,
   History,
   Home,
   Image,
@@ -75,7 +80,7 @@ import {
   Leaf,
   LogIn,
   LogOut,
-  Map,
+  Map as MapIcon,
   MapPin,
   Menu,
   MessageSquare,
@@ -95,12 +100,14 @@ import {
   Share2,
   Shield,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Sprout,
   Stethoscope,
   TreeDeciduous,
   TreePine,
   TrendingDown,
+  Truck,
   Upload,
   UploadCloud,
   UserCheck,
@@ -151,7 +158,6 @@ import {
   BookOpen,
   School,
   Building2,
-  Truck,
 } from 'lucide-react';
 
 // ─── Helper to check if a Tree Cutter is currently on leave ──────────────────
@@ -200,6 +206,7 @@ const ROLE_NAV = {
       section: 'Citizen Dashboard',
       items: [
         { label: 'Overview', href: '/citizen-dashboard?tab=overview', Icon: Home, desc: 'Overview & stats' },
+        { label: 'Green Store', href: '/citizen-dashboard?tab=store', Icon: ShoppingBag, desc: 'Buy organic compost & saplings' },
         { label: 'Green Rewards & My Trees', href: '/citizen-dashboard?tab=rewards', Icon: Gift, desc: 'Eco points, streaks & my trees' },
         { label: 'Report New Issue', href: '/citizen-dashboard?tab=report', Icon: AlertTriangle, desc: 'Report a tree issue' },
         { label: 'My Reported Tickets', href: '/citizen-dashboard?tab=tickets', Icon: FileText, desc: 'Track status of your tickets' },
@@ -223,6 +230,7 @@ const ROLE_NAV = {
       items: [
         { label: 'Dashboard', href: '/treecutter/dashboard', Icon: Home, desc: 'Monitoring overview' },
         { label: 'Task Board', href: '/treecutter/task', Icon: FileText, desc: 'Assigned work orders' },
+        { label: 'Tree Care Duties', href: '/treecutter/tree-duties', Icon: Leaf, desc: 'Assigned tree duties & care proofs' },
         { label: 'Communication', href: '/treecutter/communication', Icon: MessageSquare, desc: 'Chat & ask doubts' },
         { label: 'Attendance', href: '/treecutter/attendance', Icon: Fingerprint, desc: 'Clock in / out' },
       ],
@@ -242,11 +250,20 @@ const ROLE_NAV = {
       section: 'Overview',
       items: [
         { label: 'Dashboard', href: '/official/dashboard', Icon: Home, desc: 'Zone monitoring' },
+        { label: 'Tree Adoptions', href: '/official/adoptions', Icon: HeartHandshake, desc: 'Manage citizen adoptions & care' },
         { label: 'Work Schedules', href: '/official/scheduler', Icon: Calendar, desc: 'Plan & assign tasks' },
         { label: 'Communication', href: '/official/communication', Icon: MessageSquare, desc: 'Staff chat & doubts' },
         { label: 'Complaints', href: '/official/complaints', Icon: AlertTriangle, desc: 'Manage field reports' },
         { label: 'Attendance', href: '/official/attendance', Icon: Fingerprint, desc: 'Track cutter hours' },
         { label: 'View Tree Cutter', href: '/official/view-tree-cutter', Icon: Users, desc: 'Cutter analytics & ratios' },
+      ],
+    },
+    {
+      section: 'Circular Economy & Logistics',
+      items: [
+        { label: 'Biomass & Processing', href: '/processing', Icon: Recycle, desc: 'Composting & biomass yard' },
+        { label: 'Timber Auction & Dispatch', href: '/official/timber-management', Icon: Gavel, desc: 'Declare winners & manage dispatch' },
+        { label: 'Orders & Delivery Fleet', href: '/official/orders-delivery', Icon: Truck, desc: 'Eco-store dispatch & payments' },
       ],
     },
     {
@@ -266,10 +283,19 @@ const ROLE_NAV = {
       items: [
         { label: 'Dashboard', href: '/admin/dashboard', Icon: Home, desc: 'System-wide monitoring' },
         { label: 'Admin Console', href: '/admin', Icon: ShieldCheck, desc: 'Users, settings, logs' },
+        { label: 'Tree Adoptions', href: '/admin/adoptions', Icon: HeartHandshake, desc: 'Citizen tree adoptions & care' },
         { label: 'Communication', href: '/admin/communication', Icon: MessageSquare, desc: 'Staff chat & doubts' },
         { label: 'Work Schedules', href: '/admin/scheduler', Icon: Calendar, desc: 'Task scheduling' },
         { label: 'Complaints', href: '/admin/complaints', Icon: AlertTriangle, desc: 'Overlook & resolve complaints' },
         { label: 'Attendance', href: '/admin/attendance', Icon: Fingerprint, desc: 'Workforce tracking' },
+      ],
+    },
+    {
+      section: 'Circular Economy & Logistics',
+      items: [
+        { label: 'Biomass & Processing', href: '/processing', Icon: Recycle, desc: 'Composting & circular economy' },
+        { label: 'Timber Auction & Dispatch', href: '/official/timber-management', Icon: Gavel, desc: 'Declare winners & manage dispatch' },
+        { label: 'Orders & Delivery Fleet', href: '/official/orders-delivery', Icon: Truck, desc: 'Eco-store dispatch & payments' },
       ],
     },
     {
@@ -297,6 +323,8 @@ const ROLE_COLORS = {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const speciesImages = {
+  chiku: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
+  sapota: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
   mango: 'https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=800&q=80',
   guava: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=800&q=80',
   coconut: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80',
@@ -312,11 +340,31 @@ const speciesImages = {
   gulmohar: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=800&q=80',
   honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
   oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=800&q=80',
-  default: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80'
+  default: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80'
 };
 
 const getTreeDisplayImage = (tree) => {
   if (!tree) return speciesImages.default;
+
+  // 1. Check tree.images array first if available
+  if (tree.images && Array.isArray(tree.images) && tree.images.length > 0) {
+    let firstImg = tree.images[0];
+    if (typeof firstImg === 'object' && firstImg?.url) firstImg = firstImg.url;
+    if (typeof firstImg === 'string' && firstImg.trim() !== '') {
+      let img = firstImg.trim();
+      if (img.includes('http') && img.lastIndexOf('http') > 0) {
+        img = img.substring(img.lastIndexOf('http'));
+      }
+      if (img.startsWith('/uploads/')) {
+        img = `${API_URL}${img}`;
+      }
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+      }
+    }
+  }
+
+  // 2. Check primary tree.image field
   if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
     let img = tree.image.trim();
     if (img.includes('http') && img.lastIndexOf('http') > 0) {
@@ -329,7 +377,10 @@ const getTreeDisplayImage = (tree) => {
       return img;
     }
   }
+
+  // 3. Species-specific smart image fallback
   const nameStr = `${tree.name || ''} ${tree.scientificName || ''} ${tree.family || ''}`.toLowerCase();
+  if (nameStr.includes('chiku') || nameStr.includes('sapota') || nameStr.includes('manilkara') || nameStr.includes('zapota')) return speciesImages.chiku;
   if (nameStr.includes('mango') || nameStr.includes('mangifera')) return speciesImages.mango;
   if (nameStr.includes('guava') || nameStr.includes('guajava') || nameStr.includes('psidium')) return speciesImages.guava;
   if (nameStr.includes('pomegranate') || nameStr.includes('punica') || nameStr.includes('granatum')) return speciesImages.pomegranate;
@@ -746,7 +797,9 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
           </Link>
           {[
             { id: 'overview', label: 'Overview' },
+            { id: 'store', label: '🌿 Green Store' },
             { id: 'rewards', label: 'Green Rewards & Trees' },
+            { id: 'subscriptions', label: '🌳 My Subscriptions' },
             { id: 'report', label: 'Report Issue' },
             { id: 'my-reports', label: 'My Tickets' },
             { id: 'profile', label: 'Profile' }
@@ -1244,6 +1297,36 @@ export function DashboardPage() {
                     <i className={tone} style={{ width: `${value}%` }}></i>
                   </div>
                 ))}
+              </div>
+
+              {/* Official Biomass & Circular Economy Card */}
+              <div className="cg-panel" style={{ background: 'linear-gradient(135deg, #072a22 0%, #0c3e32 100%)', border: '1px solid rgba(52, 211, 153, 0.3)', borderRadius: '16px', padding: '18px 20px', color: '#f8fafc', marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#34d399', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Recycle size={14} /> Official Biomass & Waste Yard
+                  </span>
+                  <span style={{ fontSize: '0.72rem', background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7', padding: '2px 8px', borderRadius: '8px', fontWeight: 700 }}>
+                    100% Diverted
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{ background: 'rgba(0, 0, 0, 0.25)', padding: '10px', borderRadius: '8px' }}>
+                    <small style={{ color: '#95d5b2', fontSize: '0.72rem', display: 'block' }}>Compost Batches</small>
+                    <b style={{ fontSize: '1.25rem', color: '#ffffff', fontWeight: 800 }}>5 Maturing</b>
+                  </div>
+                  <div style={{ background: 'rgba(0, 0, 0, 0.25)', padding: '10px', borderRadius: '8px' }}>
+                    <small style={{ color: '#95d5b2', fontSize: '0.72rem', display: 'block' }}>Timber Auctions</small>
+                    <b style={{ fontSize: '1.25rem', color: '#fbbf24', fontWeight: 800 }}>Live Bidding</b>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Link to="/processing" style={{ flex: 1, padding: '8px', background: '#10b981', color: '#020617', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
+                    Yard Console
+                  </Link>
+                  <Link to="/timber-auction" style={{ flex: 1, padding: '8px', background: 'rgba(255, 255, 255, 0.08)', color: '#f8fafc', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
+                    Timber Bidding
+                  </Link>
+                </div>
               </div>
             </aside>
           </section>
@@ -4346,14 +4429,75 @@ export function SchedulerPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/api/complaints`).then(r => r.json()),
-      fetch(`${API_URL}/api/auth/cutters`).then(r => r.json())
+      fetch(`${API_URL}/api/complaints`).then(r => r.json()).catch(() => ({ complaints: [] })),
+      fetch(`${API_URL}/api/auth/cutters`).then(r => r.json()).catch(() => ({ cutters: [] })),
+      fetch(`${API_URL}/api/subscriptions/all`).then(r => r.json()).catch(() => [])
     ])
-      .then(([complaintsData, cuttersData]) => {
+      .then(([complaintsData, cuttersData, subscriptionsData]) => {
         const fetchedComplaints = complaintsData.complaints || [];
         const combined = fetchedComplaints.length > 0 ? fetchedComplaints : defaultSampleTasks;
-        const active = combined.filter(c => !deletedIds.includes(c._id) && !deletedIds.includes(c.id));
-        setComplaints(active);
+        const activeComplaints = combined.filter(c => !deletedIds.includes(c._id) && !deletedIds.includes(c.id));
+
+        // Process subscription care duties into schedule items
+        const subList = Array.isArray(subscriptionsData) ? subscriptionsData : [];
+        const dutyEvents = [];
+        const now = new Date();
+
+        subList.forEach(sub => {
+          if (!['active', 'assigned'].includes(sub.status)) return;
+          const assignedCutter = sub.assignedCutterName || 'Unassigned';
+
+          // 1. Existing uploaded care tasks
+          (sub.careTasks || []).forEach(task => {
+            if (task.uploadedAt) {
+              dutyEvents.push({
+                _id: `sub_task_${task._id || Math.random()}`,
+                issueType: 'care_duty',
+                isCareDuty: true,
+                title: `🌿 Tree Care: ${sub.treeName} (${task.taskType})`,
+                location: sub.treeLocation || 'Urban Canopy Sector',
+                description: task.description || `Care activity: ${task.taskType} conducted for ${sub.userName}'s adopted tree (${sub.treeName}).`,
+                assignedTo: task.uploadedByName || assignedCutter,
+                status: task.status === 'Validated' ? 'Completed' : 'In Progress',
+                priority: 'Routine',
+                equipment: '🌿 Care Kit & Moisture Meter',
+                scheduledDate: task.uploadedAt,
+                createdAt: task.uploadedAt,
+                proofImageUrl: task.proofImageUrl || '',
+                subTreeName: sub.treeName,
+                subUserName: sub.userName,
+                subImage: sub.treeImage,
+              });
+            }
+          });
+
+          // 2. Upcoming scheduled care duty (every 7 days)
+          const doneTasks = (sub.careTasks || []).filter(t => t.uploadedAt);
+          const lastCareDate = doneTasks.length > 0
+            ? new Date(Math.max(...doneTasks.map(t => new Date(t.uploadedAt).getTime())))
+            : (sub.assignedAt ? new Date(sub.assignedAt) : (sub.createdAt ? new Date(sub.createdAt) : now));
+          const nextDue = new Date(new Date(lastCareDate).getTime() + 7 * 24 * 60 * 60 * 1000);
+
+          dutyEvents.push({
+            _id: `sub_due_${sub._id}`,
+            issueType: 'care_duty',
+            isCareDuty: true,
+            title: `🌿 Weekly Care: ${sub.treeName}`,
+            location: sub.treeLocation || 'Urban Canopy Sector',
+            description: `Scheduled weekly maintenance (Watering / Health Audit) for ${sub.userName}'s adopted tree (${sub.treeName}).`,
+            assignedTo: assignedCutter,
+            status: nextDue < now ? 'Pending' : 'Scheduled',
+            priority: 'Routine',
+            equipment: '🌿 Tree Care & Pruning Tools',
+            scheduledDate: nextDue.toISOString(),
+            createdAt: sub.createdAt || now.toISOString(),
+            subTreeName: sub.treeName,
+            subUserName: sub.userName,
+            subImage: sub.treeImage,
+          });
+        });
+
+        setComplaints([...activeComplaints, ...dutyEvents]);
 
         const fetchedCutters = cuttersData.cutters || [];
         const defaultCuttersList = [
@@ -4989,6 +5133,7 @@ export function SchedulerPage() {
                     style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '7px 12px', borderRadius: '8px', fontSize: '0.84rem', fontWeight: 600, outline: 'none' }}
                   >
                     <option value="All">📋 All Work Types</option>
+                    <option value="care_duty">🌿 Tree Care Duties</option>
                     <option value="routine">Monthly Routine</option>
                     <option value="overhanging">Overhanging Branch</option>
                     <option value="damaged">Damaged Tree</option>
@@ -5040,8 +5185,8 @@ export function SchedulerPage() {
                     >
                       <b>{cell.day}</b>
                       {dayEvents.slice(0, 2).map((ev, idx) => (
-                        <span key={ev._id || idx} className={`event ${ev.issueType === 'routine' ? 'green' : ev.status === 'Resolved' ? 'green' : ev.status === 'Scheduled' ? 'blue' : ev.status === 'Pending' ? 'red' : 'violet'}`}>
-                          {issueLabels[ev.issueType] || ev.issueType}
+                        <span key={ev._id || idx} className={`event ${ev.issueType === 'care_duty' ? 'green' : ev.issueType === 'routine' ? 'green' : ev.status === 'Resolved' || ev.status === 'Completed' ? 'green' : ev.status === 'Scheduled' ? 'blue' : ev.status === 'Pending' ? 'red' : 'violet'}`}>
+                          {ev.isCareDuty ? `🌿 ${ev.subTreeName || 'Care Duty'}` : (issueLabels[ev.issueType] || ev.issueType)}
                         </span>
                       ))}
                       {dayEvents.length > 2 && (
@@ -5063,19 +5208,26 @@ export function SchedulerPage() {
                 </div>
               ) : (
                 selectedDayComplaints.map(c => (
-                  <article key={c._id || c.id} style={{ borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
+                  <article key={c._id || c.id} style={{ borderRadius: '10px', padding: '16px', marginBottom: '12px', border: c.isCareDuty ? '1px solid rgba(16,185,129,0.35)' : undefined, background: c.isCareDuty ? 'rgba(5,150,105,0.06)' : undefined }}>
                     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <b style={{ color: c.issueType === 'routine' ? '#4ade80' : c.status === 'Pending' ? '#f87171' : '#60a5fa' }}>
-                        {issueLabels[c.issueType] || c.issueType}
+                      <b style={{ color: c.isCareDuty ? '#34d399' : c.issueType === 'routine' ? '#4ade80' : c.status === 'Pending' ? '#f87171' : '#60a5fa' }}>
+                        {c.isCareDuty ? (c.title || '🌿 Tree Care Duty') : (issueLabels[c.issueType] || c.issueType)}
                       </b>
                       <time style={{ color: 'var(--text-secondary)' }}>{getTaskDate(c).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</time>
                     </header>
                     <h3 style={{ color: 'var(--text-primary)', margin: '12px 0 6px 0', fontSize: '1rem', fontWeight: '600' }}>{c.location || 'Municipal Canopy Sector'}</h3>
                     <p style={{ color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>{c.description || 'Routine tree care, pruning, and safety inspection.'}</p>
+
+                    {c.proofImageUrl && (
+                      <div style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', height: '100px', width: '140px', border: '1px solid rgba(16,185,129,0.3)', cursor: 'pointer' }} onClick={() => window.open(c.proofImageUrl, '_blank')}>
+                        <img src={c.proofImageUrl} alt="Proof" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    )}
+
                     <footer style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
                       <span style={{ color: 'var(--text-primary)' }}><UserRound size={16} /> Cutter: <strong style={{ color: c.assignedTo && c.assignedTo !== 'Unassigned' ? 'var(--brand-accent, #10b981)' : '#ef4444' }}>{c.assignedTo || 'Unassigned'}</strong></span>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {(!c.assignedTo || c.assignedTo === 'Unassigned') && (
+                        {!c.isCareDuty && (!c.assignedTo || c.assignedTo === 'Unassigned') && (
                           <select
                             onChange={(e) => handleAssignCutterToComplaint(c._id, e.target.value)}
                             defaultValue=""
@@ -5088,13 +5240,15 @@ export function SchedulerPage() {
                             })}
                           </select>
                         )}
-                        <button
-                          onClick={() => handleDeleteComplaint(c._id || c.id, c)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
-                          title="Delete Work Schedule"
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
+                        {!c.isCareDuty && (
+                          <button
+                            onClick={() => handleDeleteComplaint(c._id || c.id, c)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                            title="Delete Work Schedule"
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        )}
                       </div>
                     </footer>
                   </article>
@@ -5124,6 +5278,7 @@ const issueLabels = {
   roots: 'Roots Damage',
   fallen: 'Fallen Branch',
   replant: 'Eco-Restore Replantation',
+  care_duty: '🌿 Tree Care Duty',
 };
 
 const cutterOptions = ['Sarah Moreno', 'Mike Arbo', 'David Chen', 'Elena Rodriguez'];
@@ -5210,9 +5365,10 @@ const initialOfficialTasks = [
   },
 ];
 
-export function OfficialManagementPage() {
+export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeView, setActiveView] = useState('complaints');
+  const [activeView, setActiveView] = useState(initialView);
 
   // Official gate (allow Admin)
   const [officialAuthed, setOfficialAuthed] = useState(() => {
@@ -5293,6 +5449,116 @@ export function OfficialManagementPage() {
     locationName: '',
     coords: [13.3409, 74.7421],
   });
+
+  // Official Adopted Trees & Care Management State
+  const [officialAdoptions, setOfficialAdoptions] = useState([]);
+  const [loadingOfficialAdoptions, setLoadingOfficialAdoptions] = useState(false);
+  const [adoptionFilter, setAdoptionFilter] = useState('all'); // all, needs_cutter, proofs_pending, self
+  const [assigningCutterId, setAssigningCutterId] = useState({}); // { [subId]: cutterId }
+  const [fullCuttersList, setFullCuttersList] = useState([]);
+  const [validatingTaskModal, setValidatingTaskModal] = useState(null); // { subId, task, treeName, userName }
+  const [validationNoteInput, setValidationNoteInput] = useState('');
+  const [validatingSubmitting, setValidatingSubmitting] = useState(false);
+  const [calendarModalSub, setCalendarModalSub] = useState(null);
+
+  const fetchOfficialAdoptions = async () => {
+    setLoadingOfficialAdoptions(true);
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/all`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setOfficialAdoptions(data);
+      }
+    } catch (err) {
+      console.error('Error fetching official adoptions:', err);
+    } finally {
+      setLoadingOfficialAdoptions(false);
+    }
+  };
+
+  const handleAssignCutterToTree = async (subId) => {
+    const cutterId = assigningCutterId[subId];
+    if (!cutterId) {
+      alert('Please select a tree cutter from the list to assign.');
+      return;
+    }
+    const cutterObj = fullCuttersList.find(c => (c._id || c.id) === cutterId);
+    const cutterName = cutterObj?.name || 'Tree Cutter';
+
+    try {
+      const currentOfficialUser = (() => {
+        try { return JSON.parse(localStorage.getItem('currentUser')) || {}; } catch { return {}; }
+      })();
+      const res = await fetch(`${API_URL}/api/subscriptions/${subId}/assign-cutter`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cutterId,
+          cutterName,
+          assignedById: currentOfficialUser._id || null,
+          assignedByName: currentOfficialUser.name || 'Municipal Official'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotice(`Tree Cutter ${cutterName} successfully assigned! Citizen notified.`);
+        fetchOfficialAdoptions();
+      } else {
+        alert(data.error || 'Failed to assign cutter.');
+      }
+    } catch {
+      alert('Network error assigning tree cutter.');
+    }
+  };
+
+  const handleValidateCareProof = async (status) => {
+    if (!validatingTaskModal) return;
+    setValidatingSubmitting(true);
+    try {
+      const currentOfficialUser = (() => {
+        try { return JSON.parse(localStorage.getItem('currentUser')) || {}; } catch { return {}; }
+      })();
+      const res = await fetch(`${API_URL}/api/subscriptions/${validatingTaskModal.subId}/tasks/${validatingTaskModal.task._id}/validate`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          validationNote: validationNoteInput,
+          validatedById: currentOfficialUser._id || null,
+          validatedByName: currentOfficialUser.name || 'Municipal Official'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotice(`Care proof ${status.toLowerCase()} successfully! Citizen notified.`);
+        setValidatingTaskModal(null);
+        setValidationNoteInput('');
+        fetchOfficialAdoptions();
+      } else {
+        alert(data.error || 'Failed to update task validation.');
+      }
+    } catch {
+      alert('Network error validating care proof.');
+    } finally {
+      setValidatingSubmitting(false);
+    }
+  };
+
+  const filteredOfficialAdoptions = useMemo(() => {
+    let list = [...officialAdoptions];
+    if (adoptionFilter === 'unassigned') {
+      list = list.filter(s => s.adoptionType === 'subscription' && !s.assignedCutterId && ['active', 'assigned'].includes(s.status));
+    } else if (adoptionFilter === 'pending_review') {
+      list = list.filter(s => s.careTasks?.some(t => t.status === 'Pending'));
+    } else if (adoptionFilter === 'subscription') {
+      list = list.filter(s => s.adoptionType === 'subscription' && ['active', 'assigned'].includes(s.status));
+    } else if (adoptionFilter === 'self') {
+      list = list.filter(s => s.adoptionType === 'self' && !['cancelled', 'lapsed'].includes(s.status));
+    } else if (adoptionFilter === 'cancelled') {
+      list = list.filter(s => ['cancelled', 'lapsed'].includes(s.status));
+    }
+    return list;
+  }, [officialAdoptions, adoptionFilter]);
 
   const resolveImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
@@ -5512,6 +5778,7 @@ export function OfficialManagementPage() {
       .then(res => res.json())
       .then(data => {
         if (data.cutters && data.cutters.length > 0) {
+          setFullCuttersList(data.cutters);
           const names = Array.from(new Set(data.cutters.map(c => typeof c === 'string' ? c : c.name || c.email).filter(Boolean)));
           setCutters(names);
           if (names.length > 0) {
@@ -5521,6 +5788,8 @@ export function OfficialManagementPage() {
         }
       })
       .catch(err => console.error('Failed to load dynamic cutters:', err));
+
+    fetchOfficialAdoptions();
 
     fetch(`${API_URL}/api/attendance/leaves`)
       .then(res => res.json())
@@ -6245,6 +6514,7 @@ export function OfficialManagementPage() {
             <article><AlertTriangle /><span>Pending complaints</span><b>{counts.pending}</b></article>
             <article><Users /><span>Active cutter tasks</span><b>{counts.active}</b></article>
             <article><Camera /><span>Proof reviews</span><b>{counts.proof}</b></article>
+            <article><Heart /><span>Adopted Trees</span><b>{officialAdoptions.length}</b></article>
             <article><ShieldCheck /><span>Closed work</span><b>{counts.closed}</b></article>
           </section>
 
@@ -6254,8 +6524,19 @@ export function OfficialManagementPage() {
               ['tasks', 'Progress'],
               ['maintenance', 'Create Task'],
               ['proofs', 'Proof Review'],
+              ['adoptions', `Tree Adoptions (${officialAdoptions.length})`],
+              ['processing', '🍂 Biomass & Compost Yard'],
+              ['timber', '🔨 Timber Salvage Bidding'],
             ].map(([id, label]) => (
-              <button key={id} className={activeView === id ? 'active' : ''} onClick={() => setActiveView(id)}>{label}</button>
+              <button key={id} className={activeView === id ? 'active' : ''} onClick={() => {
+                if (id === 'processing') {
+                  navigate('/processing');
+                } else if (id === 'timber') {
+                  navigate('/timber-auction');
+                } else {
+                  setActiveView(id);
+                }
+              }}>{label}</button>
             ))}
           </nav>
 
@@ -6882,8 +7163,812 @@ export function OfficialManagementPage() {
               )}
             </div>
           )}
+
+          {activeView === 'adoptions' && (
+            <div style={{ marginTop: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary, #ffffff)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <Heart style={{ color: '#059669', width: 24, height: 24 }} /> Municipal Tree Adoptions & Care Supervision
+                  </h2>
+                  <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary, #94a3b8)', fontSize: '0.9rem' }}>
+                    Oversee citizen adoptions, assign dedicated arborists/cutters for municipal care, and review maintenance photo proofs.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchOfficialAdoptions}
+                  disabled={loadingOfficialAdoptions}
+                  style={{
+                    padding: '0.55rem 1.1rem',
+                    background: 'var(--bg-elevated, rgba(255,255,255,0.08))',
+                    color: 'var(--text-primary, #ffffff)',
+                    border: '1px solid var(--border, rgba(255,255,255,0.18))',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  <RefreshCw size={15} className={loadingOfficialAdoptions ? 'spin' : ''} /> Refresh
+                </button>
+              </div>
+
+              {/* Filter Tabs */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                {[
+                  { id: 'all', label: `All Adoptions (${officialAdoptions.length})` },
+                  { id: 'unassigned', label: `Needs Cutter (${officialAdoptions.filter(s => s.adoptionType === 'subscription' && !s.assignedCutterId && ['active', 'assigned'].includes(s.status)).length})` },
+                  { id: 'pending_review', label: `Care Proofs for Review (${officialAdoptions.reduce((acc, s) => acc + (s.careTasks?.filter(t => t.status === 'Pending').length || 0), 0)})` },
+                  { id: 'subscription', label: `Municipal Care Subscriptions (${officialAdoptions.filter(s => s.adoptionType === 'subscription' && ['active', 'assigned'].includes(s.status)).length})` },
+                  { id: 'self', label: `Citizen Self-Care (${officialAdoptions.filter(s => s.adoptionType === 'self' && !['cancelled', 'lapsed'].includes(s.status)).length})` },
+                  { id: 'cancelled', label: `Cancelled / Expired (${officialAdoptions.filter(s => ['cancelled', 'lapsed'].includes(s.status)).length})` },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setAdoptionFilter(tab.id)}
+                    style={{
+                      padding: '0.45rem 0.9rem',
+                      borderRadius: '20px',
+                      fontSize: '0.825rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: adoptionFilter === tab.id ? '2px solid #059669' : '1px solid var(--border, rgba(255,255,255,0.15))',
+                      background: adoptionFilter === tab.id ? 'rgba(5, 150, 105, 0.25)' : 'var(--bg-elevated, rgba(255,255,255,0.05))',
+                      color: adoptionFilter === tab.id ? '#34d399' : 'var(--text-secondary, #9ca3af)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {loadingOfficialAdoptions ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary, #9ca3af)' }}>
+                  <RefreshCw size={24} className="spin" style={{ marginBottom: '0.75rem', display: 'inline-block' }} />
+                  <p>Loading adoptions & care records...</p>
+                </div>
+              ) : filteredOfficialAdoptions.length === 0 ? (
+                <div style={{ padding: '3.5rem', textAlign: 'center', background: 'var(--bg-card, #112a20)', borderRadius: '12px', border: '1px dashed var(--border, rgba(255,255,255,0.2))' }}>
+                  <TreePine size={40} style={{ color: '#9CA3AF', marginBottom: '0.75rem' }} />
+                  <h3 style={{ margin: '0 0 0.5rem', color: 'var(--text-primary, #ffffff)', fontSize: '1.1rem' }}>No adoptions found</h3>
+                  <p style={{ margin: 0, color: 'var(--text-secondary, #9ca3af)', fontSize: '0.9rem' }}>
+                    {adoptionFilter !== 'all' ? 'Try switching to a different filter tab.' : 'No citizen adoptions have been recorded yet.'}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.25rem' }}>
+                  {filteredOfficialAdoptions.map(sub => {
+                    const isSub = sub.adoptionType === 'subscription';
+                    const isCancelled = ['cancelled', 'lapsed', 'expired'].includes(sub.status?.toLowerCase());
+                    const treeName = sub.treeName || sub.treeId?.name || 'Adopted Tree';
+                    const scientificName = sub.treeScientificName || sub.treeId?.scientificName || '';
+                    const citizenName = sub.userName || sub.userId?.name || 'Citizen Adopter';
+                    const citizenEmail = sub.userEmail || sub.userId?.email || '';
+                    const location = sub.treeLocation || sub.treeId?.location || sub.treeId?.origin || 'Municipal Sector';
+                    const careTasks = sub.careTasks || [];
+                    const pendingProofTasks = careTasks.filter(t => t.status === 'Pending');
+
+                    return (
+                      <div
+                        key={sub._id}
+                        style={{
+                          background: 'var(--bg-card, #0d281e)',
+                          borderRadius: '12px',
+                          border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          padding: '1.25rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '1rem',
+                          position: 'relative',
+                          color: 'var(--text-primary, #ffffff)'
+                        }}
+                      >
+                        {/* Header: Tree & Status */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                padding: '0.2rem 0.55rem',
+                                borderRadius: '4px',
+                                background: isSub ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                                color: isSub ? '#a5b4fc' : '#6ee7b7',
+                                letterSpacing: '0.04em'
+                              }}>
+                                {isSub ? 'Municipal Care Plan' : 'Citizen Self-Care'}
+                              </span>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '4px',
+                                background: isCancelled ? 'rgba(239, 68, 68, 0.2)' : (sub.status === 'active' || sub.status === 'assigned') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                color: isCancelled ? '#fca5a5' : (sub.status === 'active' || sub.status === 'assigned') ? '#6ee7b7' : '#fcd34d'
+                              }}>
+                                {sub.status?.toUpperCase()}
+                              </span>
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary, #ffffff)' }}>
+                              {treeName}
+                            </h3>
+                            {scientificName && (
+                              <p style={{ margin: '0.15rem 0 0', fontStyle: 'italic', fontSize: '0.825rem', color: 'var(--text-secondary, #9ca3af)' }}>
+                                {scientificName}
+                              </p>
+                            )}
+                          </div>
+                          {sub.certificateNumber && (
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontFamily: 'monospace',
+                              background: 'rgba(255,255,255,0.08)',
+                              padding: '0.2rem 0.4rem',
+                              borderRadius: '4px',
+                              color: 'var(--text-secondary, #9ca3af)',
+                              border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              Cert #{sub.certificateNumber.slice(-6)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Adopter & Tree Info */}
+                        <div style={{ background: 'var(--bg-surface, rgba(0,0,0,0.25))', borderRadius: '8px', padding: '0.75rem', fontSize: '0.825rem', color: 'var(--text-primary, #ffffff)', border: '1px solid var(--border, rgba(255,255,255,0.08))' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <div>
+                              <span style={{ color: 'var(--text-secondary, #9ca3af)', display: 'block', fontSize: '0.725rem' }}>CITIZEN ADOPTER</span>
+                              <strong style={{ color: 'var(--text-primary, #ffffff)' }}>{citizenName}</strong>
+                              <div style={{ color: 'var(--text-secondary, #9ca3af)', fontSize: '0.75rem', textOverflow: 'ellipsis', overflow: 'hidden' }}>{citizenEmail}</div>
+                            </div>
+                            <div>
+                              <span style={{ color: 'var(--text-secondary, #9ca3af)', display: 'block', fontSize: '0.725rem' }}>LOCATION / WARD</span>
+                              <span style={{ color: 'var(--text-primary, #ffffff)', fontWeight: 600 }}>{location}</span>
+                              <div style={{ color: 'var(--text-secondary, #9ca3af)', fontSize: '0.75rem' }}>Adopted: {sub.startDate ? new Date(sub.startDate).toLocaleDateString() : 'Active'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Arborist / Cutter Assignment Section */}
+                        {isSub && isCancelled && (
+                          <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,0.1))', paddingTop: '0.75rem' }}>
+                            <div style={{
+                              padding: '0.65rem 0.85rem',
+                              borderRadius: '8px',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#f87171',
+                              fontSize: '0.825rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.6rem'
+                            }}>
+                              <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+                              <div>
+                                <strong style={{ display: 'block', color: '#fca5a5', marginBottom: '0.1rem' }}>Subscription Cancelled</strong>
+                                <span style={{ fontSize: '0.775rem', opacity: 0.9 }}>
+                                  Municipal tree care service terminated. No arborist assignment required.
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {isSub && !isCancelled && (
+                          <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,0.1))', paddingTop: '0.75rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary, #9ca3af)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Assigned Arborist / Cutter
+                              </span>
+                              {sub.assignedCutterName ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#34d399', fontSize: '0.75rem', fontWeight: 600 }}>
+                                  <CheckCircle size={13} /> Active: {sub.assignedCutterName}
+                                </span>
+                              ) : (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#f87171', fontSize: '0.75rem', fontWeight: 600 }}>
+                                  <AlertCircle size={13} /> Needs Assignment
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <select
+                                value={assigningCutterId[sub._id] !== undefined ? assigningCutterId[sub._id] : (sub.assignedCutterId || '')}
+                                onChange={(e) => setAssigningCutterId(prev => ({ ...prev, [sub._id]: e.target.value }))}
+                                style={{
+                                  flex: 1,
+                                  padding: '0.45rem 0.65rem',
+                                  fontSize: '0.825rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border, rgba(255,255,255,0.2))',
+                                  background: 'var(--bg-elevated, #061a14)',
+                                  color: 'var(--text-primary, #ffffff)'
+                                }}
+                              >
+                                <option value="">-- Choose Municipal Cutter --</option>
+                                {fullCuttersList.map(c => {
+                                  const cId = c._id || c.id;
+                                  const cName = c.name || c.email || (typeof c === 'string' ? c : 'Arborist');
+                                  return (
+                                    <option key={cId || cName} value={cId || cName}>
+                                      {cName} {c.email ? `(${c.email})` : ''}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                              <button
+                                onClick={() => handleAssignCutterToTree(sub._id)}
+                                style={{
+                                  padding: '0.45rem 0.85rem',
+                                  background: '#059669',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {sub.assignedCutterId ? 'Reassign' : 'Assign'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Self Care Note */}
+                        {!isSub && (
+                          <div style={{ background: 'rgba(5, 150, 105, 0.12)', border: '1px solid rgba(5, 150, 105, 0.3)', borderRadius: '8px', padding: '0.65rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <Heart size={16} style={{ color: '#34d399', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8rem', color: '#6ee7b7' }}>
+                              Citizen pledged to personally water, prune, and tend this tree every week.
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Care Proofs / Activities Overview */}
+                        <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,0.1))', paddingTop: '0.75rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary, #9ca3af)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              Care Activity & Proofs ({careTasks.length})
+                            </span>
+                            {pendingProofTasks.length > 0 && (
+                              <span style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#fcd34d', padding: '0.15rem 0.45rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700 }}>
+                                {pendingProofTasks.length} for Review
+                              </span>
+                            )}
+                          </div>
+
+                          {careTasks.length === 0 ? (
+                            <p style={{ margin: 0, fontSize: '0.775rem', color: 'var(--text-secondary, #9ca3af)', fontStyle: 'italic' }}>
+                              No maintenance activities logged yet for this adoption period.
+                            </p>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '180px', overflowY: 'auto' }}>
+                              {careTasks.slice().reverse().map(task => {
+                                const isPending = task.status === 'Pending';
+                                const isValidated = task.status === 'Validated';
+                                const isRejected = task.status === 'Rejected';
+                                const proofImg = task.proofImageUrl || task.proofPhoto;
+
+                                return (
+                                  <div
+                                    key={task._id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      background: 'var(--bg-surface, rgba(0,0,0,0.25))',
+                                      borderRadius: '6px',
+                                      padding: '0.45rem 0.65rem',
+                                      border: '1px solid var(--border, rgba(255,255,255,0.08))',
+                                      gap: '0.5rem'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                      {proofImg ? (
+                                        <img
+                                          src={proofImg}
+                                          alt="proof thumbnail"
+                                          style={{ width: 32, height: 32, borderRadius: '4px', objectFit: 'cover', border: '1px solid var(--border, rgba(255,255,255,0.2))', flexShrink: 0, cursor: 'pointer' }}
+                                          onClick={() => {
+                                            setValidatingTaskModal({ subId: sub._id, task, treeName, userName: citizenName, currentStatus: 'Validated' });
+                                            setValidationNoteInput(task.validationNote || '');
+                                          }}
+                                        />
+                                      ) : (
+                                        <Camera size={20} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+                                      )}
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary, #ffffff)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                          {task.taskType || 'Tree Care'}
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary, #9ca3af)' }}>
+                                          {task.uploadedByName || task.cutterName || 'Arborist'} • {task.uploadedAt ? new Date(task.uploadedAt).toLocaleDateString() : ''}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                                      <span style={{
+                                        fontSize: '0.675rem',
+                                        fontWeight: 700,
+                                        padding: '0.15rem 0.4rem',
+                                        borderRadius: '4px',
+                                        background: isValidated ? 'rgba(16, 185, 129, 0.2)' : isRejected ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                        color: isValidated ? '#6ee7b7' : isRejected ? '#fca5a5' : '#fcd34d'
+                                      }}>
+                                        {task.status || 'Pending'}
+                                      </span>
+
+                                      <button
+                                        onClick={() => {
+                                          setValidatingTaskModal({ subId: sub._id, task, treeName, userName: citizenName, currentStatus: task.status === 'Pending' ? 'Validated' : task.status });
+                                          setValidationNoteInput(task.validationNote || '');
+                                        }}
+                                        style={{
+                                          padding: '0.25rem 0.55rem',
+                                          borderRadius: '4px',
+                                          fontSize: '0.725rem',
+                                          fontWeight: 600,
+                                          background: isPending ? '#059669' : 'rgba(255,255,255,0.1)',
+                                          color: isPending ? '#FFFFFF' : 'var(--text-primary, #ffffff)',
+                                          border: 'none',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        {isPending ? 'Review' : 'View'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setCalendarModalSub(sub)}
+                            style={{
+                              marginTop: '0.4rem',
+                              width: '100%',
+                              padding: '0.5rem',
+                              background: 'rgba(5, 150, 105, 0.15)',
+                              border: '1px solid rgba(5, 150, 105, 0.3)',
+                              color: '#34d399',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.4rem'
+                            }}
+                          >
+                            <Calendar size={15} /> View Care Schedule & Timeline
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
+
+      {/* Official Care Activity Proof Review Lightbox Modal */}
+      {validatingTaskModal && validatingTaskModal.task && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99999,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '560px',
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldCheck style={{ color: '#059669', width: 22, height: 22 }} />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>
+                  Review Tree Care Maintenance Proof
+                </h3>
+              </div>
+              <button
+                onClick={() => setValidatingTaskModal(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem' }}>
+              {(validatingTaskModal.task.proofImageUrl || validatingTaskModal.task.proofPhoto) ? (
+                <div style={{ borderRadius: '10px', overflow: 'hidden', maxHeight: '280px', background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                  <img
+                    src={validatingTaskModal.task.proofImageUrl || validatingTaskModal.task.proofPhoto}
+                    alt="Care Proof"
+                    style={{ maxWidth: '100%', maxHeight: '280px', objectFit: 'contain' }}
+                  />
+                </div>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', background: '#F3F4F6', borderRadius: '8px', color: '#6B7280', marginBottom: '1rem' }}>
+                  No photo attached to this task.
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem', background: '#F9FAFB', padding: '0.75rem', borderRadius: '8px', fontSize: '0.825rem' }}>
+                <div>
+                  <span style={{ color: '#9CA3AF', display: 'block', fontSize: '0.725rem' }}>TASK TYPE</span>
+                  <strong style={{ color: '#111827' }}>{validatingTaskModal.task.taskType}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#9CA3AF', display: 'block', fontSize: '0.725rem' }}>LOGGED BY</span>
+                  <strong style={{ color: '#111827' }}>{validatingTaskModal.task.uploadedByName || validatingTaskModal.task.cutterName || 'Arborist'}</strong>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={{ color: '#9CA3AF', display: 'block', fontSize: '0.725rem' }}>TASK DESCRIPTION</span>
+                  <span style={{ color: '#374151' }}>{validatingTaskModal.task.description || validatingTaskModal.task.notes || 'No extra notes provided by arborist.'}</span>
+                </div>
+              </div>
+
+              {/* Status Decision Buttons */}
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                  Official Audit Decision
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setValidatingTaskModal(prev => ({ ...prev, currentStatus: 'Validated' }))}
+                    style={{
+                      padding: '0.6rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      border: validatingTaskModal.currentStatus === 'Validated' ? '2px solid #059669' : '1px solid #E5E7EB',
+                      background: validatingTaskModal.currentStatus === 'Validated' ? '#DCFCE7' : '#FFFFFF',
+                      color: validatingTaskModal.currentStatus === 'Validated' ? '#166534' : '#4B5563',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <CheckCircle size={16} /> Approve & Validate
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setValidatingTaskModal(prev => ({ ...prev, currentStatus: 'Rejected' }))}
+                    style={{
+                      padding: '0.6rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      border: validatingTaskModal.currentStatus === 'Rejected' ? '2px solid #DC2626' : '1px solid #E5E7EB',
+                      background: validatingTaskModal.currentStatus === 'Rejected' ? '#FEE2E2' : '#FFFFFF',
+                      color: validatingTaskModal.currentStatus === 'Rejected' ? '#991B1B' : '#4B5563',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <AlertCircle size={16} /> Reject Proof
+                  </button>
+                </div>
+              </div>
+
+              {/* Validation / Review Remark */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', marginBottom: '0.3rem' }}>
+                  Official Remarks / Feedback for Citizen & Arborist
+                </label>
+                <textarea
+                  rows={3}
+                  value={validationNoteInput}
+                  onChange={(e) => setValidationNoteInput(e.target.value)}
+                  placeholder="e.g., Verified thorough root watering and health check completed satisfactorily."
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    borderRadius: '8px',
+                    border: '1px solid #D1D5DB',
+                    fontSize: '0.85rem',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ padding: '0.85rem 1.25rem', background: '#F9FAFB', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setValidatingTaskModal(null)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#FFFFFF',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#374151',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={validatingSubmitting}
+                onClick={() => handleValidateCareProof(validatingTaskModal.currentStatus || 'Validated')}
+                style={{
+                  padding: '0.5rem 1.25rem',
+                  background: validatingTaskModal.currentStatus === 'Rejected' ? '#DC2626' : '#059669',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  opacity: validatingSubmitting ? 0.7 : 1
+                }}
+              >
+                {validatingSubmitting ? 'Submitting...' : 'Submit Decision'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Official Care Schedule & Timeline Calendar Modal */}
+      {calendarModalSub && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9998,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '680px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #E2E8F0',
+            padding: '24px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #E2E8F0', paddingBottom: '16px', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Calendar size={22} color="#059669" />
+                  Care Activity Schedule & History
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
+                  Tree: <strong>{calendarModalSub.tree?.name || calendarModalSub.tree?.treeId || 'N/A'}</strong> (Plan: {calendarModalSub.plan?.name || calendarModalSub.planType || 'Standard'})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCalendarModalSub(null)}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} color="#64748B" />
+              </button>
+            </div>
+
+            {/* Sub summary pill stats */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+              gap: '10px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ background: '#F8FAFC', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Total Tasks</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A' }}>
+                  {(calendarModalSub.careSchedule || []).length}
+                </span>
+              </div>
+              <div style={{ background: '#ECFDF5', padding: '10px', borderRadius: '8px', border: '1px solid #A7F3D0' }}>
+                <span style={{ fontSize: '0.72rem', color: '#047857', display: 'block' }}>Completed</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#065F46' }}>
+                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'completed' || t.status === 'verified').length}
+                </span>
+              </div>
+              <div style={{ background: '#FEF3C7', padding: '10px', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                <span style={{ fontSize: '0.72rem', color: '#B45309', display: 'block' }}>Pending Validation</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#92400E' }}>
+                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'pending_verification' || (t.proofImage && t.status !== 'verified')).length}
+                </span>
+              </div>
+              <div style={{ background: '#EFF6FF', padding: '10px', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
+                <span style={{ fontSize: '0.72rem', color: '#1D4ED8', display: 'block' }}>Upcoming</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1E40AF' }}>
+                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'scheduled' || (!t.status && !t.proofImage)).length}
+                </span>
+              </div>
+            </div>
+
+            {/* Care Schedule Timeline */}
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1E293B', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Clock size={16} color="#475569" /> Timeline of Scheduled Tasks
+            </div>
+
+            {(!calendarModalSub.careSchedule || calendarModalSub.careSchedule.length === 0) ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#94A3B8', fontStyle: 'italic', background: '#F8FAFC', borderRadius: '8px' }}>
+                No care activities currently scheduled for this adoption.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {calendarModalSub.careSchedule.map((task, idx) => {
+                  const isDone = task.status === 'completed' || task.status === 'verified';
+                  const isPending = task.status === 'pending_verification' || (task.proofImage && task.status !== 'verified');
+                  const dueDate = task.dueDate || task.date;
+                  const formattedDate = dueDate ? new Date(dueDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : `Milestone #${idx + 1}`;
+                  
+                  return (
+                    <div
+                      key={task._id || idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        border: isDone ? '1px solid #BBF7D0' : isPending ? '1px solid #FDE68A' : '1px solid #E2E8F0',
+                        background: isDone ? '#F0FDF4' : isPending ? '#FFFBEB' : '#FFFFFF'
+                      }}
+                    >
+                      <div style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        background: isDone ? '#22C55E' : isPending ? '#F59E0B' : '#E2E8F0',
+                        color: '#FFFFFF'
+                      }}>
+                        {isDone ? <CheckCircle size={16} /> : isPending ? <Clock size={16} /> : <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B' }}>{idx + 1}</span>}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1E293B' }}>
+                            {task.title || task.activityType || `Activity #${idx + 1}`}
+                          </span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            textTransform: 'uppercase',
+                            background: isDone ? '#DCFCE7' : isPending ? '#FEF3C7' : '#F1F5F9',
+                            color: isDone ? '#15803D' : isPending ? '#B45309' : '#64748B'
+                          }}>
+                            {isDone ? 'Verified' : isPending ? 'Pending Review' : 'Scheduled'}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: '3px' }}>
+                          📅 Due: {formattedDate}
+                        </div>
+
+                        {task.notes && (
+                          <div style={{ fontSize: '0.76rem', color: '#475569', marginTop: '4px', fontStyle: 'italic', background: 'rgba(0,0,0,0.02)', padding: '4px 8px', borderRadius: '4px' }}>
+                            "{task.notes}"
+                          </div>
+                        )}
+
+                        {task.proofImage && (
+                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <img
+                              src={task.proofImage}
+                              alt="Proof preview"
+                              style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #CBD5E1' }}
+                              onClick={() => {
+                                setPreviewModal({
+                                  isOpen: true,
+                                  imageUrl: task.proofImage,
+                                  title: `Proof: ${task.title || task.activityType || 'Care Activity'}`
+                                });
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCalendarModalSub(null);
+                                handleOpenValidationModal(calendarModalSub, task);
+                              }}
+                              style={{
+                                padding: '4px 10px',
+                                background: '#3B82F6',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                borderRadius: '5px',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              Inspect Proof & Verify
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setCalendarModalSub(null)}
+                style={{
+                  padding: '8px 18px',
+                  background: '#F1F5F9',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '8px',
+                  color: '#475569',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Close Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Proof Photo Lightbox Preview Modal */}
       {previewModal.isOpen && (
@@ -8676,6 +9761,8 @@ export function TreeInventoryPage() {
     sunlight: '', growthRate: '', leafType: '', floweringSeason: '', fruitingSeason: '',
     carbonSequestration: '', notes: '', healthScore: 90, canopyCoverage: 80,
     waterRequirement: 'Medium', benefits: '', diseases: '', pests: '', image: '',
+    images: [],
+    nativeRegion: '', iucnStatus: '', flowerColor: '', fruitColor: '', culturalUses: '',
     lat: 13.3409, lng: 74.7421
   };
   const [form, setForm] = useState(initialFormState);
@@ -8684,6 +9771,20 @@ export function TreeInventoryPage() {
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [fetchingGPS, setFetchingGPS] = useState(false);
   const [status, setStatus] = useState('');
+  const [uploadedImages, setUploadedImages] = useState([]); // [{url, uploading}]
+  const [uploadingMulti, setUploadingMulti] = useState(false);
+  const [lookupResults, setLookupResults] = useState([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupVisible, setLookupVisible] = useState(false);
+  const lookupTimerRef = useRef(null);
+
+  const [detailActiveImgIndex, setDetailActiveImgIndex] = useState(0);
+  const [showPhotoLightbox, setShowPhotoLightbox] = useState(false);
+
+  useEffect(() => {
+    setDetailActiveImgIndex(0);
+    setShowPhotoLightbox(false);
+  }, [selectedTree]);
 
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
@@ -8781,36 +9882,167 @@ export function TreeInventoryPage() {
     );
   };
 
-  const handleFileChange = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  // ── Multi-Image Upload ──────────────────────────────────────────────────────
+  const handleMultiFileChange = async (event) => {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+    const remaining = 8 - uploadedImages.length;
+    if (remaining <= 0) { setStatus('Maximum 8 images allowed per tree.'); return; }
+    const toUpload = files.slice(0, remaining);
 
-    setStatus('Uploading tree image...');
+    // Add placeholders
+    const placeholders = toUpload.map((f, i) => ({ url: URL.createObjectURL(f), uploading: true, key: Date.now() + i }));
+    setUploadedImages(prev => [...prev, ...placeholders]);
+    setUploadingMulti(true);
+    setStatus(`Uploading ${toUpload.length} image(s) to Cloudinary...`);
 
     try {
-      const uploadForm = new FormData();
-      uploadForm.append('image', file);
-
-      const res = await fetch(`${API_URL}/api/upload`, {
-        method: 'POST',
-        body: uploadForm
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        let uploadedUrl = data.url;
-        if (uploadedUrl && !uploadedUrl.startsWith('http://') && !uploadedUrl.startsWith('https://')) {
-          uploadedUrl = `${API_URL}${uploadedUrl}`;
-        }
-        setForm((prev) => ({ ...prev, image: uploadedUrl }));
-        setStatus('Image uploaded successfully.');
+      const fd = new FormData();
+      toUpload.forEach(f => fd.append('images', f));
+      const res = await fetch(`${API_URL}/api/upload/multiple`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.urls) {
+        // Replace placeholders with real Cloudinary URLs
+        setUploadedImages(prev => {
+          const updated = [...prev];
+          let ri = 0;
+          for (let i = 0; i < updated.length; i++) {
+            if (updated[i].uploading && ri < data.urls.length) {
+              updated[i] = { url: data.urls[ri], uploading: false, key: updated[i].key };
+              ri++;
+            }
+          }
+          return updated;
+        });
+        // Set primary image if none set
+        setForm(prev => ({ ...prev, image: prev.image || data.urls[0] || prev.image, images: [...(prev.images || []), ...data.urls] }));
+        setStatus(`✅ ${data.urls.length} image(s) uploaded successfully.`);
       } else {
-        const data = await res.json();
-        setStatus(data.msg || 'Failed to upload image.');
+        setUploadedImages(prev => prev.filter(p => !p.uploading));
+        setStatus(data.msg || 'Upload failed.');
       }
     } catch (err) {
-      console.error('Error uploading tree image:', err);
-      setStatus('Connection error. Failed to upload image.');
+      setUploadedImages(prev => prev.filter(p => !p.uploading));
+      setStatus('Connection error during upload.');
+    } finally {
+      setUploadingMulti(false);
+    }
+  };
+
+  const handleRemoveUploadedImage = (idx) => {
+    setUploadedImages(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      const nextUrls = next.filter(x => !x.uploading).map(x => x.url);
+      setForm(f => ({ ...f, images: nextUrls, image: nextUrls[0] || '' }));
+      return next;
+    });
+  };
+
+  // ── Perenual Plant Lookup ───────────────────────────────────────────────────
+  const handleNameLookup = (value) => {
+    clearTimeout(lookupTimerRef.current);
+    if (!value || value.trim().length < 3) { setLookupResults([]); setLookupVisible(false); return; }
+    setLookupLoading(true);
+    lookupTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/trees/lookup?name=${encodeURIComponent(value.trim())}`);
+        const data = await res.json();
+        if (res.ok && data.results) {
+          setLookupResults(data.results);
+          setLookupVisible(data.results.length > 0);
+        } else {
+          setLookupResults([]);
+          setLookupVisible(false);
+        }
+      } catch { setLookupResults([]); setLookupVisible(false); }
+      finally { setLookupLoading(false); }
+    }, 600);
+  };
+
+  const applyLookupResult = (plant) => {
+    const waterMap = { none: 'None', minimum: 'Low', average: 'Medium', frequent: 'High' };
+    setForm(prev => ({
+      ...prev,
+      name: prev.name,
+      scientificName: plant.scientific_name || prev.scientificName,
+      family: plant.family || prev.family,
+      origin: prev.origin,
+      climate: plant.tropical ? 'Tropical' : prev.climate,
+      sunlight: plant.sunlight || prev.sunlight,
+      growthRate: plant.growth_rate || prev.growth_rate,
+      waterRequirement: waterMap[plant.watering?.toLowerCase()] || prev.waterRequirement,
+      floweringSeason: plant.flowering_season || prev.floweringSeason,
+      leafType: plant.leaf_color ? `Leaves: ${plant.leaf_color}` : prev.leafType,
+      description: plant.description || prev.description,
+      image: (plant.image_url && !prev.image) ? plant.image_url : prev.image,
+      benefits: prev.benefits || 'Substantial canopy cooling, Habitat for urban species',
+      diseases: prev.diseases || 'Leaf spot, Root rot',
+      pests: prev.pests || 'Scale insects, Mealybugs',
+    }));
+    if (plant.image_url && uploadedImages.length === 0) {
+      setUploadedImages([{ url: plant.image_url, uploading: false, key: Date.now() }]);
+    }
+    setLookupVisible(false);
+    setLookupResults([]);
+    setStatus(`✅ Auto-filled from Perenual: ${plant.common_name || plant.scientific_name}`);
+  };
+
+  const handleAiAutoFill = async () => {
+    const targetName = form.name.trim();
+    if (!targetName) {
+      setStatus('⚠️ Please type a Tree Name first (e.g. Chiku, Sapota, Mango, Banyan)');
+      return;
+    }
+    setLookupLoading(true);
+    setStatus('✨ AI is auto-generating complete botanical details...');
+    try {
+      const res = await fetch(`${API_URL}/api/trees/ai-autofill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: targetName })
+      });
+      const result = await res.json();
+      if (res.ok && result.data) {
+        const d = result.data;
+        setForm(prev => ({
+          ...prev,
+          scientificName: d.scientificName || prev.scientificName,
+          family: d.family || prev.family,
+          category: d.category || prev.category,
+          height: d.height || prev.height,
+          lifespan: d.lifespan || prev.lifespan,
+          canopySpread: d.canopySpread || prev.canopySpread,
+          healthScore: d.healthScore || prev.healthScore,
+          canopyCoverage: d.canopyCoverage || prev.canopyCoverage,
+          waterRequirement: d.waterRequirement || prev.waterRequirement,
+          sunlight: d.sunlight || prev.sunlight,
+          growthRate: d.growthRate || prev.growthRate,
+          floweringSeason: d.floweringSeason || prev.floweringSeason,
+          fruitingSeason: d.fruitingSeason || prev.fruitingSeason,
+          nativeRegion: d.nativeRegion || prev.nativeRegion,
+          iucnStatus: d.iucnStatus || prev.iucnStatus,
+          flowerColor: d.flowerColor || prev.flowerColor,
+          leafType: d.leafType || prev.leafType,
+          soilType: d.soilType || prev.soilType,
+          climate: d.climate || prev.climate,
+          description: d.description || prev.description,
+          culturalUses: d.culturalUses || prev.culturalUses,
+          benefits: d.benefits || 'Substantial canopy cooling, Habitat for urban species',
+          diseases: d.diseases || 'Leaf spot, Root rot',
+          pests: d.pests || 'Scale insects, Mealybugs',
+          image: d.image || prev.image,
+        }));
+        if (d.image && uploadedImages.length === 0) {
+          setUploadedImages([{ url: d.image, uploading: false, key: Date.now() }]);
+        }
+        setStatus(`✅ AI Auto-Filled all botanical details for "${targetName}"!`);
+      } else {
+        setStatus('⚠️ Could not auto-fill. Please try typing another tree name.');
+      }
+    } catch (err) {
+      setStatus('⚠️ AI Auto-fill error. Check backend network connection.');
+    } finally {
+      setLookupLoading(false);
     }
   };
 
@@ -8827,11 +10059,14 @@ export function TreeInventoryPage() {
       return;
     }
 
+    const realImages = uploadedImages.filter(x => !x.uploading).map(x => x.url);
     const submission = {
       ...form,
       benefits: parseCommaInput(form.benefits),
       pests: parseCommaInput(form.pests),
       diseases: parseCommaInput(form.diseases),
+      images: realImages,
+      image: realImages[0] || form.image || '',
     };
 
     try {
@@ -8868,6 +10103,7 @@ export function TreeInventoryPage() {
         }
       }
       setForm(initialFormState);
+      setUploadedImages([]);
       setShowForm(false);
     } catch (err) {
       setStatus('Server connection error. Please try again.');
@@ -8881,6 +10117,9 @@ export function TreeInventoryPage() {
       pests: Array.isArray(tree.pests) ? tree.pests.join(', ') : tree.pests || '',
       diseases: Array.isArray(tree.diseases) ? tree.diseases.join(', ') : tree.diseases || '',
     });
+    // Pre-populate uploaded images from existing gallery
+    const existingImgs = (Array.isArray(tree.images) && tree.images.length > 0) ? tree.images : (tree.image ? [tree.image] : []);
+    setUploadedImages(existingImgs.map((url, i) => ({ url, uploading: false, key: i })));
     setEditingId(tree._id || tree.id);
     setShowForm(true);
     setSelectedTree(null);
@@ -8988,6 +10227,30 @@ export function TreeInventoryPage() {
   if (selectedTree) {
     const details = getTreeDetails(selectedTree);
 
+    const allTreeImages = (() => {
+      const list = [];
+      if (Array.isArray(selectedTree.images) && selectedTree.images.length > 0) {
+        selectedTree.images.forEach(img => {
+          const url = typeof img === 'object' && img?.url ? img.url : img;
+          if (typeof url === 'string' && url.trim() && !list.includes(url.trim())) {
+            list.push(url.trim());
+          }
+        });
+      }
+      if (selectedTree.image && typeof selectedTree.image === 'string' && selectedTree.image.trim()) {
+        const primary = selectedTree.image.trim();
+        if (!list.includes(primary)) {
+          list.unshift(primary);
+        }
+      }
+      if (list.length === 0) {
+        list.push(getTreeDisplayImage(selectedTree || details));
+      }
+      return list;
+    })();
+
+    const activeImageSrc = allTreeImages[detailActiveImgIndex] || allTreeImages[0] || getTreeDisplayImage(selectedTree || details);
+
     const getBenefitIcon = (benefit) => {
       const text = benefit.toLowerCase();
       if (text.includes('shade') || text.includes('heat') || text.includes('cool')) return <Umbrella size={18} color="#15803d" />;
@@ -9036,11 +10299,12 @@ export function TreeInventoryPage() {
 
               {/* Left Column */}
               <div className="tree-detail-left">
-                {/* Image Card */}
-                <div className="tree-detail-image-card">
+                {/* Image Card & Gallery Controls */}
+                <div className="tree-detail-image-card" style={{ marginBottom: allTreeImages.length > 1 ? '10px' : '24px', position: 'relative', overflow: 'hidden', borderRadius: '16px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}>
                   <img
-                    src={getTreeDisplayImage(selectedTree || details)}
+                    src={activeImageSrc}
                     alt={details.name}
+                    style={{ width: '100%', height: '340px', objectFit: 'cover', display: 'block', transition: 'all 0.3s ease-in-out' }}
                     onError={(e) => {
                       const fallback = speciesImages.default;
                       if (e.currentTarget.src !== fallback) {
@@ -9048,14 +10312,62 @@ export function TreeInventoryPage() {
                       }
                     }}
                   />
-                  <button className="view-image-overlay-btn" onClick={() => {
-                    const imgUrl = getTreeDisplayImage(selectedTree || details);
-                    const w = window.open();
-                    w.document.write(`<img src="${imgUrl}" style="max-width:100%; max-height:100vh; display:block; margin:auto;" />`);
+                  <span style={{
+                    position: 'absolute', top: '12px', left: '12px',
+                    background: 'rgba(3, 20, 14, 0.75)', backdropFilter: 'blur(8px)',
+                    color: '#ffffff', fontSize: '0.75rem', fontWeight: 700,
+                    padding: '5px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px',
+                    border: '1px solid rgba(82, 183, 136, 0.3)'
                   }}>
-                    <Eye size={16} style={{ marginRight: '6px' }} /> View Image
+                    📸 {detailActiveImgIndex + 1} / {allTreeImages.length}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="view-image-overlay-btn"
+                    onClick={() => setShowPhotoLightbox(true)}
+                    style={{
+                      position: 'absolute', bottom: '12px', right: '12px',
+                      background: '#046b4e', backdropFilter: 'blur(8px)',
+                      color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)',
+                      borderRadius: '8px', padding: '8px 16px', fontSize: '0.85rem',
+                      fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.35)', transition: 'all 0.2s'
+                    }}
+                  >
+                    <Eye size={16} /> View All Photos ({allTreeImages.length})
                   </button>
                 </div>
+
+                {/* Gallery Thumbnail Strip below main image card */}
+                {allTreeImages.length > 1 && (
+                  <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '24px' }}>
+                    {allTreeImages.map((imgUrl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setDetailActiveImgIndex(idx)}
+                        style={{
+                          border: idx === detailActiveImgIndex ? '3px solid #10b981' : '1px solid rgba(82, 183, 136, 0.3)',
+                          borderRadius: '10px',
+                          overflow: 'hidden',
+                          width: '72px',
+                          height: '72px',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          padding: 0,
+                          background: '#0b2518',
+                          opacity: idx === detailActiveImgIndex ? 1 : 0.65,
+                          transform: idx === detailActiveImgIndex ? 'scale(1.05)' : 'scale(1)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: idx === detailActiveImgIndex ? '0 4px 12px rgba(16, 185, 129, 0.4)' : 'none'
+                        }}
+                      >
+                        <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* About This Tree Card */}
                 <div className="tree-section-card info-card">
@@ -9186,6 +10498,15 @@ export function TreeInventoryPage() {
                     <span className="badge-pill healthy-badge">
                       <Heart size={14} style={{ fill: '#ffffff', marginRight: '4px' }} /> Healthy
                     </span>
+                    {selectedTree?.isAdopted ? (
+                      <span className="badge-pill adopted-badge" style={{ background: '#0284c7', color: '#ffffff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckCircle size={14} /> Already Adopted
+                      </span>
+                    ) : (
+                      <span className="badge-pill available-badge" style={{ background: '#10b981', color: '#ffffff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Sprout size={14} /> Available for Adoption
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -9352,6 +10673,107 @@ export function TreeInventoryPage() {
             </div>
           </main>
         </div>
+
+        {/* Full-Screen Interactive Gallery Lightbox Modal */}
+        {showPhotoLightbox && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(3, 15, 10, 0.95)', backdropFilter: 'blur(16px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+            padding: '24px clamp(16px, 4vw, 40px)', color: '#ffffff'
+          }}>
+            {/* Modal Header */}
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#ffffff', fontSize: '1.35rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {details.name} <span style={{ fontStyle: 'italic', fontWeight: 400, color: '#a7f3d0', fontSize: '1rem' }}>({details.scientificName})</span>
+                </h3>
+                <p style={{ margin: '4px 0 0', color: '#95d5b2', fontSize: '0.85rem' }}>
+                  Photo {detailActiveImgIndex + 1} of {allTreeImages.length}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPhotoLightbox(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.15)', border: 'none', color: '#ffffff',
+                  width: '44px', height: '44px', borderRadius: '50%', cursor: 'pointer',
+                  fontSize: '1.3rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Main Content & Nav Buttons */}
+            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', maxWidth: '1200px', margin: '16px 0' }}>
+              {allTreeImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setDetailActiveImgIndex((prev) => (prev > 0 ? prev - 1 : allTreeImages.length - 1))}
+                  style={{
+                    position: 'absolute', left: '0px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.25)',
+                    color: '#ffffff', width: '52px', height: '52px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.8rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, backdropFilter: 'blur(8px)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+                  }}
+                >
+                  ‹
+                </button>
+              )}
+
+              <img
+                src={allTreeImages[detailActiveImgIndex]}
+                alt={`${details.name} photo ${detailActiveImgIndex + 1}`}
+                style={{ maxHeight: '72vh', maxWidth: '100%', objectFit: 'contain', borderRadius: '14px', boxShadow: '0 12px 48px rgba(0,0,0,0.85)' }}
+                onError={(e) => {
+                  const fallback = speciesImages.default;
+                  if (e.currentTarget.src !== fallback) {
+                    e.currentTarget.src = fallback;
+                  }
+                }}
+              />
+
+              {allTreeImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setDetailActiveImgIndex((prev) => (prev < allTreeImages.length - 1 ? prev + 1 : 0))}
+                  style={{
+                    position: 'absolute', right: '0px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.25)',
+                    color: '#ffffff', width: '52px', height: '52px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.8rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, backdropFilter: 'blur(8px)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+                  }}
+                >
+                  ›
+                </button>
+              )}
+            </div>
+
+            {/* Modal Bottom Gallery Carousel Bar */}
+            {allTreeImages.length > 1 && (
+              <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', padding: '12px', maxWidth: '1000px' }}>
+                {allTreeImages.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setDetailActiveImgIndex(idx)}
+                    style={{
+                      border: idx === detailActiveImgIndex ? '3px solid #10b981' : '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '10px', overflow: 'hidden', width: '68px', height: '68px', flexShrink: 0,
+                      cursor: 'pointer', opacity: idx === detailActiveImgIndex ? 1 : 0.5, padding: 0,
+                      transform: idx === detailActiveImgIndex ? 'scale(1.08)' : 'scale(1)',
+                      transition: 'all 0.2s', background: '#081c12'
+                    }}
+                  >
+                    <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -9388,13 +10810,81 @@ export function TreeInventoryPage() {
           </section>
           {showForm && (
             <section className="cg-panel cg-tree-glass" style={{ background: 'var(--bg-surface, #0b2518)', border: '1px solid var(--border, rgba(82, 183, 136, 0.25))' }}>
-              <h2 style={{ color: 'var(--text-primary, #ffffff)', marginBottom: '1.5rem' }}>{editingId ? 'Edit Tree Details' : 'Add New Tree'}</h2>
+              <h2 style={{ color: 'var(--text-primary, #ffffff)', marginBottom: '0.5rem' }}>{editingId ? '✏️ Edit Tree Details' : '🌳 Add New Tree'}</h2>
+              <p style={{ color: '#95d5b2', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Type the tree name to auto-fill details from the Perenual plant database.</p>
               <form onSubmit={handleSubmit} className="tree-form">
-                <div className="form-row">
-                  <label>Tree Name*<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Mango Tree" /></label>
-                  <label>Scientific Name*<input value={form.scientificName} onChange={(e) => setForm({ ...form, scientificName: e.target.value })} placeholder="e.g. Mangifera indica" /></label>
+
+                {/* ── Tree Name with Perenual Auto-fill ── */}
+                <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', color: 'var(--text-secondary, #95d5b2)', fontWeight: 700, fontSize: '0.82rem', marginBottom: '6px' }}>Tree Name *</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      value={form.name}
+                      onChange={(e) => { setForm({ ...form, name: e.target.value }); handleNameLookup(e.target.value); }}
+                      onFocus={() => lookupResults.length > 0 && setLookupVisible(true)}
+                      onBlur={() => setTimeout(() => setLookupVisible(false), 200)}
+                      placeholder="e.g. Chiku, Sapota, Mango, Banyan..."
+                      style={{ flex: 1, background: 'var(--bg-elevated, #061a14)', color: '#fff', border: '1px solid rgba(82,183,136,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.9rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAiAutoFill}
+                      disabled={lookupLoading}
+                      style={{
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '10px 18px',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        cursor: lookupLoading ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                    >
+                      {lookupLoading ? (
+                        <>
+                          <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid #ffffff44', borderTopColor: '#ffffff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                          Auto-Filling...
+                        </>
+                      ) : (
+                        '✨ Auto-Fill with AI'
+                      )}
+                    </button>
+                  </div>
+                  {/* Lookup Dropdown */}
+                  {lookupVisible && lookupResults.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#0b2518', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '10px', boxShadow: '0 12px 32px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: '4px' }}>
+                      <div style={{ padding: '6px 14px', fontSize: '0.72rem', color: '#6b7280', fontWeight: 700, borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(52,211,153,0.05)' }}>🌿 Perenual Plant Database — Select to Auto-fill</div>
+                      {lookupResults.map(plant => (
+                        <div
+                          key={plant.id}
+                          onMouseDown={() => applyLookupResult(plant)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid rgba(82,183,136,0.1)', transition: 'background 0.15s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.1)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {plant.image_url && <img src={plant.image_url} alt={plant.common_name} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(52,211,153,0.3)' }} />}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.88rem' }}>{plant.common_name || plant.scientific_name}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#95d5b2', fontStyle: 'italic' }}>{plant.scientific_name} {plant.family ? `· ${plant.family}` : ''}</div>
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 700, whiteSpace: 'nowrap' }}>Auto-fill ↗</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
                 <div className="form-row">
+                  <label>Scientific Name*<input value={form.scientificName} onChange={(e) => setForm({ ...form, scientificName: e.target.value })} placeholder="e.g. Mangifera indica" /></label>
                   <label>Family<input value={form.family} onChange={(e) => setForm({ ...form, family: e.target.value })} placeholder="e.g. Anacardiaceae" /></label>
                   <label>Category<input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Evergreen Fruit Tree" /></label>
                 </div>
@@ -9408,8 +10898,93 @@ export function TreeInventoryPage() {
                   <label>Canopy Coverage (%)<input type="number" min="0" max="100" value={form.canopyCoverage} onChange={(e) => setForm({ ...form, canopyCoverage: parseInt(e.target.value) || 0 })} /></label>
                   <label>Water Requirement<input value={form.waterRequirement} onChange={(e) => setForm({ ...form, waterRequirement: e.target.value })} placeholder="e.g. Medium" /></label>
                 </div>
+
+                {/* Ecology row */}
+                <div className="form-row">
+                  <label>Sunlight<input value={form.sunlight} onChange={(e) => setForm({ ...form, sunlight: e.target.value })} placeholder="e.g. Full Sun" /></label>
+                  <label>Growth Rate<input value={form.growthRate} onChange={(e) => setForm({ ...form, growthRate: e.target.value })} placeholder="e.g. Fast" /></label>
+                  <label>Flowering Season<input value={form.floweringSeason} onChange={(e) => setForm({ ...form, floweringSeason: e.target.value })} placeholder="e.g. Mar – May" /></label>
+                  <label>Fruiting Season<input value={form.fruitingSeason} onChange={(e) => setForm({ ...form, fruitingSeason: e.target.value })} placeholder="e.g. Jun – Aug" /></label>
+                </div>
+                <div className="form-row">
+                  <label>Native Region<input value={form.nativeRegion || ''} onChange={(e) => setForm({ ...form, nativeRegion: e.target.value })} placeholder="e.g. South Asia" /></label>
+                  <label>IUCN Conservation Status
+                    <select value={form.iucnStatus || ''} onChange={(e) => setForm({ ...form, iucnStatus: e.target.value })} style={{ background: 'var(--bg-elevated, #061a14)', color: 'var(--text-primary, #fff)', border: '1px solid rgba(82,183,136,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.9rem', width: '100%' }}>
+                      <option value="">— Select Status —</option>
+                      <option>Least Concern</option>
+                      <option>Near Threatened</option>
+                      <option>Vulnerable</option>
+                      <option>Endangered</option>
+                      <option>Critically Endangered</option>
+                      <option>Data Deficient</option>
+                      <option>Not Evaluated</option>
+                    </select>
+                  </label>
+                  <label>Flower Color<input value={form.flowerColor || ''} onChange={(e) => setForm({ ...form, flowerColor: e.target.value })} placeholder="e.g. Yellow, White" /></label>
+                </div>
+                <div className="form-row">
+                  <label>Leaf Type<input value={form.leafType} onChange={(e) => setForm({ ...form, leafType: e.target.value })} placeholder="e.g. Simple, Pinnate" /></label>
+                  <label>Soil Type<input value={form.soilType} onChange={(e) => setForm({ ...form, soilType: e.target.value })} placeholder="e.g. Loamy, Sandy" /></label>
+                  <label>Climate<input value={form.climate} onChange={(e) => setForm({ ...form, climate: e.target.value })} placeholder="e.g. Tropical monsoonal" /></label>
+                </div>
+
                 <label>Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Enter detailed tree description..." rows={3} /></label>
-                <label>Tree Image<input type="file" accept="image/*" onChange={handleFileChange} /></label>
+                <label>Cultural &amp; Traditional Uses<textarea value={form.culturalUses || ''} onChange={(e) => setForm({ ...form, culturalUses: e.target.value })} placeholder="e.g. Medicinal, Sacred, Timber..." rows={2} /></label>
+
+                {/* Benefits, Diseases, and Pests Row */}
+                <div className="form-row">
+                  <label>🌿 Environmental Benefits (Comma-separated)<input value={form.benefits || ''} onChange={(e) => setForm({ ...form, benefits: e.target.value })} placeholder="e.g. Canopy cooling, Soil erosion prevention, Wildlife habitat" /></label>
+                  <label>🛡️ Susceptible Diseases (Comma-separated)<input value={form.diseases || ''} onChange={(e) => setForm({ ...form, diseases: e.target.value })} placeholder="e.g. Leaf spot, Root rot, Powdery mildew" /></label>
+                  <label>🐛 Common Pests (Comma-separated)<input value={form.pests || ''} onChange={(e) => setForm({ ...form, pests: e.target.value })} placeholder="e.g. Scale insects, Mealybugs, Sapodilla moth" /></label>
+                </div>
+
+                {/* ── Multi-Image Upload Section ── */}
+                <div style={{ marginTop: '1.75rem', borderTop: '1px solid rgba(82,183,136,0.25)', paddingTop: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <h3 style={{ color: 'var(--text-primary, #fff)', margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>📸 Tree Photo Gallery</h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#95d5b2', opacity: 0.85 }}>Upload up to 8 photos. First image is used as the primary/thumbnail. All photos will appear in the citizen-facing gallery carousel.</p>
+                    </div>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: uploadedImages.length >= 8 ? 'rgba(100,100,100,0.2)' : 'linear-gradient(135deg, #059669, #047857)', color: '#fff', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', cursor: uploadedImages.length >= 8 || uploadingMulti ? 'not-allowed' : 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.3)', opacity: uploadedImages.length >= 8 ? 0.5 : 1 }}>
+                      {uploadingMulti ? <><span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Uploading…</> : <>+ Add Photos ({uploadedImages.length}/8)</>}
+                      <input type="file" accept="image/*" multiple disabled={uploadedImages.length >= 8 || uploadingMulti} onChange={handleMultiFileChange} style={{ display: 'none' }} />
+                    </label>
+                  </div>
+
+                  {uploadedImages.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '10px' }}>
+                      {uploadedImages.map((img, idx) => (
+                        <div key={img.key || idx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: idx === 0 ? '2px solid #34d399' : '1px solid rgba(82,183,136,0.3)', aspectRatio: '1', background: '#1b4332' }}>
+                          <img src={img.url} alt={`Tree photo ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: img.uploading ? 'brightness(0.5)' : 'none', transition: 'filter 0.3s' }} />
+                          {img.uploading && (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ display: 'inline-block', width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                            </div>
+                          )}
+                          {!img.uploading && (
+                            <>
+                              {idx === 0 && <span style={{ position: 'absolute', bottom: '5px', left: '5px', background: 'rgba(52,211,153,0.9)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: '20px' }}>PRIMARY</span>}
+                              <button type="button" onClick={() => handleRemoveUploadedImage(idx)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(239,68,68,0.85)', border: 'none', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', cursor: 'pointer', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                      {uploadedImages.length < 8 && (
+                        <label style={{ border: '2px dashed rgba(82,183,136,0.4)', borderRadius: '10px', aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: uploadingMulti ? 'not-allowed' : 'pointer', color: '#95d5b2', fontSize: '0.75rem', gap: '6px', transition: 'border-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#34d399'} onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(82,183,136,0.4)'}>
+                          <span style={{ fontSize: '1.5rem' }}>+</span><span>Add Photo</span>
+                          <input type="file" accept="image/*" multiple disabled={uploadingMulti} onChange={handleMultiFileChange} style={{ display: 'none' }} />
+                        </label>
+                      )}
+                    </div>
+                  ) : (
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(82,183,136,0.35)', borderRadius: '14px', padding: '2.5rem', cursor: 'pointer', color: '#95d5b2', gap: '10px', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#34d399'; e.currentTarget.style.background = 'rgba(52,211,153,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(82,183,136,0.35)'; e.currentTarget.style.background = 'transparent'; }}>
+                      <span style={{ fontSize: '2.5rem' }}>🌿</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#34d399' }}>Click to Upload Tree Photos</span>
+                      <span style={{ fontSize: '0.78rem', opacity: 0.8 }}>PNG, JPG, WebP · Up to 8 images · 10MB each · Stored on Cloudinary</span>
+                      <input type="file" accept="image/*" multiple onChange={handleMultiFileChange} style={{ display: 'none' }} />
+                    </label>
+                  )}
+                </div>
 
                 {/* ── Geolocation & Spatial Mapping Section (Clean Uniform Layout) ── */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.75rem', marginBottom: '1rem', borderTop: '1px solid rgba(82, 183, 136, 0.25)', paddingTop: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
@@ -9441,7 +11016,7 @@ export function TreeInventoryPage() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      <Map size={15} /> 🗺️ Select Location on Map
+                      <MapIcon size={15} /> 🗺️ Select Location on Map
                     </button>
                     <button
                       type="button"
@@ -9789,9 +11364,12 @@ export function ViewTreePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [adoptingId, setAdoptingId] = useState(null);
   const [adoptModalTree, setAdoptModalTree] = useState(null);
-  const [adoptNickname, setAdoptNickname] = useState('');
+  const [adoptPlan, setAdoptPlan] = useState('monthly'); // 'monthly' | 'yearly' | 'self'
   const [isSubmittingAdoption, setIsSubmittingAdoption] = useState(false);
   const [adoptSuccessMsg, setAdoptSuccessMsg] = useState(null);
+  const [adoptStep, setAdoptStep] = useState('plan'); // 'plan' | 'processing' | 'success'
+  const [showPledgeModal, setShowPledgeModal] = useState(false);
+  const [pledgeAgreed, setPledgeAgreed] = useState(false);
 
   const currentUser = (() => {
     try {
@@ -9806,6 +11384,40 @@ export function ViewTreePage() {
   const isOfficialSession = !isAdminSession && (sessionStorage.getItem('officialAuthed') === 'true' || currentUserRole === 'Official' || path.startsWith('/official'));
   const isStaffSession = isAdminSession || isOfficialSession || currentUserRole === 'Tree Cutter' || path.startsWith('/treecutter') || path.startsWith('/cutter');
   const isCitizen = !isAdminSession && !isOfficialSession && (!currentUserRole || currentUserRole === 'Citizen');
+
+  // ── Carousel & Gallery state ──
+  const [carouselIndices, setCarouselIndices] = useState({}); // treeId -> currentSlide
+  const [galleryTree, setGalleryTree] = useState(null);       // tree object for lightbox
+  const [galleryIdx, setGalleryIdx] = useState(0);            // active photo in lightbox
+  const carouselTimers = useRef({});
+
+  // Start auto-scroll for a tree card when it mounts/becomes visible
+  const startCarousel = (treeId, imageCount) => {
+    if (imageCount <= 1) return;
+    if (carouselTimers.current[treeId]) return; // already running
+    carouselTimers.current[treeId] = setInterval(() => {
+      setCarouselIndices(prev => ({
+        ...prev,
+        [treeId]: ((prev[treeId] || 0) + 1) % imageCount
+      }));
+    }, 2500);
+  };
+  const stopCarousel = (treeId) => {
+    if (carouselTimers.current[treeId]) {
+      clearInterval(carouselTimers.current[treeId]);
+      delete carouselTimers.current[treeId];
+    }
+  };
+  // Cleanup on unmount
+  useEffect(() => { return () => Object.values(carouselTimers.current).forEach(clearInterval); }, []);
+
+  const getTreeImages = (tree) => {
+    const imgs = Array.isArray(tree.images) && tree.images.length > 0 ? tree.images : [];
+    const primary = getTreeDisplayImage(tree);
+    // merge, deduplicate
+    const all = [primary, ...imgs.filter(u => u && u !== primary)];
+    return [...new Set(all)].filter(Boolean);
+  };
 
   const effectiveUserId = currentUser.id || currentUser._id || currentUser.userId || 'guest-citizen';
   const effectiveUserName = currentUser.name || currentUser.username || currentUser.fullName || 'Citizen User';
@@ -9826,42 +11438,153 @@ export function ViewTreePage() {
     }
 
     setAdoptModalTree(tree);
-    setAdoptNickname(tree.name || '');
+    setAdoptPlan('monthly');
+    setAdoptStep('plan');
   };
 
-  const handleConfirmAdoption = async (e) => {
-    if (e) e.preventDefault();
+  const loadRazorpay = () => new Promise(resolve => {
+    if (window.Razorpay) return resolve(true);
+    const s = document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+
+  const handleConfirmAdoption = async () => {
     if (!adoptModalTree) return;
+    const treeId = adoptModalTree._id || adoptModalTree.id;
+
+    if (adoptPlan === 'self') {
+      // Show promise/pledge declaration popup first
+      setPledgeAgreed(false);
+      setShowPledgeModal(true);
+      return;
+    }
+
+    // Paid subscription via Razorpay
     setIsSubmittingAdoption(true);
-    setAdoptingId(adoptModalTree._id || adoptModalTree.id);
+    setAdoptStep('processing');
     try {
-      const res = await fetch(`${API_URL}/api/adoptions/adopt`, {
+      const ok = await loadRazorpay();
+      if (!ok) throw new Error('Razorpay SDK failed to load');
+
+      const orderRes = await fetch(`${API_URL}/api/subscriptions/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ treeId, plan: adoptPlan, userId: effectiveUserId })
+      });
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) throw new Error(orderData.error || 'Could not create order');
+
+      // If Razorpay live keys failed authentication (401) or demo mode is triggered:
+      if (orderData.isDemo) {
+        const verifyRes = await fetch(`${API_URL}/api/subscriptions/verify-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id: orderData.orderId,
+            razorpay_payment_id: `pay_test_${Date.now()}`,
+            razorpay_signature: 'sandbox_test_signature',
+            isDemo: true,
+            treeId, plan: adoptPlan,
+            userId: effectiveUserId, userName: effectiveUserName,
+            userEmail: effectiveUserEmail,
+            userPhone: currentUser.phone || ''
+          })
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+        setAdoptStep('success');
+        setAdoptSuccessMsg(`🌳 Adoption confirmed! (Test Mode) Certificate: ${verifyData.subscription?.certificateNumber || ''}`);
+        setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
+        if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
+          setSelectedTree(prev => ({ ...prev, isAdopted: true }));
+        }
+        setTimeout(() => { setAdoptModalTree(null); setAdoptStep('plan'); navigate('/citizen-dashboard?tab=subscriptions'); }, 2500);
+        return;
+      }
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'TreeCanopy Management',
+        description: `${adoptPlan === 'monthly' ? 'Monthly' : 'Yearly'} Tree Adoption – ${adoptModalTree.name}`,
+        image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&q=80',
+        order_id: orderData.orderId,
+        handler: async (response) => {
+          try {
+            const verifyRes = await fetch(`${API_URL}/api/subscriptions/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...response,
+                treeId, plan: adoptPlan,
+                userId: effectiveUserId, userName: effectiveUserName,
+                userEmail: effectiveUserEmail,
+                userPhone: currentUser.phone || ''
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+            setAdoptStep('success');
+            setAdoptSuccessMsg(`🌳 Adoption confirmed! Certificate: ${verifyData.subscription?.certificateNumber || ''}`);
+            setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
+            if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
+              setSelectedTree(prev => ({ ...prev, isAdopted: true }));
+            }
+            setTimeout(() => { setAdoptModalTree(null); setAdoptStep('plan'); navigate('/citizen-dashboard?tab=subscriptions'); }, 2500);
+          } catch (err) { alert('Payment verification error: ' + err.message); setAdoptStep('plan'); }
+          finally { setIsSubmittingAdoption(false); setAdoptingId(null); }
+        },
+        prefill: { name: effectiveUserName, email: effectiveUserEmail, contact: currentUser.phone || '' },
+        theme: { color: '#10b981' },
+        modal: { ondismiss: () => { setAdoptStep('plan'); setIsSubmittingAdoption(false); setAdoptingId(null); } }
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert(err.message || 'Error initiating payment');
+      setAdoptStep('plan');
+      setIsSubmittingAdoption(false);
+      setAdoptingId(null);
+    }
+  };
+ 
+  const executeSelfAdopt = async () => {
+    if (!adoptModalTree) return;
+    const treeId = adoptModalTree._id || adoptModalTree.id;
+    setIsSubmittingAdoption(true);
+    setAdoptStep('processing');
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/self-adopt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          treeId,
           userId: effectiveUserId,
           userName: effectiveUserName,
           userEmail: effectiveUserEmail,
-          treeId: adoptModalTree._id || adoptModalTree.id,
-          treeName: adoptModalTree.name,
-          treeScientificName: adoptModalTree.scientificName,
-          treeFamily: adoptModalTree.family,
-          treeLocation: adoptModalTree.origin || 'Udupi Canopy',
-          treeImage: adoptModalTree.image || '',
-          nickname: (adoptNickname || adoptModalTree.name).trim()
+          userPhone: currentUser.phone || ''
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.msg || 'Could not adopt tree');
-
-      setAdoptSuccessMsg(data.msg || 'Tree adopted successfully!');
+      if (!res.ok) throw new Error(data.error || 'Failed to complete self-adoption');
+      setAdoptStep('success');
+      setAdoptSuccessMsg(`🌱 Self-Adoption Confirmed! Certificate: ${data.subscription?.certificateNumber || ''}`);
+      setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
+      if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
+        setSelectedTree(prev => ({ ...prev, isAdopted: true }));
+      }
       setTimeout(() => {
-        setAdoptSuccessMsg(null);
         setAdoptModalTree(null);
-        navigate('/citizen-dashboard?tab=rewards');
-      }, 1500);
+        setAdoptStep('plan');
+        navigate('/citizen-dashboard?tab=subscriptions');
+      }, 2500);
     } catch (err) {
-      alert(err.message || 'Error adopting tree');
+      alert('Self-adoption error: ' + err.message);
+      setAdoptStep('plan');
     } finally {
       setIsSubmittingAdoption(false);
       setAdoptingId(null);
@@ -10238,28 +11961,54 @@ export function ViewTreePage() {
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
                   }}
                 >
-                  {/* Card Header (image) */}
-                  <div style={{ height: '180px', background: '#1b4332', position: 'relative' }}>
-                    <img
-                      src={getTreeDisplayImage(tree)}
-                      alt={tree.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => {
-                        const fallback = speciesImages.default;
-                        if (e.currentTarget.src !== fallback) {
-                          e.currentTarget.src = fallback;
-                        }
-                      }}
-                    />
-                    <span style={{
-                      position: 'absolute', top: '12px', right: '12px',
-                      background: hColor, color: '#fff', borderRadius: '20px',
-                      padding: '3px 12px', fontSize: '0.78rem', fontWeight: 700,
-                      boxShadow: `0 2px 8px ${hColor}55`
-                    }}>
-                      {hLabel}
-                    </span>
-                  </div>
+                  {/* Card Header — auto-scroll carousel */}
+                  {(() => {
+                    const imgs = getTreeImages(tree);
+                    const tid = tree._id || tree.id;
+                    const slideIdx = carouselIndices[tid] || 0;
+                    return (
+                      <div
+                        style={{ height: '180px', background: '#1b4332', position: 'relative', overflow: 'hidden' }}
+                        onMouseEnter={() => stopCarousel(tid)}
+                        onMouseLeave={() => startCarousel(tid, imgs.length)}
+                        ref={el => { if (el && !carouselTimers.current[tid]) startCarousel(tid, imgs.length); }}
+                      >
+                        <img
+                          key={slideIdx}
+                          src={imgs[slideIdx] || getTreeDisplayImage(tree)}
+                          alt={tree.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.5s ease' }}
+                          onError={e => { if (e.currentTarget.src !== speciesImages.default) e.currentTarget.src = speciesImages.default; }}
+                        />
+                        {/* Health badge */}
+                        <span style={{ position: 'absolute', top: '12px', right: '12px', background: hColor, color: '#fff', borderRadius: '20px', padding: '3px 12px', fontSize: '0.78rem', fontWeight: 700, boxShadow: `0 2px 8px ${hColor}55` }}>{hLabel}</span>
+                        {/* Image count badge */}
+                        {imgs.length > 1 && (
+                          <span style={{ position: 'absolute', top: '12px', left: '12px', background: 'rgba(0,0,0,0.55)', color: '#fff', borderRadius: '20px', padding: '3px 10px', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📸 {imgs.length}
+                          </span>
+                        )}
+                        {/* Dot indicators */}
+                        {imgs.length > 1 && (
+                          <div style={{ position: 'absolute', bottom: '8px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '5px' }}>
+                            {imgs.map((_, di) => (
+                              <div key={di} style={{ width: di === slideIdx ? '16px' : '6px', height: '6px', borderRadius: '4px', background: di === slideIdx ? '#34d399' : 'rgba(255,255,255,0.45)', transition: 'all 0.3s' }} />
+                            ))}
+                          </div>
+                        )}
+                        {/* View All Photos overlay on hover */}
+                        {imgs.length > 1 && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setGalleryTree(tree); setGalleryIdx(0); }}
+                            style={{ position: 'absolute', bottom: '28px', right: '8px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '8px', padding: '4px 10px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}
+                            className="view-all-photos-btn"
+                          >
+                            View All 📸
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Card body */}
                   <div style={{ padding: '18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -10362,107 +12111,232 @@ export function ViewTreePage() {
     );
   };
 
+  // ── Gallery Lightbox Modal ──
+  const renderGalleryLightbox = () => {
+    if (!galleryTree) return null;
+    const imgs = getTreeImages(galleryTree);
+    const total = imgs.length;
+    const prev = () => setGalleryIdx(i => (i - 1 + total) % total);
+    const next = () => setGalleryIdx(i => (i + 1) % total);
+    return (
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 999999, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+        onClick={() => setGalleryTree(null)}
+      >
+        <style>{`@keyframes fadeInScale { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }`}</style>
+        {/* Header */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)', zIndex: 1 }} onClick={e => e.stopPropagation()}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff' }}>{galleryTree.name}</div>
+            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', fontStyle: 'italic' }}>{galleryTree.scientificName}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ background: 'rgba(52,211,153,0.2)', border: '1px solid rgba(52,211,153,0.4)', color: '#34d399', padding: '4px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700 }}>📷 {galleryIdx + 1} / {total}</span>
+            <button onClick={() => setGalleryTree(null)} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>✕</button>
+          </div>
+        </div>
+
+        {/* Main image */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', width: '100%', maxWidth: '1000px', padding: '0 16px', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+          <button onClick={prev} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', width: '48px', height: '48px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.3rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.25)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}>&#8249;</button>
+          <img
+            key={galleryIdx}
+            src={imgs[galleryIdx]}
+            alt={`${galleryTree.name} photo ${galleryIdx + 1}`}
+            style={{ maxWidth: '100%', maxHeight: '60vh', borderRadius: '16px', objectFit: 'contain', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', animation: 'fadeInScale 0.3s ease-out' }}
+            onError={e => { if (e.currentTarget.src !== speciesImages.default) e.currentTarget.src = speciesImages.default; }}
+          />
+          <button onClick={next} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', width: '48px', height: '48px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.3rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.25)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}>&#8250;</button>
+        </div>
+
+        {/* Thumbnail strip */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 24px', background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)', display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto' }} onClick={e => e.stopPropagation()}>
+          {imgs.map((url, i) => (
+            <img
+              key={i}
+              src={url}
+              alt={`thumb ${i}`}
+              onClick={() => setGalleryIdx(i)}
+              style={{ width: '52px', height: '52px', borderRadius: '8px', objectFit: 'cover', cursor: 'pointer', border: i === galleryIdx ? '2px solid #34d399' : '2px solid transparent', opacity: i === galleryIdx ? 1 : 0.55, transition: 'all 0.2s', flexShrink: 0 }}
+            />
+          ))}
+        </div>
+
+        {/* Dot indicators */}
+        <div style={{ position: 'absolute', top: '50%', right: '12px', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '6px' }} onClick={e => e.stopPropagation()}>
+          {imgs.map((_, i) => (
+            <div key={i} onClick={() => setGalleryIdx(i)} style={{ width: '6px', height: i === galleryIdx ? '18px' : '6px', borderRadius: '4px', background: i === galleryIdx ? '#34d399' : 'rgba(255,255,255,0.3)', cursor: 'pointer', transition: 'all 0.3s' }} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderAdoptModal = () => {
     if (!adoptModalTree) return null;
+    const monthlyPrice = adoptModalTree.monthlyAdoptionFee || 500;
+    const yearlyPrice = adoptModalTree.yearlyAdoptionFee || 6000;
     return (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 99999,
-        background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+        background: 'rgba(4,20,15,0.82)', backdropFilter: 'blur(12px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
-      }}>
+      }} onClick={() => { setAdoptModalTree(null); setAdoptStep('plan'); }}>
         <div style={{
-          background: '#ffffff', borderRadius: '24px', maxWidth: '460px', width: '100%',
-          overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
-          border: '1px solid rgba(255,255,255,0.2)', animation: 'scaleUp 0.2s ease-out'
-        }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #043224 0%, #065f46 100%)',
-            padding: '24px', color: '#ffffff', position: 'relative'
-          }}>
-            <button
-              onClick={() => setAdoptModalTree(null)}
-              style={{
-                position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.15)',
-                border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.2rem', fontWeight: 'bold'
-              }}
-            >✕</button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
-              <div style={{
-                width: '56px', height: '56px', borderRadius: '14px', overflow: 'hidden',
-                background: 'rgba(255,255,255,0.2)', flexShrink: 0, border: '2px solid rgba(255,255,255,0.3)'
-              }}>
+          background: 'linear-gradient(160deg, #061e14 0%, #0b2e1e 100%)',
+          borderRadius: '24px', maxWidth: '500px', width: '100%',
+          overflow: 'hidden', boxShadow: '0 32px 64px -12px rgba(0,0,0,0.6)',
+          border: '1px solid rgba(52,211,153,0.25)', animation: 'scaleUp 0.25s cubic-bezier(0.34,1.56,0.64,1)'
+        }} onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, #043224 0%, #065f46 60%, #059669 100%)', padding: '24px 24px 20px', position: 'relative' }}>
+            <button onClick={() => { setAdoptModalTree(null); setAdoptStep('plan'); }} style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '14px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
                 <img src={getTreeDisplayImage(adoptModalTree)} alt={adoptModalTree.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>Adopt {adoptModalTree.name}</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#a7f3d0', fontStyle: 'italic' }}>{adoptModalTree.scientificName || 'Canopy Tree'}</p>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>Adopt {adoptModalTree.name}</h3>
+                <p style={{ margin: '3px 0 0', fontSize: '0.83rem', color: '#a7f3d0', fontStyle: 'italic' }}>{adoptModalTree.scientificName || 'Canopy Tree'} · {adoptModalTree.origin || 'Udupi'}</p>
               </div>
-            </div>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              background: 'rgba(16, 185, 129, 0.25)', border: '1px solid #10b981',
-              padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, color: '#ecfdf5', marginTop: '6px'
-            }}>
-              ✨ Earns +100 Eco-Points Upon Adoption
             </div>
           </div>
 
-          <form onSubmit={handleConfirmAdoption} style={{ padding: '24px' }}>
-            {adoptSuccessMsg ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎉</div>
-                <h4 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800, color: '#065f46' }}>{adoptSuccessMsg}</h4>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#4b5563' }}>Redirecting to your Adopted Trees & Rewards...</p>
+          {/* Body */}
+          <div style={{ padding: '24px' }}>
+            {adoptStep === 'success' ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ fontSize: '3.5rem', marginBottom: '14px' }}>🎉</div>
+                <h4 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800, color: '#34d399' }}>{adoptSuccessMsg}</h4>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#95d5b2' }}>Redirecting to your Subscriptions dashboard...</p>
+              </div>
+            ) : adoptStep === 'processing' ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '14px', animation: 'spin 1s linear infinite', display: 'inline-block' }}>🌀</div>
+                <p style={{ color: '#95d5b2', fontWeight: 600 }}>Processing your payment...</p>
               </div>
             ) : (
               <>
-                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', color: '#1f2937', marginBottom: '8px' }}>
-                  Give your adopted tree a nickname:
-                </label>
-                <input
-                  type="text"
-                  value={adoptNickname}
-                  onChange={(e) => setAdoptNickname(e.target.value)}
-                  placeholder="e.g. Sunny Neem, Mighty Oak"
-                  required
-                  style={{
-                    width: '100%', padding: '12px 14px', borderRadius: '10px',
-                    border: '2px solid #e5e7eb', fontSize: '0.95rem', fontWeight: 600,
-                    color: '#111827', background: '#f9fafb', outline: 'none',
-                    transition: 'all 0.2s', marginBottom: '20px', boxSizing: 'border-box'
-                  }}
-                  onFocus={e => e.target.style.borderColor = '#059669'}
-                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                />
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={() => setAdoptModalTree(null)}
-                    style={{
-                      padding: '10px 18px', borderRadius: '10px', border: '1px solid #d1d5db',
-                      background: '#ffffff', color: '#374151', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer'
-                    }}
+                <p style={{ margin: '0 0 18px', color: '#95d5b2', fontSize: '0.9rem' }}>Choose your adoption plan. A tree cutter will be assigned to care for your tree and you'll receive monthly/yearly care proof photos.</p>
+
+                {/* Plan Cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  {/* Monthly */}
+                  <div
+                    onClick={() => setAdoptPlan('monthly')}
+                    style={{ padding: '14px 16px', borderRadius: '14px', border: `2px solid ${adoptPlan === 'monthly' ? '#10b981' : 'rgba(52,211,153,0.2)'}`, background: adoptPlan === 'monthly' ? 'rgba(16,185,129,0.12)' : 'rgba(11,40,26,0.6)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '14px' }}
                   >
-                    Cancel
-                  </button>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: adoptPlan === 'monthly' ? '#10b981' : 'rgba(52,211,153,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'monthly' ? <Check size={18} color='#fff' /> : <span style={{ color: '#34d399', fontSize: '0.75rem', fontWeight: 800 }}>M</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>Monthly Subscription</div>
+                      <div style={{ color: '#95d5b2', fontSize: '0.8rem' }}>Tree cutter assigned • Monthly care proofs</div>
+                    </div>
+                    <div style={{ fontWeight: 900, color: '#34d399', fontSize: '1.15rem' }}>₹{monthlyPrice}<span style={{ fontSize: '0.7rem', color: '#95d5b2', fontWeight: 600 }}>/mo</span></div>
+                  </div>
+
+                  {/* Yearly */}
+                  <div
+                    onClick={() => setAdoptPlan('yearly')}
+                    style={{ padding: '14px 16px', borderRadius: '14px', border: `2px solid ${adoptPlan === 'yearly' ? '#10b981' : 'rgba(52,211,153,0.2)'}`, background: adoptPlan === 'yearly' ? 'rgba(16,185,129,0.12)' : 'rgba(11,40,26,0.6)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '14px', position: 'relative' }}
+                  >
+                    <div style={{ position: 'absolute', top: '-10px', right: '14px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', padding: '2px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800 }}>SAVE 17%</div>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: adoptPlan === 'yearly' ? '#10b981' : 'rgba(52,211,153,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'yearly' ? <Check size={18} color='#fff' /> : <span style={{ color: '#34d399', fontSize: '0.75rem', fontWeight: 800 }}>Y</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>Yearly Subscription</div>
+                      <div style={{ color: '#95d5b2', fontSize: '0.8rem' }}>Priority care • Annual certificate • Best value</div>
+                    </div>
+                    <div style={{ fontWeight: 900, color: '#34d399', fontSize: '1.15rem' }}>₹{yearlyPrice}<span style={{ fontSize: '0.7rem', color: '#95d5b2', fontWeight: 600 }}>/yr</span></div>
+                  </div>
+
+                  {/* Self */}
+                  <div
+                    onClick={() => setAdoptPlan('self')}
+                    style={{ padding: '14px 16px', borderRadius: '14px', border: `2px solid ${adoptPlan === 'self' ? '#6366f1' : 'rgba(99,102,241,0.2)'}`, background: adoptPlan === 'self' ? 'rgba(99,102,241,0.1)' : 'rgba(11,40,26,0.6)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '14px' }}
+                  >
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: adoptPlan === 'self' ? '#6366f1' : 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {adoptPlan === 'self' ? <Check size={18} color='#fff' /> : <span style={{ color: '#818cf8', fontSize: '0.75rem', fontWeight: 800 }}>S</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>Self Adoption (Free)</div>
+                      <div style={{ color: '#a5b4fc', fontSize: '0.8rem' }}>You personally care for this tree. No monthly fee.</div>
+                    </div>
+                    <div style={{ fontWeight: 900, color: '#818cf8', fontSize: '1.1rem' }}>FREE</div>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setAdoptModalTree(null); setAdoptStep('plan'); }} style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid rgba(52,211,153,0.3)', background: 'transparent', color: '#95d5b2', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}>Cancel</button>
                   <button
-                    type="submit"
+                    onClick={handleConfirmAdoption}
                     disabled={isSubmittingAdoption}
-                    style={{
-                      padding: '10px 20px', borderRadius: '10px', border: 'none',
-                      background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                      color: '#ffffff', fontWeight: 700, fontSize: '0.875rem', cursor: isSubmittingAdoption ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)'
-                    }}
+                    style={{ padding: '10px 22px', borderRadius: '10px', border: 'none', background: adoptPlan === 'self' ? 'linear-gradient(135deg,#4f46e5,#4338ca)' : 'linear-gradient(135deg,#059669,#047857)', color: '#fff', fontWeight: 700, fontSize: '0.875rem', cursor: isSubmittingAdoption ? 'not-allowed' : 'pointer', boxShadow: '0 4px 14px rgba(5,150,105,0.35)', display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
-                    {isSubmittingAdoption ? 'Adopting...' : '🎉 Confirm Adoption (+100 Pts)'}
+                    <Heart size={15} fill='currentColor' />
+                    {isSubmittingAdoption ? 'Processing...' : adoptPlan === 'self' ? 'Confirm Self-Adoption' : `Pay ₹${adoptPlan === 'monthly' ? monthlyPrice : yearlyPrice} & Adopt`}
                   </button>
                 </div>
               </>
             )}
-          </form>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPledgeModal = () => {
+    if (!showPledgeModal) return null;
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 99999,
+        background: 'rgba(4,20,15,0.82)', backdropFilter: 'blur(12px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+      }} onClick={() => setShowPledgeModal(false)}>
+        <div style={{
+          background: 'linear-gradient(160deg, #061e14 0%, #0b2e1e 100%)',
+          borderRadius: '24px', maxWidth: '480px', width: '100%',
+          overflow: 'hidden', boxShadow: '0 32px 64px -12px rgba(0,0,0,0.6)',
+          border: '1px solid rgba(52,211,153,0.25)', animation: 'scaleUp 0.25s cubic-bezier(0.34,1.56,0.64,1)'
+        }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'linear-gradient(135deg, #043224 0%, #065f46 60%, #059669 100%)', padding: '20px 24px', position: 'relative' }}>
+            <button onClick={() => setShowPledgeModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Tree Guardian Pledge 🌱</h3>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <p style={{ margin: '0 0 14px', color: '#95d5b2', fontSize: '0.9rem', lineHeight: '1.6' }}>
+              I, <strong style={{ color: '#fff' }}>{effectiveUserName}</strong>, solemnly declare that I will personally take responsibility for the care and well-being of this tree. I commit to regular watering, reporting any damage, and ensuring its healthy growth as part of the Udupi Municipal TreeCanopy Programme.
+            </p>
+            <p style={{ margin: '0 0 16px', color: '#6ee7b7', fontSize: '0.82rem', fontStyle: 'italic' }}>
+              I understand that failure to fulfil this commitment may result in the revocation of my adoption status.
+            </p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', cursor: 'pointer', color: '#fff', fontSize: '0.9rem', fontWeight: 600 }}>
+              <input
+                type="checkbox"
+                checked={pledgeAgreed}
+                onChange={e => setPledgeAgreed(e.target.checked)}
+                style={{ width: '18px', height: '18px', accentColor: '#10b981', cursor: 'pointer' }}
+              />
+              I solemnly take this pledge to protect and care for this tree.
+            </label>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowPledgeModal(false)} style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid rgba(52,211,153,0.3)', background: 'transparent', color: '#95d5b2', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}>Cancel</button>
+              <button
+                disabled={!pledgeAgreed}
+                onClick={async () => {
+                  setShowPledgeModal(false);
+                  await executeSelfAdopt();
+                }}
+                style={{ padding: '10px 22px', borderRadius: '10px', border: 'none', background: pledgeAgreed ? 'linear-gradient(135deg,#059669,#047857)' : 'rgba(255,255,255,0.1)', color: pledgeAgreed ? '#fff' : 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: '0.875rem', cursor: pledgeAgreed ? 'pointer' : 'not-allowed', boxShadow: pledgeAgreed ? '0 4px 14px rgba(5,150,105,0.35)' : 'none' }}
+              >
+                Accept & Complete Adoption
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -10491,6 +12365,7 @@ export function ViewTreePage() {
           </header>
           {renderDetailContent()}
           {renderAdoptModal()}
+          {renderPledgeModal()}
         </div>
       );
     } else {
@@ -10501,6 +12376,7 @@ export function ViewTreePage() {
             <Topbar title="Tree Details" onToggleSidebar={() => setSidebarOpen(true)} />
             {renderDetailContent()}
             {renderAdoptModal()}
+            {renderPledgeModal()}
           </div>
         </div>
       );
@@ -10528,6 +12404,8 @@ export function ViewTreePage() {
         </header>
         {renderListContent()}
         {renderAdoptModal()}
+        {renderPledgeModal()}
+        {renderGalleryLightbox()}
       </div>
     );
   } else {
@@ -10538,6 +12416,8 @@ export function ViewTreePage() {
           <Topbar title="Tree Database" onToggleSidebar={() => setSidebarOpen(true)} />
           {renderListContent()}
           {renderAdoptModal()}
+          {renderPledgeModal()}
+          {renderGalleryLightbox()}
         </div>
       </div>
     );
@@ -15555,4 +17435,52 @@ export function CommunicationPage() {
     </div>
   );
 }
+export function OfficialAdoptionsPage() {
+  return <OfficialManagementPage initialView="adoptions" />;
+}
+
+export function TreeCutterDutiesPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('currentUser')) || {}; }
+    catch { return {}; }
+  })();
+
+  const cutterId = currentUser.id || currentUser._id || '';
+  const cutterName = currentUser.name || currentUser.username || 'Snow';
+
+  const theme = {
+    bg: 'var(--bg-page, #051d18)',
+    cardBg: 'var(--bg-surface, #072a22)',
+    elevatedBg: 'var(--bg-elevated, #0a382e)',
+    border: 'var(--border, rgba(52, 211, 153, 0.2))',
+    title: 'var(--text-primary, #ffffff)',
+    subText: 'var(--text-secondary, #95d5b2)',
+  };
+
+  return (
+    <div className="cg-app">
+      <Sidebar active="Tree Care Duties" isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <div className="cg-workspace">
+        <Topbar title="Assigned Tree Care Duties & Pledges" search="Search tree species, locations..." onToggleSidebar={() => setSidebarOpen(true)} />
+        <main className="cg-page" style={{ padding: '24px' }}>
+          <div style={{
+            background: theme.cardBg, border: `1px solid ${theme.border}`,
+            borderRadius: '20px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
+          }}>
+            <TreeDutyPanel
+              cutterId={cutterId}
+              cutterName={cutterName}
+              theme={theme}
+              darkMode={true}
+              onNavigate={(task) => {}}
+            />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TreePine, FileText, CheckCircle2, Clock, AlertTriangle, MapPin,
   Compass, MessageSquare, Database, RefreshCw, Layers, ExternalLink,
   ChevronRight, Calendar, UserCheck, ShieldAlert, Sparkles, Navigation2,
-  Package, Search, Filter, Phone, CheckSquare, Maximize2, Minimize2, X, Activity, Radio
+  Package, Search, Filter, Phone, CheckSquare, Maximize2, Minimize2, X, Activity, Radio,
+  Upload, Camera, Leaf, Star, Eye, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -358,6 +359,362 @@ function TreeCutterNavigationModal({ activeTask, onClose, theme, darkMode }) {
   );
 }
 
+// ── TreeDutyPanel: Manages Subscription-based Tree Care Duties ───────────────
+export function TreeDutyPanel({ cutterId, cutterName, theme, darkMode, onNavigate }) {
+  const [duties, setDuties] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [expandedId, setExpandedId] = React.useState(null);
+  const [uploading, setUploading] = React.useState({});
+  const [uploadForm, setUploadForm] = React.useState({});
+  const [previewUrls, setPreviewUrls] = React.useState({});
+
+  const fetchDuties = React.useCallback(async () => {
+    if (!cutterId && !cutterName) { setLoading(false); return; }
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/cutter-duties?cutterId=${encodeURIComponent(cutterId || '')}&cutterName=${encodeURIComponent(cutterName || '')}`);
+      const data = await res.json();
+      setDuties(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Tree duty fetch error:', err);
+    } finally { setLoading(false); }
+  }, [cutterId, cutterName]);
+
+  React.useEffect(() => { fetchDuties(); }, [fetchDuties]);
+
+  const handleFileChange = (subId, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreviewUrls(prev => ({ ...prev, [subId]: url }));
+    const reader = new FileReader();
+    reader.onload = ev => {
+      setUploadForm(prev => ({ ...prev, [subId]: { ...(prev[subId] || {}), imageBase64: ev.target.result } }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFormChange = (subId, field, value) => {
+    setUploadForm(prev => ({ ...prev, [subId]: { ...(prev[subId] || {}), [field]: value } }));
+  };
+
+  const handleUploadProof = async (sub) => {
+    const form = uploadForm[sub._id] || {};
+    if (!form.imageBase64) {
+      Swal.fire({ icon: 'warning', title: 'No Photo', text: 'Please select a care proof photo first.', confirmButtonColor: '#10b981' });
+      return;
+    }
+    setUploading(prev => ({ ...prev, [sub._id]: true }));
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/${sub._id}/upload-proof`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskType: form.taskType || 'Watering',
+          description: form.description || '',
+          uploadedBy: cutterId,
+          uploadedByName: cutterName,
+          uploadedByRole: 'Tree Cutter',
+          imageBase64: form.imageBase64,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      setUploadForm(prev => { const n = { ...prev }; delete n[sub._id]; return n; });
+      setPreviewUrls(prev => { const n = { ...prev }; delete n[sub._id]; return n; });
+      // Refresh duties list
+      await fetchDuties();
+      Swal.fire({
+        icon: 'success',
+        title: '✅ Care Proof Submitted!',
+        html: `<p>Your <strong>${form.taskType || 'Watering'}</strong> proof for <strong>${sub.treeName}</strong> has been uploaded to Cloudinary and is pending official review.</p>`,
+        confirmButtonColor: '#10b981',
+        timer: 4000,
+        timerProgressBar: true,
+      });
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Upload Failed', text: err.message, confirmButtonColor: '#ef4444' });
+    } finally {
+      setUploading(prev => ({ ...prev, [sub._id]: false }));
+    }
+  };
+
+  const taskStatusColor = (s) => {
+    if (s === 'Validated') return '#34d399';
+    if (s === 'Rejected') return '#f87171';
+    return '#fbbf24';
+  };
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 0', color: theme.subText }}>
+        <div style={{ fontSize: '3rem', marginBottom: '12px', animation: 'pulse 1.5s infinite' }}>🌳</div>
+        <p style={{ fontWeight: 700 }}>Loading your assigned tree duties...</p>
+      </div>
+    );
+  }
+
+  if (!cutterId) {
+    return <div style={{ textAlign: 'center', padding: '40px', color: theme.subText }}>Login required to view tree duties.</div>;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* Panel Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h3 style={{ margin: 0, color: theme.title, fontSize: '1.2rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.2rem' }}>🌿</span> Subscription Tree Care Duties
+          </h3>
+          <span style={{ fontSize: '0.8rem', color: theme.subText }}>Upload Cloudinary proof photos for your assigned adopted trees · Reviewed by Official/Admin · Visible to Citizens</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399', border: '1px solid rgba(16,185,129,0.3)', padding: '4px 14px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 800 }}>
+            {duties.length} Tree{duties.length !== 1 ? 's' : ''} Assigned
+          </span>
+          <button
+            onClick={fetchDuties}
+            style={{ background: theme.elevatedBg, color: theme.title, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '7px 14px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RefreshCw size={14} /> Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Duty Cards */}
+      {duties.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 24px', background: theme.elevatedBg, borderRadius: '20px', border: `2px dashed ${theme.border}` }}>
+          <div style={{ fontSize: '4rem', marginBottom: '14px' }}>🌱</div>
+          <h4 style={{ margin: '0 0 8px', color: theme.title, fontSize: '1.1rem' }}>No Tree Duties Assigned Yet</h4>
+          <p style={{ margin: '0 0 6px', color: theme.subText, fontSize: '0.9rem', maxWidth: '400px', marginInline: 'auto' }}>You will appear here once an official/admin assigns you to a citizen's adopted tree subscription.</p>
+          <p style={{ margin: 0, color: theme.subText, fontSize: '0.8rem' }}>Check back after an official assigns you via the Adoptions Management portal.</p>
+        </div>
+      ) : (
+        duties.map(sub => {
+          const isExpanded = expandedId === sub._id;
+          const form = uploadForm[sub._id] || {};
+          const preview = previewUrls[sub._id];
+          const isUploading = uploading[sub._id];
+          const sched = sub._scheduleInfo || {};
+          const pendingTasks = sched.pendingTaskCount || (sub.careTasks || []).filter(t => t.status === 'Pending').length;
+          const validatedTasks = sched.validatedTaskCount || (sub.careTasks || []).filter(t => t.status === 'Validated').length;
+          const totalTasks = sched.totalTaskCount || (sub.careTasks || []).length;
+          const daysUntilDue = sched.daysUntilDue;
+          const isOverdue = sched.isOverdue;
+
+          return (
+            <div key={sub._id} style={{
+              background: theme.cardBg, borderRadius: '18px',
+              border: `1px solid ${isExpanded ? 'rgba(16,185,129,0.5)' : isOverdue ? 'rgba(239,68,68,0.4)' : theme.border}`,
+              overflow: 'hidden', transition: 'all 0.25s',
+              boxShadow: isExpanded ? `0 8px 28px rgba(16,185,129,0.1)` : isOverdue ? '0 4px 16px rgba(239,68,68,0.07)' : 'none'
+            }}>
+
+              {/* Card Summary Row */}
+              <div
+                style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', flexWrap: 'wrap' }}
+                onClick={() => setExpandedId(isExpanded ? null : sub._id)}
+              >
+                {/* Tree thumbnail */}
+                <div style={{ width: '58px', height: '58px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, border: '2px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.08)', position: 'relative' }}>
+                  <img src={sub.treeImage || 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=80'} alt={sub.treeName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.src = 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&q=80'; }} />
+                </div>
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: '160px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                    <span style={{ fontWeight: 800, fontSize: '1rem', color: theme.title }}>{sub.treeName}</span>
+                    <span style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', padding: '2px 9px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700 }}>
+                      {sub.plan === 'monthly' ? '₹500/mo' : sub.plan === 'yearly' ? '₹6K/yr' : 'Self Adopted'}
+                    </span>
+                    {/* Schedule badge */}
+                    {typeof daysUntilDue === 'number' && (
+                      <span style={{
+                        background: isOverdue ? 'rgba(239,68,68,0.15)' : daysUntilDue <= 2 ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.12)',
+                        color: isOverdue ? '#f87171' : daysUntilDue <= 2 ? '#fbbf24' : '#34d399',
+                        border: `1px solid ${isOverdue ? 'rgba(239,68,68,0.3)' : daysUntilDue <= 2 ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                        padding: '2px 8px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700
+                      }}>
+                        {isOverdue ? `🔴 Overdue by ${Math.abs(daysUntilDue)}d` : daysUntilDue <= 2 ? `⚠️ Due in ${daysUntilDue}d` : `📅 Due in ${daysUntilDue}d`}
+                      </span>
+                    )}
+                    {pendingTasks > 0 && (
+                      <span style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)', padding: '2px 8px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700 }}>
+                        ⏳ {pendingTasks} Pending
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: theme.subText, display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                    {sub.treeLocation && <span>📍 {sub.treeLocation}</span>}
+                    <span>👤 Citizen: {sub.userName}</span>
+                    <span>✅ {validatedTasks} validated · 📸 {totalTasks} total records</span>
+                  </div>
+                </div>
+
+                {/* Actions + Expand */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                  {onNavigate && sub.treeLocation && (
+                    <button
+                      onClick={() => onNavigate({ location: sub.treeLocation, treeName: sub.treeName })}
+                      style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '8px', padding: '6px 10px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      title="Navigate to tree location"
+                    >
+                      <Compass size={13} /> Navigate
+                    </button>
+                  )}
+                  <span style={{ color: theme.subText, fontSize: '0.82rem' }} onClick={() => setExpandedId(isExpanded ? null : sub._id)}>
+                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  </span>
+                </div>
+              </div>
+
+              {/* Expanded Panel */}
+              {isExpanded && (
+                <div style={{ borderTop: `1px solid ${theme.border}`, padding: '22px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+
+                  {/* Citizen & Schedule Info Banner */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+                    {[
+                      { icon: '👤', label: 'Adopting Citizen', val: sub.userName || '—' },
+                      { icon: '📅', label: 'Assigned On', val: sub.assignedAt ? new Date(sub.assignedAt).toLocaleDateString('en-IN') : '—' },
+                      { icon: '⏰', label: 'Next Care Due', val: sched.nextCareDue ? new Date(sched.nextCareDue).toLocaleDateString('en-IN') : '—' },
+                      { icon: '📸', label: 'Total Records', val: `${totalTasks} (${validatedTasks} ✓)` },
+                    ].map((item, idx) => (
+                      <div key={idx} style={{ background: theme.elevatedBg, borderRadius: '12px', padding: '12px 14px', border: `1px solid ${theme.border}` }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: theme.subText, marginBottom: '3px' }}>{item.icon} {item.label}</div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 800, color: theme.title }}>{item.val}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Upload Form */}
+                  <div style={{ background: theme.elevatedBg, borderRadius: '14px', padding: '20px', border: `1px solid ${theme.border}` }}>
+                    <h4 style={{ margin: '0 0 16px', color: '#34d399', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Camera size={16} /> Upload New Care Proof (→ Cloudinary)
+                    </h4>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: theme.subText, marginBottom: '5px' }}>Care Activity Type</label>
+                        <select
+                          value={form.taskType || 'Watering'}
+                          onChange={e => handleFormChange(sub._id, 'taskType', e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.title, fontSize: '0.88rem', cursor: 'pointer', outline: 'none' }}
+                        >
+                          {['Watering', 'Pruning', 'Inspection', 'Fertilizing', 'Pest Control', 'Mulching', 'Cleaning', 'Other'].map(t => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: theme.subText, marginBottom: '5px' }}>Photo Proof *</label>
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px',
+                          border: `2px dashed ${preview ? '#34d399' : theme.border}`,
+                          background: preview ? 'rgba(16,185,129,0.06)' : theme.cardBg, cursor: 'pointer',
+                          fontSize: '0.82rem', color: preview ? '#34d399' : theme.subText, fontWeight: 700, transition: 'all 0.2s'
+                        }}>
+                          <Upload size={14} /> {preview ? '✅ Photo ready to upload' : 'Tap to choose / take photo'}
+                          <input type="file" accept="image/*" capture="environment" onChange={e => handleFileChange(sub._id, e)} style={{ display: 'none' }} />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: theme.subText, marginBottom: '5px' }}>Care Notes (optional)</label>
+                      <textarea
+                        rows={2}
+                        value={form.description || ''}
+                        onChange={e => handleFormChange(sub._id, 'description', e.target.value)}
+                        placeholder="Describe the care performed e.g. Watered 5L, removed dead leaves..."
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${theme.border}`, background: theme.cardBg, color: theme.title, fontSize: '0.85rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                      {preview && (
+                        <div style={{ position: 'relative', width: '90px', height: '68px', borderRadius: '10px', overflow: 'hidden', border: '2px solid #34d399', flexShrink: 0 }}>
+                          <img src={preview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', fontSize: '0.6rem', color: '#fff', textAlign: 'center', padding: '2px' }}>Preview</div>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleUploadProof(sub)}
+                        disabled={isUploading || !form.imageBase64}
+                        style={{
+                          padding: '11px 26px', borderRadius: '12px', border: 'none',
+                          background: form.imageBase64 ? 'linear-gradient(135deg, #059669, #047857)' : theme.elevatedBg,
+                          color: form.imageBase64 ? '#fff' : theme.subText,
+                          fontWeight: 800, fontSize: '0.92rem', cursor: form.imageBase64 ? 'pointer' : 'not-allowed',
+                          display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s',
+                          boxShadow: form.imageBase64 ? '0 4px 16px rgba(5,150,105,0.35)' : 'none'
+                        }}
+                      >
+                        <Upload size={15} />
+                        {isUploading ? 'Uploading to Cloudinary...' : 'Submit Care Proof'}
+                      </button>
+                      <div style={{ fontSize: '0.75rem', color: theme.subText }}>
+                        🔒 Uploaded to Cloudinary · reviewed by Official · visible to citizen
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Existing Care Task Gallery */}
+                  <div>
+                    <h4 style={{ margin: '0 0 12px', color: theme.title, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      🗂️ Care Proof History
+                      <span style={{ background: 'rgba(52,211,153,0.1)', color: '#95d5b2', padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600 }}>{totalTasks} records</span>
+                      {validatedTasks > 0 && <span style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', padding: '2px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600 }}>✅ {validatedTasks} Validated</span>}
+                    </h4>
+                    {totalTasks === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '28px 0', color: theme.subText, fontSize: '0.85rem', background: theme.elevatedBg, borderRadius: '12px' }}>
+                        <div style={{ fontSize: '2.2rem', marginBottom: '8px' }}>🌿</div>
+                        No care records yet. Upload your first proof above!
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 1fr))', gap: '12px' }}>
+                        {[...(sub.careTasks || [])].reverse().map((task, i) => (
+                          <div key={i} style={{ background: darkMode ? '#061a14' : '#f8fafc', borderRadius: '14px', overflow: 'hidden', border: `1px solid ${task.status === 'Validated' ? 'rgba(52,211,153,0.3)' : task.status === 'Rejected' ? 'rgba(248,113,113,0.3)' : theme.border}` }}>
+                            {task.proofImageUrl ? (
+                              <div style={{ height: '115px', overflow: 'hidden', cursor: 'pointer', position: 'relative' }} onClick={() => window.open(task.proofImageUrl, '_blank')}>
+                                <img src={task.proofImageUrl} alt="care proof" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }} onMouseEnter={e => e.target.style.transform = 'scale(1.08)'} onMouseLeave={e => e.target.style.transform = 'scale(1)'} />
+                                <div style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>🔗 Cloudinary</div>
+                              </div>
+                            ) : (
+                              <div style={{ height: '115px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(52,211,153,0.05)', color: theme.subText, fontSize: '2rem' }}>🌱</div>
+                            )}
+                            <div style={{ padding: '10px 12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: 700, color: theme.title, fontSize: '0.82rem' }}>{task.taskType}</span>
+                                <span style={{ color: taskStatusColor(task.status), fontSize: '0.65rem', fontWeight: 800, background: `${taskStatusColor(task.status)}22`, padding: '2px 7px', borderRadius: '6px' }}>{task.status}</span>
+                              </div>
+                              {task.description && <p style={{ margin: '0 0 4px', fontSize: '0.74rem', color: theme.subText, lineHeight: 1.4 }}>{task.description}</p>}
+                              <div style={{ fontSize: '0.67rem', color: '#64748b' }}>
+                                {task.uploadedAt && `📅 ${new Date(task.uploadedAt).toLocaleDateString('en-IN')}`}
+                                {task.uploadedByName && ` · ${task.uploadedByName}`}
+                              </div>
+                              {task.validationNote && (
+                                <div style={{ marginTop: '4px', fontSize: '0.7rem', color: task.status === 'Validated' ? '#34d399' : '#f87171', background: task.status === 'Validated' ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)', padding: '3px 6px', borderRadius: '5px' }}>
+                                  💬 {task.validationNote}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 // ── Main Tree Cutter Dashboard Component ─────────────────────────────────────
 export default function TreeCutterDashboard() {
   const currentUser = useMemo(() => {
@@ -370,9 +727,11 @@ export default function TreeCutterDashboard() {
 
   const [tasks, setTasks] = useState([]);
   const [borrowedInventory, setBorrowedInventory] = useState([]);
+  const [duties, setDuties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('work-orders'); // 'work-orders' | 'tree-duties'
 
   // Navigation Modal state
   const [navModalTask, setNavModalTask] = useState(null);
@@ -405,6 +764,19 @@ export default function TreeCutterDashboard() {
       }
     } catch (err) {
       console.error('Error fetching tasks:', err);
+    }
+  };
+
+  const fetchDutiesCount = async () => {
+    if (!cutterId) return;
+    try {
+      const res = await fetch(`${API_URL}/api/subscriptions/cutter-duties?cutterId=${cutterId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDuties(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Error fetching duties count:', err);
     }
   };
 
@@ -475,7 +847,7 @@ export default function TreeCutterDashboard() {
 
   const loadAllData = async () => {
     setLoading(true);
-    await Promise.all([fetchTasks(), fetchBorrowedInventory()]);
+    await Promise.all([fetchTasks(), fetchBorrowedInventory(), fetchDutiesCount()]);
     setLoading(false);
   };
 
@@ -700,8 +1072,9 @@ export default function TreeCutterDashboard() {
     const completed = myAssignedTasks.filter(t => ['Work Completed', 'Waste Disposed', 'Completed', 'Resolved', 'Closed'].includes(t.status)).length;
     const inProgress = myAssignedTasks.filter(t => ['Scheduled', 'Assigned', 'Reached Location', 'In Progress', 'Pending'].includes(t.status)).length;
     const emergency = myAssignedTasks.filter(t => t.priority === 'High' || t.issueType === 'damaged' || t.issueType === 'fallen').length;
-    return { total, completed, inProgress, emergency };
-  }, [myAssignedTasks]);
+    const treeDuties = duties.length;
+    return { total, completed, inProgress, emergency, treeDuties };
+  }, [myAssignedTasks, duties]);
 
   const filteredTasks = useMemo(() => {
     return myAssignedTasks.filter(t => {
@@ -825,7 +1198,7 @@ export default function TreeCutterDashboard() {
       </div>
 
       {/* 2. Quick Analytics Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         <div style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <FileText size={24} />
@@ -863,6 +1236,21 @@ export default function TreeCutterDashboard() {
           <div>
             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: theme.subText }}>Emergency Hazards</div>
             <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#f87171' }}>{stats.emergency}</div>
+          </div>
+        </div>
+
+        {/* Tree Duties Card - clickable to switch tab */}
+        <div
+          onClick={() => setActiveTab('tree-duties')}
+          style={{ background: activeTab === 'tree-duties' ? 'rgba(16,185,129,0.1)' : theme.cardBg, border: `1px solid ${activeTab === 'tree-duties' ? 'rgba(16,185,129,0.4)' : theme.border}`, borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Leaf size={24} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: theme.subText }}>Assigned Trees</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#10b981' }}>{stats.treeDuties}</div>
+            <div style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700 }}>Click to view duties →</div>
           </div>
         </div>
       </div>
@@ -1013,8 +1401,33 @@ export default function TreeCutterDashboard() {
 
       </div>
 
-      {/* 4. Work Order Tasks Table */}
-      <div style={{
+      {/* 4. Tab Bar: Work Orders | Tree Care Duties */}
+      <div style={{ background: theme.cardBg, border: `1px solid ${theme.border}`, borderRadius: '16px', padding: '6px', display: 'flex', gap: '4px' }}>
+        {[
+          { id: 'work-orders', label: '📋 Work Orders & Cutting Tasks', count: myAssignedTasks.length },
+          { id: 'tree-duties', label: '🌿 Tree Care Duties', count: duties.length, highlight: true },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              flex: 1, padding: '12px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+              background: activeTab === tab.id ? (tab.highlight ? 'linear-gradient(135deg, #059669, #047857)' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)') : 'transparent',
+              color: activeTab === tab.id ? '#ffffff' : theme.subText,
+              fontWeight: 800, fontSize: '0.9rem', transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+            }}
+          >
+            {tab.label}
+            <span style={{ background: activeTab === tab.id ? 'rgba(255,255,255,0.25)' : 'rgba(148,163,184,0.15)', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem' }}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* 4. Work Order Tasks Table (shown when work-orders tab active) */}
+      {activeTab === 'work-orders' && <div style={{
         background: theme.cardBg, border: `1px solid ${theme.border}`,
         borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px'
       }}>
@@ -1195,9 +1608,23 @@ export default function TreeCutterDashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
 
-      {/* 5. Separate Live Navigation Modal Component */}
+      {/* 5. Tree Care Duties Section (shown when tree-duties tab active) */}
+      {activeTab === 'tree-duties' && <div style={{
+        background: theme.cardBg, border: `1px solid ${theme.border}`,
+        borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px'
+      }}>
+        <TreeDutyPanel
+          cutterId={cutterId}
+          cutterName={cutterName}
+          theme={theme}
+          darkMode={darkMode}
+          onNavigate={(task) => setNavModalTask(task)}
+        />
+      </div>}
+
+      {/* 6. Separate Live Navigation Modal Component */}
       {navModalTask && (
         <TreeCutterNavigationModal
           activeTask={navModalTask}

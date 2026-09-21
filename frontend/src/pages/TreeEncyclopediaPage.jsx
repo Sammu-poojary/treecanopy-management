@@ -61,6 +61,8 @@ const orangeIcon = new L.Icon({
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const speciesImages = {
+  chiku: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
+  sapota: 'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?auto=format&fit=crop&w=800&q=80',
   mango: 'https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=800&q=80',
   guava: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=800&q=80',
   coconut: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80',
@@ -76,11 +78,29 @@ const speciesImages = {
   gulmohar: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=800&q=80',
   honge: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80',
   oak: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=800&q=80',
-  default: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&q=80'
+  default: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80'
 };
 
 const getTreeDisplayImage = (tree) => {
   if (!tree) return speciesImages.default;
+
+  if (tree.images && Array.isArray(tree.images) && tree.images.length > 0) {
+    let firstImg = tree.images[0];
+    if (typeof firstImg === 'object' && firstImg?.url) firstImg = firstImg.url;
+    if (typeof firstImg === 'string' && firstImg.trim() !== '') {
+      let img = firstImg.trim();
+      if (img.includes('http') && img.lastIndexOf('http') > 0) {
+        img = img.substring(img.lastIndexOf('http'));
+      }
+      if (img.startsWith('/uploads/')) {
+        img = `${API_URL}${img}`;
+      }
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+      }
+    }
+  }
+
   if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
     let img = tree.image.trim();
     if (img.includes('http') && img.lastIndexOf('http') > 0) {
@@ -94,6 +114,7 @@ const getTreeDisplayImage = (tree) => {
     }
   }
   const nameStr = `${tree.name || ''} ${tree.scientificName || ''} ${tree.family || ''}`.toLowerCase();
+  if (nameStr.includes('chiku') || nameStr.includes('sapota') || nameStr.includes('manilkara') || nameStr.includes('zapota')) return speciesImages.chiku;
   if (nameStr.includes('mango') || nameStr.includes('mangifera')) return speciesImages.mango;
   if (nameStr.includes('guava') || nameStr.includes('guajava') || nameStr.includes('psidium')) return speciesImages.guava;
   if (nameStr.includes('pomegranate') || nameStr.includes('punica') || nameStr.includes('granatum')) return speciesImages.pomegranate;
@@ -112,6 +133,26 @@ const getTreeDisplayImage = (tree) => {
   return speciesImages.default;
 };
 
+const getTreeImagesList = (tree) => {
+  if (!tree) return [speciesImages.default];
+  const list = [];
+  if (Array.isArray(tree.images) && tree.images.length > 0) {
+    tree.images.forEach(img => {
+      const url = typeof img === 'object' && img?.url ? img.url : img;
+      if (typeof url === 'string' && url.trim() && !list.includes(url.trim())) {
+        list.push(url.trim());
+      }
+    });
+  }
+  if (tree.image && typeof tree.image === 'string' && tree.image.trim() && !list.includes(tree.image.trim())) {
+    list.unshift(tree.image.trim());
+  }
+  if (list.length === 0) {
+    list.push(getTreeDisplayImage(tree));
+  }
+  return list;
+};
+
 export default function TreeEncyclopediaPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [trees, setTrees] = useState([]);
@@ -121,6 +162,15 @@ export default function TreeEncyclopediaPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('standard');
   const [scanModalOpen, setScanModalOpen] = useState(false);
+
+  const [detailActiveImgIndex, setDetailActiveImgIndex] = useState(0);
+  const [showPhotoLightbox, setShowPhotoLightbox] = useState(false);
+  const [cardImgIndices, setCardImgIndices] = useState({});
+
+  useEffect(() => {
+    setDetailActiveImgIndex(0);
+    setShowPhotoLightbox(false);
+  }, [selectedTree]);
 
   useEffect(() => {
     setLoading(true);
@@ -165,6 +215,27 @@ export default function TreeEncyclopediaPage() {
       return matchesSearch && matchesCategory;
     });
   }, [udupiTrees, searchQuery, activeCategory]);
+
+  // Auto-scrolling carousel timer for catalog cards with multiple images
+  useEffect(() => {
+    if (!filteredTrees || filteredTrees.length === 0) return;
+    const timer = setInterval(() => {
+      setCardImgIndices(prev => {
+        const next = { ...prev };
+        filteredTrees.forEach(t => {
+          const key = t._id || t.id;
+          const imgs = getTreeImagesList(t);
+          if (imgs.length > 1) {
+            const cur = next[key] || 0;
+            next[key] = (cur + 1) % imgs.length;
+          }
+        });
+        return next;
+      });
+    }, 3500);
+
+    return () => clearInterval(timer);
+  }, [filteredTrees]);
 
   // Compute statistic counts
   const stats = useMemo(() => {
@@ -242,7 +313,11 @@ export default function TreeEncyclopediaPage() {
           )}
 
           {/* Selected Tree Detailed View */}
-          {selectedTree ? (
+          {selectedTree ? (() => {
+            const allDetailImgs = getTreeImagesList(selectedTree);
+            const activeDetailImg = allDetailImgs[detailActiveImgIndex] || allDetailImgs[0] || getTreeDisplayImage(selectedTree);
+
+            return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               
               {/* Header Hero Banner */}
@@ -271,31 +346,54 @@ export default function TreeEncyclopediaPage() {
                         </MapContainer>
                       </div>
                     ) : (
-                      <img
-                        src={getTreeDisplayImage(selectedTree)}
-                        alt={selectedTree.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          const fallback = speciesImages.default;
-                          if (e.currentTarget.src !== fallback) {
-                            e.currentTarget.src = fallback;
-                          }
-                        }}
-                      />
+                      <>
+                        <img
+                          src={activeDetailImg}
+                          alt={selectedTree.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            const fallback = speciesImages.default;
+                            if (e.currentTarget.src !== fallback) {
+                              e.currentTarget.src = fallback;
+                            }
+                          }}
+                        />
+                        <span style={{
+                          position: 'absolute', top: '8px', left: '8px',
+                          background: 'rgba(3, 20, 14, 0.8)', backdropFilter: 'blur(4px)',
+                          color: '#ffffff', fontSize: '0.68rem', fontWeight: 700,
+                          padding: '2px 7px', borderRadius: '10px'
+                        }}>
+                          📸 {detailActiveImgIndex + 1}/{allDetailImgs.length}
+                        </span>
+                      </>
                     )}
                   </div>
-                  <button
-                    onClick={() => setViewMode(viewMode === 'standard' ? 'satellite' : 'standard')}
-                    style={{
-                      background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
-                      borderRadius: '20px', padding: '4px 10px', color: '#ffffff', fontSize: '0.75rem',
-                      fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', marginTop: '2px'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                  >
-                    {viewMode === 'standard' ? '🛰️ Satellite Crop' : '🖼️ Photo View'}
-                  </button>
+
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <button
+                      onClick={() => setViewMode(viewMode === 'standard' ? 'satellite' : 'standard')}
+                      style={{
+                        background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
+                        borderRadius: '20px', padding: '4px 10px', color: '#ffffff', fontSize: '0.75rem',
+                        fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                    >
+                      {viewMode === 'standard' ? '🛰️ Satellite' : '🖼️ Photo'}
+                    </button>
+                    {allDetailImgs.length > 0 && (
+                      <button
+                        onClick={() => setShowPhotoLightbox(true)}
+                        style={{
+                          background: '#10b981', border: '1px solid rgba(255,255,255,0.3)',
+                          borderRadius: '20px', padding: '4px 12px', color: '#ffffff', fontSize: '0.75rem',
+                          fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(16,185,129,0.3)'
+                        }}
+                      >
+                        📸 View Gallery ({allDetailImgs.length})
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ flex: 1, minWidth: '280px' }}>
@@ -501,7 +599,8 @@ export default function TreeEncyclopediaPage() {
               </div>
 
             </div>
-          ) : (
+            );
+          })() : (
             
             // Database Listing Grid
             <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -705,10 +804,14 @@ export default function TreeEncyclopediaPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
                   {filteredTrees.map(tree => {
                     const hs = tree.healthScore ?? 90;
-                    
+                    const treeImgs = getTreeImagesList(tree);
+                    const treeKey = tree._id || tree.id;
+                    const currentCardIdx = cardImgIndices[treeKey] || 0;
+                    const currentDisplayImg = treeImgs[currentCardIdx] || getTreeDisplayImage(tree);
+
                     return (
                       <article
-                        key={tree._id || tree.id}
+                        key={treeKey}
                         onClick={() => setSelectedTree(tree)}
                         style={{
                           background: '#ffffff', borderRadius: '16px', overflow: 'hidden',
@@ -726,12 +829,12 @@ export default function TreeEncyclopediaPage() {
                           e.currentTarget.style.borderColor = '#e2e8f0';
                         }}
                       >
-                        {/* Image Header */}
-                        <div style={{ height: '200px', background: '#f1f5f9', position: 'relative' }}>
+                        {/* Image Header with Auto-Carousel */}
+                        <div style={{ height: '210px', background: '#f1f5f9', position: 'relative', overflow: 'hidden' }}>
                           <img
-                            src={getTreeDisplayImage(tree)}
+                            src={currentDisplayImg}
                             alt={tree.name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'all 0.4s ease-in-out' }}
                             onError={(e) => {
                               const fallback = speciesImages.default;
                               if (e.currentTarget.src !== fallback) {
@@ -743,10 +846,49 @@ export default function TreeEncyclopediaPage() {
                             position: 'absolute', top: '12px', right: '12px',
                             background: getHealthColor(hs), color: '#ffffff', borderRadius: '20px',
                             padding: '4px 12px', fontSize: '0.75rem', fontWeight: 700,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 2
                           }}>
                             Health: {hs}%
                           </span>
+
+                          {/* Multi-Image Carousel Dots & Badge */}
+                          {treeImgs.length > 1 && (
+                            <span style={{
+                              position: 'absolute', top: '12px', left: '12px',
+                              background: 'rgba(3, 20, 14, 0.75)', backdropFilter: 'blur(4px)',
+                              color: '#ffffff', fontSize: '0.7rem', fontWeight: 700,
+                              padding: '3px 9px', borderRadius: '12px', zIndex: 2,
+                              border: '1px solid rgba(82, 183, 136, 0.3)'
+                            }}>
+                              📸 {currentCardIdx + 1}/{treeImgs.length}
+                            </span>
+                          )}
+
+                          {treeImgs.length > 1 && (
+                            <div style={{
+                              position: 'absolute', bottom: '10px', left: '0', right: '0',
+                              display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', zIndex: 2
+                            }}>
+                              {treeImgs.map((_, dotIdx) => (
+                                <span
+                                  key={dotIdx}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCardImgIndices(prev => ({ ...prev, [treeKey]: dotIdx }));
+                                  }}
+                                  style={{
+                                    width: dotIdx === currentCardIdx ? '20px' : '8px',
+                                    height: '8px',
+                                    borderRadius: '4px',
+                                    background: dotIdx === currentCardIdx ? '#10b981' : 'rgba(255,255,255,0.75)',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         {/* Card Body */}
@@ -786,6 +928,107 @@ export default function TreeEncyclopediaPage() {
 
         </main>
       </div>
+
+      {/* Full-Screen Interactive Gallery Lightbox Modal */}
+      {showPhotoLightbox && selectedTree && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          background: 'rgba(3, 15, 10, 0.95)', backdropFilter: 'blur(16px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+          padding: '24px clamp(16px, 4vw, 40px)', color: '#ffffff'
+        }}>
+          {/* Modal Header */}
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px' }}>
+            <div>
+              <h3 style={{ margin: 0, color: '#ffffff', fontSize: '1.35rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {selectedTree.name} <span style={{ fontStyle: 'italic', fontWeight: 400, color: '#a7f3d0', fontSize: '1rem' }}>({selectedTree.scientificName})</span>
+              </h3>
+              <p style={{ margin: '4px 0 0', color: '#95d5b2', fontSize: '0.85rem' }}>
+                Photo {detailActiveImgIndex + 1} of {getTreeImagesList(selectedTree).length}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPhotoLightbox(false)}
+              style={{
+                background: 'rgba(255,255,255,0.15)', border: 'none', color: '#ffffff',
+                width: '44px', height: '44px', borderRadius: '50%', cursor: 'pointer',
+                fontSize: '1.3rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Modal Main Content & Nav Buttons */}
+          <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', maxWidth: '1200px', margin: '16px 0' }}>
+            {getTreeImagesList(selectedTree).length > 1 && (
+              <button
+                type="button"
+                onClick={() => setDetailActiveImgIndex((prev) => (prev > 0 ? prev - 1 : getTreeImagesList(selectedTree).length - 1))}
+                style={{
+                  position: 'absolute', left: '0px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.25)',
+                  color: '#ffffff', width: '52px', height: '52px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.8rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, backdropFilter: 'blur(8px)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+                }}
+              >
+                ‹
+              </button>
+            )}
+
+            <img
+              src={getTreeImagesList(selectedTree)[detailActiveImgIndex]}
+              alt={`${selectedTree.name} photo ${detailActiveImgIndex + 1}`}
+              style={{ maxHeight: '72vh', maxWidth: '100%', objectFit: 'contain', borderRadius: '14px', boxShadow: '0 12px 48px rgba(0,0,0,0.85)' }}
+              onError={(e) => {
+                const fallback = speciesImages.default;
+                if (e.currentTarget.src !== fallback) {
+                  e.currentTarget.src = fallback;
+                }
+              }}
+            />
+
+            {getTreeImagesList(selectedTree).length > 1 && (
+              <button
+                type="button"
+                onClick={() => setDetailActiveImgIndex((prev) => (prev < getTreeImagesList(selectedTree).length - 1 ? prev + 1 : 0))}
+                style={{
+                  position: 'absolute', right: '0px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.25)',
+                  color: '#ffffff', width: '52px', height: '52px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.8rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, backdropFilter: 'blur(8px)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
+                }}
+              >
+                ›
+              </button>
+            )}
+          </div>
+
+          {/* Modal Bottom Gallery Carousel Bar */}
+          {getTreeImagesList(selectedTree).length > 1 && (
+            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', padding: '12px', maxWidth: '1000px' }}>
+              {getTreeImagesList(selectedTree).map((imgUrl, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setDetailActiveImgIndex(idx)}
+                  style={{
+                    border: idx === detailActiveImgIndex ? '3px solid #10b981' : '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '10px', overflow: 'hidden', width: '68px', height: '68px', flexShrink: 0,
+                    cursor: 'pointer', opacity: idx === detailActiveImgIndex ? 1 : 0.5, padding: 0,
+                    transform: idx === detailActiveImgIndex ? 'scale(1.08)' : 'scale(1)',
+                    transition: 'all 0.2s', background: '#081c12'
+                  }}
+                >
+                  <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* CanopyLens AI Tree Scanner Modal */}
       <CanopyLensModal
