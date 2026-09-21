@@ -29,7 +29,7 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps, curl, or server-to-server)
     if (!origin) return callback(null, true);
 
-    const isAllowed = 
+    const isAllowed =
       origin.includes('localhost') ||
       origin.includes('127.0.0.1') ||
       origin.endsWith('.vercel.app') ||
@@ -57,7 +57,7 @@ app.use('/uploads', (req, res, next) => {
       if (map[filename]) {
         return res.redirect(302, map[filename]);
       }
-    } catch (_) {}
+    } catch (_) { }
   }
   next();
 }, express.static(path.join(__dirname, 'uploads')));

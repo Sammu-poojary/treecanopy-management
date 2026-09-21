@@ -381,13 +381,13 @@ const Tree = require('../models/Tree');
 // @access  Tree Cutter
 router.post('/:id/replant', async (req, res) => {
   try {
-    const { 
+    const {
       name, scientificName, family, origin, category, lifespan, height, ageRange,
       canopySpread, description, climate, soilType, sunlight, growthRate, leafType,
       floweringSeason, fruitingSeason, carbonSequestration, notes, healthScore,
-      canopyCoverage, waterRequirement, benefits, diseases, pests, lat, lng, image 
+      canopyCoverage, waterRequirement, benefits, diseases, pests, lat, lng, image
     } = req.body;
-    
+
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
       return res.status(404).json({ msg: 'Complaint not found' });

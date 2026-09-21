@@ -1593,7 +1593,7 @@ export function TaskPage() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ profileImage: photoUrl, avatar: photoUrl })
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       Swal.fire({
@@ -1629,7 +1629,7 @@ export function TaskPage() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ profileImage: '', avatar: '' })
-        }).catch(() => {});
+        }).catch(() => { });
       }
     } catch (e) {
       console.error(e);
@@ -8763,7 +8763,7 @@ export function TreeInventoryPage() {
         let locName = form.origin;
         try {
           locName = await reverseGeocodeUdupi(lat, lng);
-        } catch {}
+        } catch { }
         setForm((prev) => ({
           ...prev,
           lat,
