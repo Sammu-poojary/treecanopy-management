@@ -24,10 +24,17 @@ import {
   ChevronRight,
   Info,
   MapPin,
-  Calendar,
   Check,
   RefreshCw,
-  ShoppingBag as CartIcon
+  ShoppingBag as CartIcon,
+  Star,
+  Eye,
+  Award,
+  BookOpen,
+  Crosshair,
+  Banknote,
+  Navigation,
+  Lock
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -60,8 +67,10 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
     pincode: '',
     phone: user?.phone || ''
   });
+  const [fetchingLocation, setFetchingLocation] = useState(false);
+  const [locationSuccess, setLocationSuccess] = useState('');
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('razorpay');
+  const [paymentMethod, setPaymentMethod] = useState('razorpay'); // 'razorpay' | 'cod' | 'points'
   const [placingOrder, setPlacingOrder] = useState(false);
   const [completedOrder, setCompletedOrder] = useState(null);
   const [orderError, setOrderError] = useState('');
@@ -72,18 +81,34 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
 
+  // Product Details Modal State
+  const [selectedProductDetails, setSelectedProductDetails] = useState(null);
+  const [modalQty, setModalQty] = useState(1);
+  const [cardQuantities, setCardQuantities] = useState({});
+
   useEffect(() => {
     localStorage.setItem('ecoStoreCart', JSON.stringify(cart));
   }, [cart]);
 
-  // Fetch products
+  // Fetch products with clean field normalization (no dummy metrics)
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/api/eco-products`);
       const data = await res.json();
       if (Array.isArray(data)) {
-        setProducts(data);
+        const normalized = data.map(p => ({
+          ...p,
+          priceInInr: Number(p.priceInr ?? p.priceInInr ?? 0),
+          priceInPoints: Number(p.priceEcoPoints ?? p.priceInPoints ?? 0),
+          stock: Number(p.stockQuantity ?? p.stock ?? 0),
+          unitSize: p.unitSize || (p.weightKg ? `${p.weightKg} kg Bag` : ''),
+          weightKg: p.weightKg || null,
+          description: p.description || '',
+          usageInstructions: p.usageInstructions || '',
+          benefits: Array.isArray(p.benefits) ? p.benefits.filter(Boolean) : (typeof p.benefits === 'string' && p.benefits.trim() ? [p.benefits.trim()] : [])
+        }));
+        setProducts(normalized);
       }
     } catch (err) {
       console.error('Failed to fetch eco products:', err);
@@ -160,11 +185,23 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
     setCart([]);
   };
 
+  const getCardQty = (productId) => {
+    return cardQuantities[productId] || 1;
+  };
+
+  const setCardQty = (productId, qty) => {
+    setCardQuantities(prev => ({
+      ...prev,
+      [productId]: Math.max(1, Math.min(qty, 50))
+    }));
+  };
+
   // Pricing calculations
-  const cartSubtotal = cart.reduce((sum, item) => sum + (item.priceInInr * item.quantity), 0);
+  const availableEcoPoints = Number(userEcoPoints) || 0;
+  const cartSubtotal = cart.reduce((sum, item) => sum + ((item.priceInInr || item.priceInr || 99) * item.quantity), 0);
   const deliveryFee = deliveryMethod === 'delivery' && cartSubtotal > 0 ? 99 : 0;
   // 1 Eco Point = ₹2 discount, up to 50% of subtotal or max points available
-  const maxRedeemablePoints = Math.min(userEcoPoints, Math.floor(cartSubtotal / 2));
+  const maxRedeemablePoints = Math.min(availableEcoPoints, Math.floor(cartSubtotal / 2));
   const pointsDiscountInr = Math.min(pointsToRedeem * 2, cartSubtotal);
   const finalTotalInr = Math.max(0, cartSubtotal + deliveryFee - pointsDiscountInr);
 
@@ -175,24 +212,103 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
     { id: 'mulch', label: 'Wood Mulch & Bark', icon: '🪵' },
     { id: 'biochar', label: 'Biochar & Conditioners', icon: '⚗️' },
     { id: 'sapling', label: 'Native Saplings', icon: '🌳' },
-    { id: 'firewood', label: 'Eco-Firewood & Chips', icon: '🔥' }
+    { id: 'kits', label: 'Gardening Kits', icon: '🪴' }
   ];
 
   const filteredProducts = products.filter(p => {
-    const matchCategory = activeCategory === 'all' || p.category === activeCategory;
+    const pCat = (p.category || '').toLowerCase();
+    const matchCategory = activeCategory === 'all' ||
+      (activeCategory === 'compost' && pCat.includes('compost')) ||
+      (activeCategory === 'mulch' && (pCat.includes('mulch') || pCat.includes('woodchip'))) ||
+      (activeCategory === 'biochar' && (pCat.includes('bio') || pCat.includes('conditioner') || pCat.includes('char'))) ||
+      (activeCategory === 'sapling' && pCat.includes('sapling')) ||
+      (activeCategory === 'kits' && (pCat.includes('kit') || pCat.includes('garden'))) ||
+      pCat.includes(activeCategory.toLowerCase());
+
     const matchSearch = !searchQuery ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchCategory && matchSearch;
   }).sort((a, b) => {
-    if (sortBy === 'price-low') return a.priceInInr - b.priceInInr;
-    if (sortBy === 'price-high') return b.priceInInr - a.priceInInr;
+    if (sortBy === 'price-low') return (a.priceInInr || 0) - (b.priceInInr || 0);
+    if (sortBy === 'price-high') return (b.priceInInr || 0) - (a.priceInInr || 0);
     if (sortBy === 'points') return (a.priceInPoints || 0) - (b.priceInPoints || 0);
     return (b.rating || 5) - (a.rating || 5);
   });
 
-  // Handle Checkout Submission
+  // Geolocation helper to auto-detect and reverse-geocode current location
+  const handleFetchLocation = () => {
+    if (!navigator.geolocation) {
+      setOrderError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setFetchingLocation(true);
+    setOrderError('');
+    setLocationSuccess('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`);
+          const data = await res.json();
+          
+          const addr = data.address || {};
+          const road = addr.road || addr.pedestrian || addr.street || addr.neighbourhood || addr.suburb || '';
+          const area = addr.suburb || addr.neighbourhood || addr.residential || '';
+          const city = addr.city || addr.town || addr.village || addr.county || 'Bengaluru';
+          const pincode = addr.postcode || '';
+          
+          const streetCombined = [road, area].filter(Boolean).join(', ') || data.display_name?.split(',').slice(0, 2).join(', ') || `GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+
+          setDeliveryAddress(prev => ({
+            ...prev,
+            street: streetCombined,
+            city: city,
+            pincode: pincode || prev.pincode,
+            lat: latitude,
+            lng: longitude
+          }));
+          setLocationSuccess(`📍 Detected: ${city}${pincode ? ` (${pincode})` : ''}`);
+        } catch (err) {
+          console.error('Reverse geocoding error:', err);
+          setDeliveryAddress(prev => ({
+            ...prev,
+            street: `GPS Coordinates: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`,
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          }));
+          setLocationSuccess('📍 Device GPS coordinates captured!');
+        } finally {
+          setFetchingLocation(false);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation permission error:', err);
+        setFetchingLocation(false);
+        setOrderError('Location access was denied or timed out. Please type your address manually.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  // Razorpay SDK Script Loader
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Handle Checkout Submission (Razorpay Online, Cash on Delivery, or 100% Eco-Points)
   const handlePlaceOrder = async (e) => {
     if (e) e.preventDefault();
     if (cart.length === 0) return;
@@ -206,31 +322,26 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
     setOrderError('');
 
     try {
+      const isFullPoints = pointsDiscountInr >= cartSubtotal || (paymentMethod === 'points' && finalTotalInr === 0);
+      const selectedPayMethod = isFullPoints ? 'Eco-Points Full Redemption' : paymentMethod === 'cod' ? 'Cash on Delivery' : 'Razorpay Online';
+
       const payload = {
         userId: user?._id || user?.id || 'GUEST_USER',
         userName: user?.name || user?.username || 'Eco Citizen',
         userEmail: user?.email || 'citizen@canopyguard.org',
+        userPhone: deliveryAddress.phone || user?.phone || '9876543210',
         items: cart.map(item => ({
           productId: item._id,
-          name: item.name,
-          category: item.category,
-          quantity: item.quantity,
-          unitPriceInr: item.priceInInr,
-          unitPricePoints: item.priceInPoints,
-          totalPriceInr: item.priceInInr * item.quantity,
-          image: item.image
+          quantity: item.quantity
         })),
-        deliveryMethod,
+        fulfillmentType: deliveryMethod === 'pickup' ? 'Yard Pickup' : 'Home Delivery',
         deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress : undefined,
-        pickupYard: deliveryMethod === 'pickup' ? pickupYard : undefined,
-        paymentMethod: pointsDiscountInr >= cartSubtotal ? 'points' : pointsToRedeem > 0 ? 'mixed' : paymentMethod,
-        pointsRedeemed: pointsToRedeem,
-        pointsDiscountInr,
-        deliveryFee,
-        totalAmountInr: finalTotalInr
+        pickupYard: deliveryMethod === 'pickup' ? { yardName: pickupYard } : undefined,
+        paymentMethod: selectedPayMethod,
+        ecoPointsToUse: pointsToRedeem
       };
 
-      const res = await fetch(`${API_URL}/api/eco-orders`, {
+      const res = await fetch(`${API_URL}/api/eco-orders/create-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -238,20 +349,137 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || 'Failed to place green order');
+        throw new Error(data.error || data.message || 'Failed to process checkout');
       }
 
-      setCompletedOrder(data.order);
-      setCart([]);
-      setPointsToRedeem(0);
-      setCheckoutStep('success');
-      if (onPointsUpdated && data.remainingPoints !== undefined) {
-        onPointsUpdated(data.remainingPoints);
+      // 1. If COD or Free / 100% Eco-Points: Order is confirmed immediately
+      if (data.isFreeOrPointsOnly || data.isCod || selectedPayMethod === 'Cash on Delivery' || selectedPayMethod === 'Eco-Points Full Redemption') {
+        setCompletedOrder(data.order);
+        setCart([]);
+        setPointsToRedeem(0);
+        setCheckoutStep('success');
+        if (onPointsUpdated && data.order?.totalEcoPointsUsed) {
+          onPointsUpdated(Math.max(0, userEcoPoints - data.order.totalEcoPointsUsed));
+        }
+        setPlacingOrder(false);
+        return;
       }
+
+      // 2. Open Official Razorpay Payment Gateway Modal (if real keys exist) or Sandbox Test Verification
+      if (data.isDemo || !data.razorpayOrderId || data.razorpayOrderId.startsWith('order_demo_')) {
+        // Test Sandbox Mode when Razorpay keys are not configured in backend/.env
+        const verifyRes = await fetch(`${API_URL}/api/eco-orders/verify-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: data.orderId || data.order?._id,
+            razorpay_order_id: data.razorpayOrderId || `order_test_${Date.now()}`,
+            razorpay_payment_id: `pay_test_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            razorpay_signature: 'sandbox_test_signature',
+            isDemo: true
+          })
+        });
+
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok) {
+          throw new Error(verifyData.error || 'Payment verification failed');
+        }
+
+        setCompletedOrder(verifyData.order || data.order);
+        setCart([]);
+        setPointsToRedeem(0);
+        setCheckoutStep('success');
+
+        if (onPointsUpdated && data.order?.totalEcoPointsUsed) {
+          onPointsUpdated(Math.max(0, availableEcoPoints - data.order.totalEcoPointsUsed));
+        }
+        setPlacingOrder(false);
+        return;
+      }
+
+      // Live / Test Razorpay SDK Checkout
+      const isSdkLoaded = await loadRazorpayScript();
+      if (!isSdkLoaded || !window.Razorpay) {
+        throw new Error('Razorpay Payment Gateway SDK failed to load. Please check your internet connection.');
+      }
+
+      const keyId = data.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+      const orderAmountPaise = data.amountPaise || Math.round((data.amountInr || finalTotalInr) * 100);
+
+      const options = {
+        key: keyId,
+        amount: orderAmountPaise,
+        currency: data.currency || 'INR',
+        name: 'CanopyGuard Eco-Store',
+        description: `Order #${data.orderNumber} Payment`,
+        image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&q=80',
+        order_id: data.razorpayOrderId,
+        prefill: {
+          name: user?.name || user?.username || 'Eco Citizen',
+          email: user?.email || 'citizen@canopyguard.org',
+          contact: deliveryAddress.phone || user?.phone || '9876543210'
+        },
+        notes: {
+          orderNumber: data.orderNumber,
+          fulfillmentType: deliveryMethod === 'pickup' ? 'Yard Pickup' : 'Home Delivery',
+          userId: user?._id || user?.id || 'citizen'
+        },
+        theme: {
+          color: '#059669'
+        },
+        modal: {
+          ondismiss: () => {
+            setPlacingOrder(false);
+          }
+        },
+        handler: async (response) => {
+          try {
+            setPlacingOrder(true);
+            setOrderError('');
+            const verifyRes = await fetch(`${API_URL}/api/eco-orders/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: data.orderId || data.order?._id,
+                razorpay_order_id: response.razorpay_order_id || data.razorpayOrderId,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                isDemo: false
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) {
+              throw new Error(verifyData.error || 'Payment verification failed on server');
+            }
+
+            setCompletedOrder(verifyData.order || data.order);
+            setCart([]);
+            setPointsToRedeem(0);
+            setCheckoutStep('success');
+
+            if (onPointsUpdated && data.order?.totalEcoPointsUsed) {
+              onPointsUpdated(Math.max(0, availableEcoPoints - data.order.totalEcoPointsUsed));
+            }
+          } catch (verifyErr) {
+            console.error('Razorpay verification error:', verifyErr);
+            setOrderError('Payment verification error: ' + (verifyErr.message || 'Please contact support.'));
+          } finally {
+            setPlacingOrder(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        console.warn('Razorpay payment failed or dismissed:', response?.error);
+        setOrderError(response?.error?.description || 'Payment was unsuccessful or cancelled.');
+        setPlacingOrder(false);
+      });
+      rzp.open();
     } catch (err) {
       console.error('Order creation failed:', err);
       setOrderError(err.message || 'Failed to complete order. Please try again.');
-    } finally {
       setPlacingOrder(false);
     }
   };
@@ -475,120 +703,214 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
               </p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '22px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
               {filteredProducts.map(product => {
                 const inCart = cart.find(item => item._id === product._id);
+                const cardQty = getCardQty(product._id);
+                const isOutOfStock = product.stock <= 0;
+                const isLowStock = product.stock > 0 && product.stock <= 5;
+
                 return (
                   <div
                     key={product._id}
                     style={{
                       background: 'var(--bg-surface, #ffffff)',
                       border: '1px solid var(--border, #e2e8f0)',
-                      borderRadius: '20px',
+                      borderRadius: '22px',
                       overflow: 'hidden',
                       display: 'flex',
                       flexDirection: 'column',
-                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
+                      boxShadow: '0 4px 18px rgba(0, 0, 0, 0.05)',
                       transition: 'transform 0.2s, box-shadow 0.2s'
                     }}
                   >
-                    {/* Product Image & Badge */}
-                    <div style={{ position: 'relative', height: '190px', background: '#f8fafc', overflow: 'hidden' }}>
+                    {/* Product Image & Badges */}
+                    <div
+                      style={{ position: 'relative', height: '200px', background: '#f8fafc', overflow: 'hidden', cursor: 'pointer' }}
+                      onClick={() => {
+                        setSelectedProductDetails(product);
+                        setModalQty(1);
+                      }}
+                    >
                       <img
                         src={product.image || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'}
                         alt={product.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }}
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.src = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80';
                         }}
                       />
-                      <div style={{ position: 'absolute', top: '12px', left: '12px', background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(6px)', color: '#ffffff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                      
+                      {/* Top Badges */}
+                      <div style={{ position: 'absolute', top: '12px', left: '12px', background: 'rgba(15, 23, 42, 0.82)', backdropFilter: 'blur(6px)', color: '#ffffff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         {product.category}
                       </div>
-                      {product.weightKg && (
-                        <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#059669', color: '#ffffff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 800 }}>
-                          {product.weightKg} kg Bag
+                      
+                      {product.unitSize && (
+                        <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#059669', color: '#ffffff', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                          {product.unitSize}
                         </div>
                       )}
+
+                      {/* Stock Pill at Bottom Left */}
+                      <div style={{ position: 'absolute', bottom: '10px', left: '12px', display: 'flex', gap: '6px' }}>
+                        {isOutOfStock ? (
+                          <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.68rem', fontWeight: 800, padding: '3px 8px', borderRadius: '8px' }}>
+                            Out of Stock
+                          </span>
+                        ) : isLowStock ? (
+                          <span style={{ background: '#f59e0b', color: '#fff', fontSize: '0.68rem', fontWeight: 800, padding: '3px 8px', borderRadius: '8px' }}>
+                            Only {product.stock} left!
+                          </span>
+                        ) : (
+                          <span style={{ background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', color: '#a7f3d0', fontSize: '0.68rem', fontWeight: 700, padding: '3px 8px', borderRadius: '8px' }}>
+                            ● In Stock ({product.stock})
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Quick View Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedProductDetails(product);
+                          setModalQty(1);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          bottom: '10px',
+                          right: '12px',
+                          background: 'rgba(255, 255, 255, 0.92)',
+                          backdropFilter: 'blur(6px)',
+                          color: '#064e3b',
+                          border: 'none',
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                        }}
+                      >
+                        <Eye size={12} /> View Details
+                      </button>
                     </div>
 
                     {/* Product Info */}
                     <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary, #0f172a)', lineHeight: 1.3 }}>
+                      <div style={{ marginBottom: '6px' }}>
+                        <h3
+                          onClick={() => {
+                            setSelectedProductDetails(product);
+                            setModalQty(1);
+                          }}
+                          style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary, #0f172a)', lineHeight: 1.3, cursor: 'pointer' }}
+                        >
                           {product.name}
                         </h3>
                       </div>
 
-                      <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: 'var(--text-secondary, #64748b)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {product.description}
+                      {/* Product Description */}
+                      <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: 'var(--text-secondary, #64748b)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {product.description || 'No description provided.'}
                       </p>
 
-                      {/* Origin & Specs Tags */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
-                        {product.nutrientGrade && (
-                          <span style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700 }}>
-                            ⭐ Grade: {product.nutrientGrade}
+                      {/* Optional weight tag if provided */}
+                      {product.weightKg && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 600 }}>
+                            ⚖️ Weight: {product.weightKg} kg
                           </span>
-                        )}
-                        {product.originYard && (
-                          <span style={{ background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600 }}>
-                            📍 {product.originYard}
-                          </span>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
-                      {/* Price & Action */}
-                      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid var(--border, #f1f5f9)' }}>
+                      {/* Price & Action Row */}
+                      <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '14px', borderTop: '1px solid var(--border, #f1f5f9)', gap: '10px' }}>
                         <div>
-                          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--brand, #059669)' }}>
+                          <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--brand, #059669)', lineHeight: 1.1 }}>
                             ₹{product.priceInInr}
                           </div>
-                          <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Coins size={12} /> or {product.priceInPoints} pts
-                          </div>
+                          {product.priceInPoints > 0 && (
+                            <div style={{ fontSize: '0.74rem', color: '#d97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                              <Coins size={12} /> or {product.priceInPoints} pts
+                            </div>
+                          )}
                         </div>
 
+                        {/* Interactive Quantity & Add Controls */}
                         {inCart ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#ecfdf5', borderRadius: '12px', padding: '4px 8px', border: '1px solid #a7f3d0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ecfdf5', borderRadius: '12px', padding: '4px 8px', border: '1px solid #a7f3d0' }}>
                             <button
                               onClick={() => updateCartQty(product._id, -1)}
+                              title="Decrease quantity in cart"
                               style={{ width: '26px', height: '26px', borderRadius: '8px', border: 'none', background: '#ffffff', color: '#047857', cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 800 }}
                             >
-                              <Minus size={14} />
+                              <Minus size={13} />
                             </button>
-                            <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#064e3b', minWidth: '18px', textAlign: 'center' }}>
+                            <span style={{ fontWeight: 900, fontSize: '0.9rem', color: '#064e3b', minWidth: '20px', textAlign: 'center' }}>
                               {inCart.quantity}
                             </span>
                             <button
                               onClick={() => updateCartQty(product._id, 1)}
-                              style={{ width: '26px', height: '26px', borderRadius: '8px', border: 'none', background: '#059669', color: '#ffffff', cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 800 }}
+                              disabled={inCart.quantity >= product.stock}
+                              title="Increase quantity in cart"
+                              style={{ width: '26px', height: '26px', borderRadius: '8px', border: 'none', background: inCart.quantity >= product.stock ? '#cbd5e1' : '#059669', color: '#ffffff', cursor: inCart.quantity >= product.stock ? 'not-allowed' : 'pointer', display: 'grid', placeItems: 'center', fontWeight: 800 }}
                             >
-                              <Plus size={14} />
+                              <Plus size={13} />
                             </button>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => addToCart(product, 1)}
-                            disabled={product.stock <= 0}
-                            style={{
-                              background: product.stock <= 0 ? '#94a3b8' : 'var(--brand, #059669)',
-                              color: '#ffffff',
-                              border: 'none',
-                              borderRadius: '12px',
-                              padding: '8px 16px',
-                              fontWeight: 800,
-                              fontSize: '0.84rem',
-                              cursor: product.stock <= 0 ? 'not-allowed' : 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
-                            }}
-                          >
-                            <Plus size={16} /> {product.stock <= 0 ? 'Out of Stock' : 'Add'}
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {/* Card Qty Stepper */}
+                            <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: '10px', padding: '2px', border: '1px solid #cbd5e1' }}>
+                              <button
+                                type="button"
+                                onClick={() => setCardQty(product._id, cardQty - 1)}
+                                style={{ width: '24px', height: '24px', borderRadius: '6px', border: 'none', background: 'transparent', color: '#475569', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <span style={{ fontSize: '0.82rem', fontWeight: 800, minWidth: '18px', textAlign: 'center', color: '#0f172a' }}>
+                                {cardQty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setCardQty(product._id, cardQty + 1)}
+                                style={{ width: '24px', height: '24px', borderRadius: '6px', border: 'none', background: 'transparent', color: '#475569', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+
+                            {/* Add Button */}
+                            <button
+                              type="button"
+                              onClick={() => addToCart(product, cardQty)}
+                              disabled={isOutOfStock}
+                              style={{
+                                background: isOutOfStock ? '#94a3b8' : 'var(--brand, #059669)',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '10px',
+                                padding: '8px 14px',
+                                fontWeight: 800,
+                                fontSize: '0.84rem',
+                                cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <Plus size={15} /> {isOutOfStock ? 'Out' : 'Add'}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -598,6 +920,255 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
             </div>
           )}
         </>
+      )}
+
+      {/* ── PRODUCT DETAILS MODAL (Real Admin-Entered Data Only) ── */}
+      {selectedProductDetails && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.8)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 99999,
+            display: 'grid',
+            placeItems: 'center',
+            padding: '20px',
+            overflowY: 'auto'
+          }}
+          onClick={() => setSelectedProductDetails(null)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface, #ffffff)',
+              borderRadius: '24px',
+              maxWidth: '680px',
+              width: '100%',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              border: '1px solid var(--border, #e2e8f0)',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface, #ffffff)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: '#ecfdf5', color: '#059669', padding: '6px', borderRadius: '10px' }}>
+                  <Leaf size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {selectedProductDetails.category}
+                  </div>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary, #0f172a)' }}>
+                    {selectedProductDetails.name}
+                  </h2>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedProductDetails(null)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#64748b', display: 'grid', placeItems: 'center' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              
+              {/* Product Top Grid: Image + Core Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+                
+                {/* Left: Image Preview */}
+                <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', height: '220px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <img
+                    src={selectedProductDetails.image || 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80'}
+                    alt={selectedProductDetails.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+
+                {/* Right: Pricing, Weight & Stock */}
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
+                  <div>
+                    {/* Price Card */}
+                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '14px', padding: '14px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#064e3b', textTransform: 'uppercase' }}>
+                        Product Rate
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
+                        <span style={{ fontSize: '1.8rem', fontWeight: 900, color: '#059669' }}>
+                          ₹{selectedProductDetails.priceInInr}
+                        </span>
+                        {selectedProductDetails.priceInPoints > 0 && (
+                          <span style={{ fontSize: '0.9rem', color: '#d97706', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Coins size={14} /> or {selectedProductDetails.priceInPoints} pts
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#047857', marginTop: '2px' }}>
+                        ✓ Citizen Eco-Points can be redeemed at checkout.
+                      </div>
+                    </div>
+
+                    {/* Unit Size, Weight & Stock */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
+                      {selectedProductDetails.unitSize && (
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px' }}>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>PACK / UNIT SIZE</div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#0f172a', marginTop: '2px' }}>
+                            {selectedProductDetails.unitSize}
+                          </div>
+                        </div>
+                      )}
+                      {selectedProductDetails.weightKg && (
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px' }}>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>NET WEIGHT</div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#0f172a', marginTop: '2px' }}>
+                            {selectedProductDetails.weightKg} kg
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px' }}>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>STOCK AVAILABLE</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 900, color: selectedProductDetails.stock > 0 ? '#059669' : '#ef4444', marginTop: '2px' }}>
+                          {selectedProductDetails.stock > 0 ? `${selectedProductDetails.stock} in stock` : 'Out of Stock'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description (Directly entered by admin) */}
+              <div>
+                <h4 style={{ margin: '0 0 6px', fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-primary, #0f172a)' }}>
+                  Description
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-secondary, #475569)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                  {selectedProductDetails.description || 'No description entered.'}
+                </p>
+              </div>
+
+              {/* Usage Instructions (Only if entered by admin) */}
+              {selectedProductDetails.usageInstructions && (
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px', padding: '14px' }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1e40af', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                    <BookOpen size={14} /> Usage Instructions / Guide
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                    {selectedProductDetails.usageInstructions}
+                  </p>
+                </div>
+              )}
+
+              {/* Benefits (Only if entered by admin) */}
+              {selectedProductDetails.benefits && selectedProductDetails.benefits.length > 0 && (
+                <div>
+                  <h4 style={{ margin: '0 0 10px', fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-primary, #0f172a)' }}>
+                    Highlights &amp; Benefits
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
+                    {selectedProductDetails.benefits.map((b, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#334155' }}>
+                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#ecfdf5', color: '#059669', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                        <span>{b}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer: Qty Selector + Add / Buy Now Actions */}
+            <div style={{ padding: '18px 24px', borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', background: 'var(--bg-surface, #ffffff)' }}>
+              
+              {/* Quantity Stepper */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#475569' }}>Quantity:</span>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: '12px', padding: '4px', border: '1px solid #cbd5e1' }}>
+                  <button
+                    onClick={() => setModalQty(Math.max(1, modalQty - 1))}
+                    style={{ width: '30px', height: '30px', borderRadius: '8px', border: 'none', background: '#ffffff', color: '#334155', cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 800 }}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 900, minWidth: '32px', textAlign: 'center', color: '#0f172a' }}>
+                    {modalQty}
+                  </span>
+                  <button
+                    onClick={() => setModalQty(Math.min(selectedProductDetails.stock || 50, modalQty + 1))}
+                    disabled={modalQty >= (selectedProductDetails.stock || 50)}
+                    style={{ width: '30px', height: '30px', borderRadius: '8px', border: 'none', background: '#ffffff', color: '#334155', cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 800 }}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#059669' }}>
+                  = ₹{(selectedProductDetails.priceInInr * modalQty).toLocaleString()}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => {
+                    addToCart(selectedProductDetails, modalQty);
+                    setSelectedProductDetails(null);
+                  }}
+                  disabled={selectedProductDetails.stock <= 0}
+                  style={{
+                    background: '#ecfdf5',
+                    color: '#047857',
+                    border: '1px solid #a7f3d0',
+                    borderRadius: '12px',
+                    padding: '12px 20px',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
+                    cursor: selectedProductDetails.stock <= 0 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <ShoppingBag size={16} /> Add to Cart
+                </button>
+
+                <button
+                  onClick={() => {
+                    addToCart(selectedProductDetails, modalQty);
+                    setSelectedProductDetails(null);
+                    setCheckoutStep('checkout');
+                    setIsCartOpen(true);
+                  }}
+                  disabled={selectedProductDetails.stock <= 0}
+                  style={{
+                    background: 'var(--brand, #059669)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px 24px',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
+                    cursor: selectedProductDetails.stock <= 0 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 16px rgba(5, 150, 105, 0.3)'
+                  }}
+                >
+                  Buy Now &amp; Checkout <ArrowRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── SUB-VIEW: MY GREEN ORDERS ── */}
@@ -642,11 +1213,16 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {myOrders.map(order => {
-                const isPickup = order.deliveryMethod === 'pickup';
+                const isPickup = order.fulfillmentType === 'Yard Pickup' || order.fulfillmentType === 'Yard Self-Pickup' || order.deliveryMethod === 'pickup';
+                const isDelivered = order.orderStatus === 'Delivered / Collected' || order.currentDeliveryStatus === 'Delivered' || order.orderStatus === 'completed';
+                const isCod = order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD';
+                const isPaid = order.paymentStatus === 'Paid';
+
                 const statusColor =
-                  order.orderStatus === 'completed' ? '#059669' :
-                  order.orderStatus === 'ready_for_pickup' || order.orderStatus === 'out_for_delivery' ? '#2563eb' :
-                  order.orderStatus === 'processing' ? '#d97706' : '#64748b';
+                  isDelivered ? '#059669' :
+                  order.orderStatus?.includes('Out for Delivery') ? '#2563eb' :
+                  order.orderStatus?.includes('Assigned') ? '#0284c7' :
+                  order.orderStatus?.includes('Order Placed') ? '#d97706' : '#64748b';
 
                 return (
                   <div
@@ -669,15 +1245,34 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                           {isPickup ? <Building2 size={20} color="#059669" /> : <Truck size={20} color="#2563eb" />}
                         </div>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary, #0f172a)' }}>
                               Order #{order.orderNumber || order._id.slice(-6).toUpperCase()}
                             </span>
                             <span style={{ background: `${statusColor}18`, color: statusColor, padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase' }}>
-                              {order.orderStatus?.replace(/_/g, ' ')}
+                              {order.currentDeliveryStatus || order.orderStatus?.replace(/_/g, ' ')}
+                            </span>
+                            {/* Payment Status Pill */}
+                            <span style={{
+                              background: isPaid ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: isPaid ? '#047857' : '#b45309',
+                              border: `1px solid ${isPaid ? '#a7f3d0' : '#fde68a'}`,
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              {isPaid ? (
+                                <>✓ {isCod ? 'COD Paid' : order.paymentMethod === 'Eco-Points Full Redemption' ? 'Points Paid' : 'Paid (Razorpay)'}</>
+                              ) : (
+                                <>💵 COD Pending (₹{order.totalAmountInr} on delivery)</>
+                              )}
                             </span>
                           </div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary, #64748b)' }}>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary, #64748b)', marginTop: '2px' }}>
                             Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </div>
                         </div>
@@ -687,9 +1282,9 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                         <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary, #0f172a)' }}>
                           ₹{order.totalAmountInr?.toLocaleString()}
                         </div>
-                        {order.pointsRedeemed > 0 && (
+                        {(order.totalEcoPointsUsed > 0 || order.pointsRedeemed > 0) && (
                           <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 700 }}>
-                            🪙 {order.pointsRedeemed} pts redeemed
+                            🪙 {order.totalEcoPointsUsed || order.pointsRedeemed} pts redeemed
                           </div>
                         )}
                       </div>
@@ -700,27 +1295,32 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                       {/* Items */}
                       <div>
                         <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary, #64748b)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                          Items Purchased ({order.items?.length || 0})
+                          Items Purchased ({(order.items || []).reduce((acc, i) => acc + (i.quantity || 1), 0)})
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {order.items?.map((item, idx) => (
                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', color: 'var(--text-primary, #1e293b)' }}>
-                              <span>{item.name} × <strong>{item.quantity}</strong></span>
-                              <span style={{ fontWeight: 700 }}>₹{item.totalPriceInr}</span>
+                              <span>{item.productName || item.name} {item.unitSize ? `(${item.unitSize})` : ''} × <strong>{item.quantity}</strong></span>
+                              <span style={{ fontWeight: 700 }}>₹{item.totalItemInr || item.totalPriceInr || (item.unitPriceInr * item.quantity)}</span>
                             </div>
                           ))}
                         </div>
                       </div>
 
                       {/* Pickup / Delivery Info */}
-                      <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {isPickup ? <Building2 size={15} color="#059669" /> : <MapPin size={15} color="#2563eb" />}
                           {isPickup ? 'Municipal Yard Self-Pickup' : 'Home Delivery Address'}
                         </div>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: '#475569', lineHeight: 1.4 }}>
-                          {isPickup ? (order.pickupYard || 'Central Biomass Recovery Yard, Gate 2') : `${order.deliveryAddress?.street}, ${order.deliveryAddress?.city} - ${order.deliveryAddress?.pincode}`}
+                          {isPickup ? (order.pickupYard?.yardName || order.pickupYard || 'Ajjarkadu Municipal Biomass Processing Center') : `${order.deliveryAddress?.street || 'Doorstep Delivery'}, ${order.deliveryAddress?.city || 'Udupi'} - ${order.deliveryAddress?.pincode || order.deliveryAddress?.postalCode || '576101'}`}
                         </p>
+                        {!isPickup && order.deliveryOtp && !isDelivered && (
+                          <div style={{ marginTop: '6px', padding: '6px 10px', background: '#ecfdf5', border: '1px dashed #059669', borderRadius: '8px', fontSize: '0.78rem', color: '#064e3b', fontWeight: 700 }}>
+                            🔑 Handover OTP: <strong style={{ letterSpacing: '0.08em', fontSize: '0.9rem', color: '#059669' }}>{order.deliveryOtp}</strong> (Share with delivery partner upon delivery)
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -970,72 +1570,222 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                       </p>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#334155' }}>
+                          Delivery Destination
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleFetchLocation}
+                          disabled={fetchingLocation}
+                          style={{
+                            background: fetchingLocation ? '#cbd5e1' : '#ecfdf5',
+                            border: '1px solid #a7f3d0',
+                            color: '#047857',
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            cursor: fetchingLocation ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {fetchingLocation ? (
+                            <>
+                              <RefreshCw size={12} className="cg-spin" /> Detecting GPS...
+                            </>
+                          ) : (
+                            <>
+                              <Crosshair size={12} /> Auto-Detect Location
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {locationSuccess && (
+                        <div style={{ fontSize: '0.74rem', color: '#047857', background: '#dcfce7', padding: '4px 10px', borderRadius: '6px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Check size={13} strokeWidth={3} /> {locationSuccess}
+                        </div>
+                      )}
+
                       <div>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Street Address / Flat No.</label>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Street Address / Flat No. <span style={{ color: '#ef4444' }}>*</span></label>
                         <input
                           type="text"
                           required
                           value={deliveryAddress.street}
                           onChange={(e) => setDeliveryAddress({ ...deliveryAddress, street: e.target.value })}
                           placeholder="e.g. #42, 3rd Cross, Green Glen Layout"
-                          style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                          style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.84rem', boxSizing: 'border-box' }}
                         />
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                         <div>
-                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Pincode</label>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Pincode <span style={{ color: '#ef4444' }}>*</span></label>
                           <input
                             type="text"
                             required
                             value={deliveryAddress.pincode}
                             onChange={(e) => setDeliveryAddress({ ...deliveryAddress, pincode: e.target.value })}
                             placeholder="560103"
-                            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                            style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.84rem', boxSizing: 'border-box' }}
                           />
                         </div>
                         <div>
-                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Phone Number</label>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
                           <input
                             type="tel"
                             required
                             value={deliveryAddress.phone}
                             onChange={(e) => setDeliveryAddress({ ...deliveryAddress, phone: e.target.value })}
                             placeholder="9876543210"
-                            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                            style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.84rem', boxSizing: 'border-box' }}
                           />
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Eco-Points Redemption Option */}
-                  {userEcoPoints > 0 && (
-                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '14px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Coins size={16} /> Redeem Eco-Points (1 pt = ₹2 off)
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 700 }}>
-                          Avail: {userEcoPoints} pts
+                  {/* Eco-Points Redemption Option (Always Visible) */}
+                  <div style={{ background: availableEcoPoints > 0 ? '#fffbeb' : '#f8fafc', border: `1px solid ${availableEcoPoints > 0 ? '#fde68a' : '#e2e8f0'}`, borderRadius: '14px', padding: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 800, color: availableEcoPoints > 0 ? '#92400e' : '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Coins size={16} color={availableEcoPoints > 0 ? '#d97706' : '#64748b'} /> Redeem Eco-Points (1 pt = ₹2 discount)
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: availableEcoPoints > 0 ? '#b45309' : '#64748b', fontWeight: 800, background: availableEcoPoints > 0 ? '#fef3c7' : '#e2e8f0', padding: '2px 8px', borderRadius: '6px' }}>
+                        Balance: {availableEcoPoints} pts
+                      </span>
+                    </div>
+
+                    {availableEcoPoints > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <input
+                            type="range"
+                            min="0"
+                            max={maxRedeemablePoints}
+                            step="5"
+                            value={pointsToRedeem}
+                            onChange={(e) => setPointsToRedeem(Number(e.target.value))}
+                            style={{ flex: 1, accentColor: '#d97706', cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#92400e', minWidth: '95px', textAlign: 'right' }}>
+                            {pointsToRedeem} pts (-₹{pointsToRedeem * 2})
+                          </span>
+                        </div>
+                        {maxRedeemablePoints > 0 && (
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+                            {[
+                              { label: 'None', val: 0 },
+                              { label: '25%', val: Math.floor(maxRedeemablePoints * 0.25) },
+                              { label: '50%', val: Math.floor(maxRedeemablePoints * 0.5) },
+                              { label: 'Max Points', val: maxRedeemablePoints }
+                            ].map((preset, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setPointsToRedeem(preset.val)}
+                                style={{
+                                  background: pointsToRedeem === preset.val ? '#d97706' : '#ffffff',
+                                  color: pointsToRedeem === preset.val ? '#ffffff' : '#92400e',
+                                  border: '1px solid #fde68a',
+                                  borderRadius: '6px',
+                                  padding: '3px 8px',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 }}>
+                        You currently have 0 reward points. Adopt trees or log tree-care activities in your citizen portal to earn points and get discounts on store purchases!
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment Method Selector (Razorpay vs Cash on Delivery) */}
+                  <div>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 800, color: '#334155', display: 'block', marginBottom: '8px' }}>
+                      Select Payment Method
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {/* Razorpay Online */}
+                      <div
+                        onClick={() => setPaymentMethod('razorpay')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 14px',
+                          borderRadius: '12px',
+                          border: `2px solid ${paymentMethod === 'razorpay' ? '#059669' : '#e2e8f0'}`,
+                          background: paymentMethod === 'razorpay' ? '#ecfdf5' : '#ffffff',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ecfdf5', color: '#059669', display: 'grid', placeItems: 'center' }}>
+                            <CreditCard size={18} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0f172a' }}>
+                              Razorpay Online (UPI / Cards / NetBanking)
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                              Instant verified payment gateway
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: '6px', fontWeight: 800 }}>
+                          SECURE UPI
                         </span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <input
-                          type="range"
-                          min="0"
-                          max={maxRedeemablePoints}
-                          step="10"
-                          value={pointsToRedeem}
-                          onChange={(e) => setPointsToRedeem(Number(e.target.value))}
-                          style={{ flex: 1, accentColor: '#d97706' }}
-                        />
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#92400e', minWidth: '60px', textAlign: 'right' }}>
-                          {pointsToRedeem} pts (-₹{pointsToRedeem * 2})
+
+                      {/* Cash on Delivery */}
+                      <div
+                        onClick={() => setPaymentMethod('cod')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 14px',
+                          borderRadius: '12px',
+                          border: `2px solid ${paymentMethod === 'cod' ? '#059669' : '#e2e8f0'}`,
+                          background: paymentMethod === 'cod' ? '#ecfdf5' : '#ffffff',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#eff6ff', color: '#2563eb', display: 'grid', placeItems: 'center' }}>
+                            <Banknote size={18} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0f172a' }}>
+                              {deliveryMethod === 'pickup' ? 'Pay Cash at Municipal Yard Gate' : 'Cash on Delivery (COD)'}
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                              {deliveryMethod === 'pickup' ? 'Pay upon item hand-off at yard' : 'Pay in cash to delivery executive'}
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', background: '#eff6ff', color: '#1d4ed8', padding: '3px 8px', borderRadius: '6px', fontWeight: 800 }}>
+                          CASH
                         </span>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Bill Summary */}
                   <div style={{ background: '#f1f5f9', borderRadius: '14px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.84rem' }}>
@@ -1098,11 +1848,11 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                     >
                       {placingOrder ? (
                         <>
-                          <RefreshCw size={16} className="cg-spin" /> Placing Order...
+                          <RefreshCw size={16} className="cg-spin" /> Processing Order...
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 size={18} /> Confirm &amp; Pay ₹{finalTotalInr.toLocaleString()}
+                          <CheckCircle2 size={18} /> {paymentMethod === 'cod' ? `Place COD Order (₹${finalTotalInr})` : `Pay ₹${finalTotalInr.toLocaleString()} via Razorpay`}
                         </>
                       )}
                     </button>
@@ -1120,19 +1870,30 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                     Order Confirmed!
                   </h3>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-                    Order #{completedOrder.orderNumber || completedOrder._id.slice(-6).toUpperCase()} has been received and routed to the municipal biomass facility.
+                    Order #{completedOrder.orderNumber || completedOrder._id?.slice(-6).toUpperCase()} has been placed successfully.
                   </p>
 
-                  {completedOrder.deliveryMethod === 'pickup' && (
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '18px', width: '100%', marginTop: '8px' }}>
+                  {/* Payment Mode Notice */}
+                  <div style={{ background: completedOrder.paymentMethod === 'Cash on Delivery' ? '#eff6ff' : '#ecfdf5', border: `1px solid ${completedOrder.paymentMethod === 'Cash on Delivery' ? '#bfdbfe' : '#a7f3d0'}`, borderRadius: '12px', padding: '10px 16px', width: '100%', fontSize: '0.82rem', fontWeight: 700, color: completedOrder.paymentMethod === 'Cash on Delivery' ? '#1e40af' : '#064e3b' }}>
+                    {completedOrder.paymentMethod === 'Cash on Delivery' ? (
+                      <span>💵 Cash on Delivery: Pay <strong>₹{completedOrder.totalAmountInr}</strong> in cash upon delivery.</span>
+                    ) : completedOrder.paymentMethod === 'Eco-Points Full Redemption' ? (
+                      <span>🪙 Paid via Eco-Points Redemption</span>
+                    ) : (
+                      <span>✓ Payment Verified via Razorpay Online</span>
+                    )}
+                  </div>
+
+                  {completedOrder.fulfillmentType === 'Yard Pickup' && completedOrder.pickupYard && (
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '18px', width: '100%', marginTop: '4px' }}>
                       <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#064e3b', marginBottom: '8px' }}>
                         🏢 Digital Gate-Pass Code
                       </div>
                       <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#059669', letterSpacing: '0.1em', background: '#ecfdf5', padding: '8px 16px', borderRadius: '8px', border: '1px dashed #a7f3d0' }}>
-                        {completedOrder.pickupPassCode || 'GATE-PASS-ECO'}
+                        {completedOrder.pickupYard?.pickupPassCode || 'GATE-PASS-ECO'}
                       </div>
                       <p style={{ margin: '8px 0 0', fontSize: '0.74rem', color: '#64748b' }}>
-                        Show this code or the QR code on your order ticket at <strong>{completedOrder.pickupYard}</strong>.
+                        Show this pass at <strong>{completedOrder.pickupYard?.yardName || 'Municipal Yard'}</strong> for instant collection.
                       </p>
                     </div>
                   )}

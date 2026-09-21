@@ -489,9 +489,15 @@ export default function DeliveryDashboardPage() {
                       borderRadius: '10px',
                       textAlign: 'right'
                     }}>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Payment Mode</div>
-                      <div style={{ fontSize: '14px', fontWeight: 800, color: isCod && order.paymentStatus !== 'Paid' ? '#f87171' : '#34d399' }}>
-                        {isCod && order.paymentStatus !== 'Paid' ? `💵 Collect ₹${order.totalAmountInr} COD` : `✅ Paid Online (₹${order.totalAmountInr})`}
+                      <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Payment Status</div>
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: isCod && order.paymentStatus !== 'Paid' ? '#f87171' : '#34d399' }}>
+                        {isCod ? (
+                          order.paymentStatus === 'Paid' ? `✅ COD Collected (₹${order.cashCollected || order.totalAmountInr})` : `💵 Collect ₹${order.totalAmountInr} COD Cash`
+                        ) : order.paymentMethod === 'Eco-Points Full Redemption' ? (
+                          `🪙 Paid via Eco-Points (₹0 Due)`
+                        ) : (
+                          `✅ Paid Online (₹${order.totalAmountInr})`
+                        )}
                       </div>
                     </div>
                   </div>

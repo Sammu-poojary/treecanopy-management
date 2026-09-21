@@ -49,8 +49,32 @@ const timberLotSchema = new mongoose.Schema({
   
   status: {
     type: String,
-    enum: ['Upcoming', 'Live Bidding', 'Ended - Awaiting Payment', 'Sold & Gate-Pass Issued', 'Collected', 'Unsold / Relisted'],
+    enum: [
+      'Upcoming',
+      'Live Bidding',
+      'Live',
+      'Active',
+      'Ended - Awaiting Payment',
+      'Winner Declared & Certificate Issued',
+      'Sold & Gate-Pass Issued',
+      'Sold',
+      'Delivered & Dispatched',
+      'Collected',
+      'Closed',
+      'Unsold / Relisted'
+    ],
     default: 'Live Bidding'
+  },
+
+  // Official Certificate of Allotment
+  allotmentCertificate: {
+    certificateNumber: { type: String, default: '' },
+    awardedTo: { type: String, default: '' },
+    bidderContact: { type: String, default: '' },
+    winningBidAmountInr: { type: Number, default: 0 },
+    issuedAt: { type: Date, default: null },
+    issuedByOfficial: { type: String, default: '' },
+    officialNotes: { type: String, default: '' }
   },
 
   // Gate-Pass generated for the winner

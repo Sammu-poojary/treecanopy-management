@@ -25,7 +25,7 @@ const ecoOrderSchema = new mongoose.Schema({
   totalEcoPointsUsed: { type: Number, default: 0 },
   paymentMethod: {
     type: String,
-    enum: ['Razorpay Online', 'Eco-Points Full Redemption', 'Eco-Points + Razorpay Hybrid', 'Cash on Pickup'],
+    enum: ['Razorpay Online', 'Cash on Delivery', 'COD', 'Eco-Points Full Redemption', 'Eco-Points + Razorpay Hybrid', 'Cash on Pickup'],
     default: 'Razorpay Online'
   },
   paymentStatus: {
@@ -39,7 +39,7 @@ const ecoOrderSchema = new mongoose.Schema({
   // Fulfillment: Home Delivery vs Self-Pickup at Yard
   fulfillmentType: {
     type: String,
-    enum: ['Home Delivery', 'Yard Self-Pickup'],
+    enum: ['Home Delivery', 'Yard Self-Pickup', 'Yard Pickup'],
     default: 'Home Delivery'
   },
   deliveryAddress: {

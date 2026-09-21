@@ -62,9 +62,66 @@ export default function OfficialDeliveryAndPaymentsPage() {
     vehicleNumber: '',
     deliveryZone: 'Udupi Central & Manipal Sector'
   });
-  const [addingPartner, setAddingPartner] = useState(false);
-
   const [viewingTimelineOrder, setViewingTimelineOrder] = useState(null);
+
+  // Payment Status Update Modal State
+  const [paymentModalOrder, setPaymentModalOrder] = useState(null);
+  const [paymentForm, setPaymentForm] = useState({
+    paymentStatus: 'Paid',
+    paymentMethod: 'Cash on Delivery',
+    cashCollectionStatus: 'Collected',
+    cashCollected: '',
+    notes: ''
+  });
+  const [updatingPayment, setUpdatingPayment] = useState(false);
+
+  const openPaymentModal = (order) => {
+    setPaymentModalOrder(order);
+    setPaymentForm({
+      paymentStatus: order.paymentStatus || 'Paid',
+      paymentMethod: order.paymentMethod || 'Cash on Delivery',
+      cashCollectionStatus: order.cashCollectionStatus || (order.paymentStatus === 'Paid' ? 'Collected' : 'Pending Collection'),
+      cashCollected: order.cashCollected || order.totalAmountInr || '',
+      notes: ''
+    });
+  };
+
+  const handleUpdatePayment = async (e) => {
+    e.preventDefault();
+    if (!paymentModalOrder) return;
+    setUpdatingPayment(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/eco-orders/${paymentModalOrder._id}/update-payment`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentStatus: paymentForm.paymentStatus,
+          paymentMethod: paymentForm.paymentMethod,
+          cashCollectionStatus: paymentForm.cashCollectionStatus,
+          cashCollected: Number(paymentForm.cashCollected || paymentModalOrder.totalAmountInr),
+          notes: paymentForm.notes || `Payment status manually updated to ${paymentForm.paymentStatus} by official.`,
+          updatedBy: 'Official / Admin Desk'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update payment status');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Payment Status Updated! 💳',
+        text: `Order ${paymentModalOrder.orderNumber} is now recorded as ${paymentForm.paymentStatus}.`,
+        confirmButtonColor: '#10b981'
+      });
+
+      setPaymentModalOrder(null);
+      fetchData();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    } finally {
+      setUpdatingPayment(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -543,19 +600,25 @@ export default function OfficialDeliveryAndPaymentsPage() {
                             {(order.items || []).map(i => `${i.productName} (${i.unitSize}) x${i.quantity}`).join(', ')}
                           </div>
 
-                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: '15px', fontWeight: 800, color: '#10b981' }}>
                               ₹{order.totalAmountInr}
                             </span>
                             <span style={{
                               fontSize: '11px',
-                              padding: '2px 8px',
+                              padding: '3px 8px',
                               borderRadius: '6px',
                               background: order.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
                               color: order.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24',
-                              fontWeight: 700
+                              border: order.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
                             }}>
-                              {order.paymentMethod} • {order.paymentStatus}
+                              {order.paymentStatus === 'Paid'
+                                ? (order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? `✓ COD Collected (₹${order.cashCollected || order.totalAmountInr})` : `✓ Paid (${order.paymentMethod || 'Online'})`)
+                                : (order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? `💵 COD Pending (₹${order.totalAmountInr})` : `⚠️ ${order.paymentMethod} - Pending`)}
                             </span>
                           </div>
                         </div>
@@ -622,6 +685,27 @@ export default function OfficialDeliveryAndPaymentsPage() {
                               <Truck size={14} /> {order.assignedDeliveryPartnerId ? 'Reassign Partner' : 'Assign Partner'}
                             </button>
                           )}
+
+                          {/* Update Payment Button */}
+                          <button
+                            onClick={() => openPaymentModal(order)}
+                            style={{
+                              background: order.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.15)',
+                              border: order.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+                              color: order.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24',
+                              padding: '7px 12px',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <CreditCard size={13} /> {order.paymentStatus === 'Paid' ? 'Update Payment' : 'Mark as Paid / COD'}
+                          </button>
 
                           <button
                             onClick={() => setViewingTimelineOrder(order)}
@@ -828,6 +912,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
                         <th style={{ padding: '12px 20px' }}>Payment Status</th>
                         <th style={{ padding: '12px 20px' }}>Order Status</th>
                         <th style={{ padding: '12px 20px' }}>Date</th>
+                        <th style={{ padding: '12px 20px', textAlign: 'right' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -847,9 +932,10 @@ export default function OfficialDeliveryAndPaymentsPage() {
                               fontSize: '11px',
                               fontWeight: 700,
                               background: o.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: o.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24'
+                              color: o.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24',
+                              border: o.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
                             }}>
-                              {o.paymentStatus}
+                              {o.paymentStatus === 'Paid' ? (o.paymentMethod === 'Cash on Delivery' || o.paymentMethod === 'COD' ? '✓ COD Collected' : '✓ Paid') : '💵 Pending COD'}
                             </span>
                           </td>
                           <td style={{ padding: '14px 20px' }}>
@@ -857,6 +943,26 @@ export default function OfficialDeliveryAndPaymentsPage() {
                           </td>
                           <td style={{ padding: '14px 20px', color: '#94a3b8', fontSize: '12px' }}>
                             {new Date(o.createdAt).toLocaleDateString('en-IN')}
+                          </td>
+                          <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                            <button
+                              onClick={() => openPaymentModal(o)}
+                              style={{
+                                background: o.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.2)',
+                                border: o.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.4)',
+                                color: o.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <CreditCard size={12} /> {o.paymentStatus === 'Paid' ? 'Edit Payment' : 'Mark as Paid'}
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -903,23 +1009,109 @@ export default function OfficialDeliveryAndPaymentsPage() {
                   </select>
                 </div>
 
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
-                    Dispatch Instruction / Yard Pickup Notes (Optional)
-                  </label>
+                <div style={{ marginBottom: '18px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>Dispatch / Handling Note</label>
                   <textarea
                     rows={2}
+                    placeholder="e.g. Handle with care, 2 bags of fortified neem compost"
                     value={assignmentNote}
                     onChange={(e) => setAssignmentNote(e.target.value)}
-                    placeholder="e.g. 2x 10kg compost bags staged at Bay 3..."
-                    style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                   <button type="button" onClick={() => setShowAssignModal(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#94a3b8', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
                   <button type="submit" disabled={assigning} style={{ background: '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
-                    {assigning ? 'Dispatching...' : 'Confirm Assignment 🚴'}
+                    {assigning ? 'Assigning...' : 'Assign & Notify Citizen 🚀'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Update Payment Status & Cash Collection */}
+        {paymentModalOrder && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+            <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '16px', width: '100%', maxWidth: '480px', padding: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CreditCard size={18} color="#10b981" /> Update Order Payment Status
+                </h3>
+                <button onClick={() => setPaymentModalOrder(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={20} /></button>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '10px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#38bdf8' }}>Order: {paymentModalOrder.orderNumber}</div>
+                <div style={{ fontSize: '13px', color: '#f8fafc', marginTop: '2px' }}>Citizen: {paymentModalOrder.userName} ({paymentModalOrder.userPhone})</div>
+                <div style={{ fontSize: '13px', color: '#10b981', fontWeight: 700, marginTop: '2px' }}>
+                  Total Bill: ₹{paymentModalOrder.totalAmountInr} • Mode: {paymentModalOrder.paymentMethod}
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdatePayment}>
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                    Payment Status
+                  </label>
+                  <select
+                    value={paymentForm.paymentStatus}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, paymentStatus: e.target.value })}
+                    style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '10px 12px', borderRadius: '8px', fontSize: '13px' }}
+                  >
+                    <option value="Paid">Paid (Confirmed / Collected)</option>
+                    <option value="Pending">Pending (Awaiting Handover Payment)</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Refunded">Refunded</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                    Cash Collection Status (for COD / Yard Cash)
+                  </label>
+                  <select
+                    value={paymentForm.cashCollectionStatus}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, cashCollectionStatus: e.target.value })}
+                    style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '10px 12px', borderRadius: '8px', fontSize: '13px' }}
+                  >
+                    <option value="Collected">Collected (Received by Rider / Yard)</option>
+                    <option value="Deposited">Deposited into Municipal Account</option>
+                    <option value="Pending Collection">Pending Collection</option>
+                    <option value="Not Applicable">Not Applicable (Online / Points)</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
+                    Cash Amount Collected (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={paymentForm.cashCollected}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, cashCollected: e.target.value })}
+                    style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '18px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
+                    Audit / Reconciliation Note
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Cash received at municipal yard counter, receipt #1042"
+                    value={paymentForm.notes}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                    style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setPaymentModalOrder(null)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#94a3b8', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                  <button type="submit" disabled={updatingPayment} style={{ background: '#10b981', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
+                    {updatingPayment ? 'Updating...' : 'Save & Update Payment 💳'}
                   </button>
                 </div>
               </form>
@@ -942,7 +1134,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Raghavendra Rao"
+                    placeholder="e.g. Ramesh Shetty"
                     value={newPartnerForm.name}
                     onChange={(e) => setNewPartnerForm({ ...newPartnerForm, name: e.target.value })}
                     style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
@@ -955,7 +1147,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
                     <input
                       type="email"
                       required
-                      placeholder="raghu@canopy.gov.in"
+                      placeholder="ramesh@canopy.gov.in"
                       value={newPartnerForm.email}
                       onChange={(e) => setNewPartnerForm({ ...newPartnerForm, email: e.target.value })}
                       style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
@@ -983,8 +1175,9 @@ export default function OfficialDeliveryAndPaymentsPage() {
                       style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
                     >
                       <option value="Three-Wheeler EV Cargo">Three-Wheeler EV Cargo</option>
-                      <option value="Two-Wheeler EV Bike">Two-Wheeler EV Bike</option>
-                      <option value="Municipal Mini Truck">Municipal Mini Truck</option>
+                      <option value="EV Two-Wheeler with Carrier">EV Two-Wheeler with Carrier</option>
+                      <option value="Municipal Mini Tipper">Municipal Mini Tipper</option>
+                      <option value="E-Rickshaw Loader">E-Rickshaw Loader</option>
                     </select>
                   </div>
                   <div>

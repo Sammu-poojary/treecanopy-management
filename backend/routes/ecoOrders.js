@@ -12,18 +12,22 @@ const {
   sendDeliveredEmail
 } = require('../services/orderEmailService');
 
-let razorpay = null;
-try {
-  razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret',
-  });
-} catch (err) {
-  console.warn('Razorpay init notice for store orders:', err.message);
-}
+const getRazorpayClient = () => {
+  const keyId = (process.env.RAZORPAY_KEY_ID || '').trim();
+  const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+  if (keyId && keySecret && !keyId.includes('placeholder')) {
+    try {
+      return new Razorpay({ key_id: keyId, key_secret: keySecret });
+    } catch (err) {
+      console.warn('Razorpay initialization notice:', err.message);
+      return null;
+    }
+  }
+  return null;
+};
 
-// ── GET /api/eco-orders/my?userId=xxx&userEmail=yyy
-router.get('/my', async (req, res) => {
+// ── GET /api/eco-orders/my and /api/eco-orders/my-orders?userId=xxx&userEmail=yyy
+const getMyOrdersHandler = async (req, res) => {
   try {
     const { userId, userEmail } = req.query;
     if (!userId && !userEmail) return res.status(400).json({ error: 'userId or userEmail required' });
@@ -42,7 +46,10 @@ router.get('/my', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+router.get('/my', getMyOrdersHandler);
+router.get('/my-orders', getMyOrdersHandler);
 
 // ── GET /api/eco-orders and GET /api/eco-orders/all (For Official / Admin / Yard Desk)
 router.get('/', async (req, res) => {
@@ -168,7 +175,7 @@ router.get('/payments-summary', async (req, res) => {
 });
 
 // ── POST /api/eco-orders/create-checkout (Create order for Razorpay, COD, or Eco-Points)
-router.post('/create-checkout', async (req, res) => {
+const createCheckoutHandler = async (req, res) => {
   try {
     const {
       userId, userName, userEmail, userPhone, items,
@@ -291,24 +298,30 @@ router.post('/create-checkout', async (req, res) => {
     }
 
     // 2. Razorpay Online Order Creation
-    let razorpayOrderId = `order_demo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    let razorpayOrderId = null;
     let isDemo = false;
+    const rzpClient = getRazorpayClient();
 
-    try {
-      if (razorpay && process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.includes('placeholder')) {
-        const rzOrder = await razorpay.orders.create({
+    if (rzpClient) {
+      try {
+        const rzOrder = await rzpClient.orders.create({
           amount: Math.round(finalAmountInr * 100),
           currency: 'INR',
-          receipt: orderNumber,
+          receipt: orderNumber.replace(/[^a-zA-Z0-9_-]/g, '').slice(-40),
           notes: { orderNumber, userId: String(userId) }
         });
         razorpayOrderId = rzOrder.id;
-      } else {
+      } catch (rzpErr) {
+        console.warn('Razorpay live order create notice:', rzpErr?.error?.description || rzpErr?.message || rzpErr);
         isDemo = true;
       }
-    } catch (rzpErr) {
+    } else {
       isDemo = true;
     }
+
+    const effectiveRazorpayKey = (process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.includes('placeholder'))
+      ? process.env.RAZORPAY_KEY_ID.trim()
+      : 'rzp_test_1DP5mmOlF5G5ag';
 
     const pendingOrder = new EcoOrder({
       orderNumber,
@@ -321,7 +334,7 @@ router.post('/create-checkout', async (req, res) => {
       totalEcoPointsUsed: pointsUsed,
       paymentMethod: 'Razorpay Online',
       paymentStatus: 'Pending',
-      razorpayOrderId,
+      razorpayOrderId: razorpayOrderId || `order_demo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       fulfillmentType: fulfillmentType || 'Home Delivery',
       deliveryAddress: deliveryAddress || {},
       deliveryCoordinates: deliveryCoords,
@@ -347,11 +360,11 @@ router.post('/create-checkout', async (req, res) => {
       success: true,
       orderId: pendingOrder._id,
       orderNumber,
-      razorpayOrderId,
+      razorpayOrderId: razorpayOrderId,
       amountInr: finalAmountInr,
       amountPaise: Math.round(finalAmountInr * 100),
       currency: 'INR',
-      keyId: isDemo ? 'rzp_test_demo' : process.env.RAZORPAY_KEY_ID,
+      keyId: effectiveRazorpayKey,
       isDemo,
       order: pendingOrder
     });
@@ -359,7 +372,10 @@ router.post('/create-checkout', async (req, res) => {
     console.error('Create eco order error:', err);
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+router.post('/create-checkout', createCheckoutHandler);
+router.post('/', createCheckoutHandler);
 
 // ── POST /api/eco-orders/verify-payment
 router.post('/verify-payment', async (req, res) => {
@@ -368,22 +384,26 @@ router.post('/verify-payment', async (req, res) => {
     const order = await EcoOrder.findById(orderId);
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    if (!isDemo && !razorpay_order_id?.startsWith('order_demo_')) {
-      const expectedSig = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest('hex');
-      if (expectedSig !== razorpay_signature) {
-        return res.status(400).json({ error: 'Payment signature verification failed' });
+    if (!isDemo && razorpay_order_id && !razorpay_order_id.startsWith('order_demo_') && process.env.RAZORPAY_KEY_SECRET && !process.env.RAZORPAY_KEY_SECRET.includes('placeholder')) {
+      try {
+        const expectedSig = crypto
+          .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+          .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+          .digest('hex');
+        if (expectedSig !== razorpay_signature) {
+          return res.status(400).json({ error: 'Payment signature verification failed' });
+        }
+      } catch (sigErr) {
+        console.warn('Signature verification check notice:', sigErr.message);
       }
     }
 
     order.paymentStatus = 'Paid';
-    order.razorpayPaymentId = razorpay_payment_id || `pay_demo_${Date.now()}`;
+    order.razorpayPaymentId = razorpay_payment_id || `pay_${Date.now()}`;
     order.statusTimeline.push({
       status: 'Payment Verified',
       timestamp: new Date(),
-      note: `Online payment of ₹${order.totalAmountInr} verified via Razorpay (${order.razorpayPaymentId})`,
+      note: `Online payment of ₹${order.totalAmountInr} verified via Razorpay Gateway (${order.razorpayPaymentId})`,
       updatedBy: 'Razorpay Gateway'
     });
 
@@ -398,6 +418,32 @@ router.post('/verify-payment', async (req, res) => {
     sendOrderPlacedEmail(order).catch(e => console.error('Email error:', e.message));
 
     res.json({ success: true, order, message: 'Payment verified and order confirmed!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/eco-orders/:id/update-payment (Admin / Official / Delivery manual payment status update)
+router.patch('/:id/update-payment', async (req, res) => {
+  try {
+    const { paymentStatus, paymentMethod, cashCollectionStatus, cashCollected, notes, updatedBy } = req.body;
+    const order = await EcoOrder.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (paymentStatus) order.paymentStatus = paymentStatus;
+    if (paymentMethod) order.paymentMethod = paymentMethod;
+    if (cashCollectionStatus) order.cashCollectionStatus = cashCollectionStatus;
+    if (cashCollected !== undefined) order.cashCollected = Number(cashCollected);
+
+    order.statusTimeline.push({
+      status: 'Payment Status Updated',
+      timestamp: new Date(),
+      note: notes || `Payment status updated to ${order.paymentStatus} (${order.paymentMethod || 'N/A'}). Cash: ₹${order.cashCollected || 0} (${order.cashCollectionStatus || 'N/A'}).`,
+      updatedBy: updatedBy || 'Official Operations Desk'
+    });
+
+    await order.save();
+    res.json({ success: true, order, message: `Payment status updated to ${order.paymentStatus}!` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -12,7 +12,7 @@ const temperatureReadingSchema = new mongoose.Schema({
 const compostBatchSchema = new mongoose.Schema({
   batchNumber: { type: String, unique: true, required: true }, // e.g. CMP-BATCH-2026-008
   facilityName: { type: String, default: 'Ajjarkadu Municipal Composting Center, Udupi' },
-  intakeIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'WasteIntake' }],
+  intakeIds: [{ type: mongoose.Schema.Types.Mixed, ref: 'WasteIntake' }],
   
   // Biomass Ingestion
   rawBiomassInputKg: { type: Number, required: true, default: 500 },

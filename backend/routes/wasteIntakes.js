@@ -158,12 +158,18 @@ router.post('/', async (req, res) => {
   }
 });
 
+const mongoose = require('mongoose');
+
 // ── PATCH /api/waste-intakes/:id/verify (Processing Manager weighbridge verify)
 router.patch('/:id/verify', async (req, res) => {
   try {
     const { status, verifiedById, verifiedByName, verificationNotes, allocatedStream } = req.body;
-    const intake = await WasteIntake.findByIdAndUpdate(
-      req.params.id,
+    const filter = mongoose.Types.ObjectId.isValid(req.params.id)
+      ? { _id: req.params.id }
+      : { shipmentId: req.params.id };
+
+    const intake = await WasteIntake.findOneAndUpdate(
+      filter,
       {
         status: status || 'Verified',
         verifiedBy: verifiedById || null,
@@ -174,6 +180,21 @@ router.patch('/:id/verify', async (req, res) => {
       },
       { new: true }
     );
+    if (!intake) return res.status(404).json({ error: 'Shipment not found' });
+    res.json({ success: true, intake });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/waste-intakes/:id (Update any waste intake fields like routing/assigned IDs)
+router.patch('/:id', async (req, res) => {
+  try {
+    const filter = mongoose.Types.ObjectId.isValid(req.params.id)
+      ? { _id: req.params.id }
+      : { shipmentId: req.params.id };
+
+    const intake = await WasteIntake.findOneAndUpdate(filter, req.body, { new: true });
     if (!intake) return res.status(404).json({ error: 'Shipment not found' });
     res.json({ success: true, intake });
   } catch (err) {

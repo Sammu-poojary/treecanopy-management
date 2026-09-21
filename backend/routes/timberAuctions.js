@@ -6,131 +6,43 @@ const TimberLot = require('../models/TimberLot');
 const TimberBid = require('../models/TimberBid');
 const User = require('../models/User');
 
-// Seed sample timber auction lots if empty
-const seedSampleLots = async () => {
-  // Clean up any fake dummy bidder data from existing lots
+// ── PUT /api/timber-auctions/:id (Update timber lot — handles photo upload)
+router.put('/:id', async (req, res) => {
   try {
-    await TimberLot.updateMany(
-      { 'highestBidder.companyName': { $in: ['Suresh Wood Industries Pvt Ltd', 'Karthik Furnishings Udupi', 'Manipal Food Processing'] } },
-      {
-        $set: {
-          totalBidsCount: 0,
-          currentHighestBidInr: 0,
-          highestBidder: { bidderId: null, bidderName: '', companyName: '', bidderPhone: '', bidTimestamp: null }
-        }
+    const updates = { ...req.body };
+    if (updates.imageBase64 && updates.imageBase64.startsWith('data:image')) {
+      try {
+        const uploadRes = await cloudinary.uploader.upload(updates.imageBase64, {
+          folder: 'treecanopy/timber-lots',
+          resource_type: 'image'
+        });
+        updates.featuredImage = uploadRes.secure_url;
+        updates.images = [uploadRes.secure_url];
+      } catch (uploadErr) {
+        console.warn('Timber photo upload warning:', uploadErr.message);
       }
-    );
-    // Delete any fake test bids
-    await TimberBid.deleteMany({
-      bidderCompany: { $in: ['Suresh Wood Industries Pvt Ltd', 'Karthik Furnishings Udupi', 'Manipal Food Processing'] }
-    });
-  } catch (err) {
-    console.warn('TimberLot cleanup notice:', err.message);
-  }
+      delete updates.imageBase64;
+    }
 
-  const count = await TimberLot.countDocuments();
-  if (count === 0) {
-    const now = new Date();
-    const lots = [
-      {
-        lotNumber: 'TMB-LOT-2026-101',
-        title: '3x Premium Mature Rosewood Trunk Logs (Grade A Hardwood)',
-        treeSpecies: 'Rosewood (Dalbergia latifolia)',
-        woodGrade: 'Grade A Construction Hardwood',
-        originLocation: 'Kalsanka Avenue Sector, Udupi',
-        storageYard: 'Santhekatte Municipal Timber Depot, Udupi',
-        logCount: 3,
-        totalWeightKg: 850,
-        dimensions: { avgDiameterCm: 48, avgLengthMeters: 3.4, totalVolumeCubicMeters: 1.85 },
-        moistureContentPercent: 16,
-        featuredImage: 'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&auto=format&fit=crop&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&auto=format&fit=crop&q=80',
-          'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=800&auto=format&fit=crop&q=80'
-        ],
-        inspectionNotes: 'Dense heartwood, straight grain, debarked, zero rot or insect tunnels. Ideal for fine furniture, heavy door frames, and ornamental carving.',
-        startingBidInr: 18000,
-        reservePriceInr: 22000,
-        bidStepIncrementInr: 500,
-        currentHighestBidInr: 0,
-        totalBidsCount: 0,
-        highestBidder: {
-          bidderId: null,
-          bidderName: '',
-          companyName: '',
-          bidderPhone: '',
-          bidTimestamp: null
-        },
-        auctionStartTime: new Date(now.getTime() - 2 * 24 * 3600 * 1000),
-        auctionEndTime: new Date(now.getTime() + 18 * 3600 * 1000), // Ends in 18 hours
-        status: 'Live Bidding'
-      },
-      {
-        lotNumber: 'TMB-LOT-2026-102',
-        title: '4x Seasoned Honge (Pongamia) Timber Logs (Furniture Grade)',
-        treeSpecies: 'Honge / Indian Beech (Pongamia pinnata)',
-        woodGrade: 'Grade B Furniture / Framing',
-        originLocation: 'Manipal Lake Promenade, Udupi',
-        storageYard: 'Korangrapady Municipal Timber Depot, Udupi',
-        logCount: 4,
-        totalWeightKg: 620,
-        dimensions: { avgDiameterCm: 40, avgLengthMeters: 2.9, totalVolumeCubicMeters: 1.45 },
-        moistureContentPercent: 19,
-        featuredImage: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&auto=format&fit=crop&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&auto=format&fit=crop&q=80'
-        ],
-        inspectionNotes: 'Well-seasoned structural wood with attractive grain pattern. Suitable for interior framing and rustic tables.',
-        startingBidInr: 9500,
-        reservePriceInr: 12000,
-        bidStepIncrementInr: 250,
-        currentHighestBidInr: 0,
-        totalBidsCount: 0,
-        highestBidder: {
-          bidderId: null,
-          bidderName: '',
-          companyName: '',
-          bidderPhone: '',
-          bidTimestamp: null
-        },
-        auctionStartTime: new Date(now.getTime() - 1 * 24 * 3600 * 1000),
-        auctionEndTime: new Date(now.getTime() + 2 * 24 * 3600 * 1000), // Ends in 2 days
-        status: 'Live Bidding'
-      },
-      {
-        lotNumber: 'TMB-LOT-2026-103',
-        title: 'Bulk Firewood & Split Hardwood Logs Lot (1.2 Tonnes)',
-        treeSpecies: 'Mixed Canopy Hardwoods (Acacia & Eucalyptus)',
-        woodGrade: 'Grade C Firewood & Slabs',
-        originLocation: 'Central Park Storm Clearance, Ajjarkadu',
-        storageYard: 'Ajjarkadu Municipal Biomass Processing Center',
-        logCount: 18,
-        totalWeightKg: 1200,
-        dimensions: { avgDiameterCm: 25, avgLengthMeters: 1.5, totalVolumeCubicMeters: 2.1 },
-        moistureContentPercent: 14,
-        featuredImage: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=800&auto=format&fit=crop&q=80',
-        inspectionNotes: 'Dry split hardwood suitable for commercial bakeries, brick kilns, boiler units, and domestic fire pits.',
-        startingBidInr: 4500,
-        reservePriceInr: 5500,
-        bidStepIncrementInr: 200,
-        currentHighestBidInr: 0,
-        totalBidsCount: 0,
-        highestBidder: {
-          bidderId: null,
-          bidderName: '',
-          companyName: '',
-          bidderPhone: '',
-          bidTimestamp: null
-        },
-        auctionStartTime: new Date(now.getTime() - 3 * 24 * 3600 * 1000),
-        auctionEndTime: new Date(now.getTime() + 8 * 3600 * 1000), // Ends in 8 hours
-        status: 'Live Bidding'
-      }
-    ];
-    await TimberLot.insertMany(lots);
+    const lot = await TimberLot.findByIdAndUpdate(req.params.id, updates, { new: true });
+    if (!lot) return res.status(404).json({ error: 'Timber lot not found' });
+    res.json({ success: true, lot });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-};
-seedSampleLots().catch(err => console.warn('TimberLot seed notice:', err.message));
+});
+
+// ── DELETE /api/timber-auctions/:id (Delete timber lot)
+router.delete('/:id', async (req, res) => {
+  try {
+    const lot = await TimberLot.findByIdAndDelete(req.params.id);
+    if (!lot) return res.status(404).json({ error: 'Timber lot not found' });
+    await TimberBid.deleteMany({ lotId: req.params.id });
+    res.json({ success: true, message: `Timber lot ${lot.lotNumber} deleted.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── GET /api/timber-auctions (List lots with status & category filter)
 router.get('/', async (req, res) => {
@@ -138,10 +50,27 @@ router.get('/', async (req, res) => {
     const filter = {};
     if (req.query.status) filter.status = req.query.status;
     if (req.query.woodGrade) filter.woodGrade = req.query.woodGrade;
-    const lots = await TimberLot.find(filter).sort({ auctionEndTime: 1, createdAt: -1 });
-    res.json(lots);
+    const lots = await TimberLot.find(filter).sort({ auctionEndTime: 1, createdAt: -1 }).lean();
+
+    // Attach bids array to each lot
+    const lotIds = lots.map(l => l._id);
+    const bids = await TimberBid.find({ lotId: { $in: lotIds } }).sort({ bidAmountInr: -1, createdAt: -1 }).lean();
+
+    const bidsByLot = {};
+    bids.forEach(b => {
+      const lid = b.lotId.toString();
+      if (!bidsByLot[lid]) bidsByLot[lid] = [];
+      bidsByLot[lid].push(b);
+    });
+
+    const lotsWithBids = lots.map(l => ({
+      ...l,
+      bids: bidsByLot[l._id.toString()] || []
+    }));
+
+    res.json(lotsWithBids);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, message: err.message });
   }
 });
 
@@ -299,11 +228,23 @@ router.post('/register-buyer', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const lot = await TimberLot.findById(req.params.id);
-    if (!lot) return res.status(404).json({ error: 'Timber lot not found' });
+    if (!lot) return res.status(404).json({ error: 'Timber lot not found', message: 'Timber lot not found' });
     const bids = await TimberBid.find({ lotId: lot._id }).sort({ bidAmountInr: -1, createdAt: -1 });
     res.json({ lot, bids });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, message: err.message });
+  }
+});
+
+// ── GET /api/timber-auctions/:id/bids (Bid history array for a lot)
+router.get('/:id/bids', async (req, res) => {
+  try {
+    const lot = await TimberLot.findById(req.params.id);
+    if (!lot) return res.status(404).json({ error: 'Timber lot not found', message: 'Timber lot not found' });
+    const bids = await TimberBid.find({ lotId: lot._id }).sort({ bidAmountInr: -1, createdAt: -1 });
+    res.json(bids);
+  } catch (err) {
+    res.status(500).json({ error: err.message, message: err.message });
   }
 });
 
@@ -311,106 +252,106 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const {
-      title, treeSpecies, woodGrade, originLocation, storageYard,
-      logCount, totalWeightKg, avgDiameterCm, avgLengthMeters, totalVolumeCubicMeters,
-      startingBidInr, reservePriceInr, bidStepIncrementInr, auctionDurationHours,
-      inspectionNotes, imageBase64, intakeShipmentId
+      title, treeSpecies, species, woodGrade, originLocation, storageYard, yardLocation,
+      logCount, totalWeightKg, estimatedWeightKg, avgDiameterCm, averageDiameterCm,
+      avgLengthMeters, approxLengthM, totalVolumeCubicMeters,
+      startingBidInr, reservePriceInr, reservePrice, bidStepIncrementInr, bidIncrement,
+      auctionDurationHours, inspectionNotes, description, imageBase64,
+      intakeShipmentId
     } = req.body;
+
+    const count = await TimberLot.countDocuments();
+    const year = new Date().getFullYear();
+    const lotNumber = `TMB-LOT-${year}-${String(count + 101).padStart(3, '0')}`;
+
+    const start = new Date();
+    const end = new Date(Date.now() + (Number(auctionDurationHours) || 72) * 3600 * 1000);
 
     let featuredImage = 'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&auto=format&fit=crop&q=80';
     if (imageBase64 && imageBase64.startsWith('data:image')) {
-      try {
-        const uploadRes = await cloudinary.uploader.upload(imageBase64, {
-          folder: 'treecanopy/timber-lots',
-          resource_type: 'image'
-        });
-        featuredImage = uploadRes.secure_url;
-      } catch (uploadErr) {
-        console.warn('Timber photo upload warning:', uploadErr.message);
-      }
+      const filename = `timber-lot-${Date.now()}.jpg`;
+      const filepath = path.join(UPLOAD_DIR, filename);
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+      fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
+      featuredImage = `/uploads/timber-auctions/${filename}`;
     }
 
-    const count = await TimberLot.countDocuments();
-    const lotNumber = `TMB-LOT-2026-${String(count + 101).padStart(3, '0')}`;
-    const now = new Date();
-    const duration = Number(auctionDurationHours || 48); // default 48h
-    const auctionEndTime = new Date(now.getTime() + duration * 3600 * 1000);
-
-    const startBid = Number(startingBidInr || 5000);
-
+    const startBid = Number(startingBidInr || reservePriceInr || reservePrice || 10000);
     const lot = new TimberLot({
       lotNumber,
-      title: title || `${logCount || 2}x ${treeSpecies || 'Hardwood'} Logs (${woodGrade || 'Grade A'})`,
-      treeSpecies: treeSpecies || 'Hardwood',
+      title: title || `${treeSpecies || species || 'Hardwood'} Trunk Logs Batch`,
+      treeSpecies: treeSpecies || species || 'Hardwood Logs',
       woodGrade: woodGrade || 'Grade A Construction Hardwood',
-      originLocation: originLocation || 'Udupi Canopy Sector',
-      storageYard: storageYard || 'Santhekatte Municipal Timber Depot, Udupi',
-      logCount: Number(logCount || 2),
-      totalWeightKg: Number(totalWeightKg || 500),
+      originLocation: originLocation || 'Municipal Processing Yard, Udupi',
+      storageYard: storageYard || yardLocation || 'Santhekatte Municipal Timber Depot, Udupi',
+      logCount: Number(logCount) || 3,
+      totalWeightKg: Number(totalWeightKg || estimatedWeightKg) || 750,
       dimensions: {
-        avgDiameterCm: Number(avgDiameterCm || 40),
-        avgLengthMeters: Number(avgLengthMeters || 3.0),
-        totalVolumeCubicMeters: Number(totalVolumeCubicMeters || 1.2)
+        avgDiameterCm: Number(avgDiameterCm || averageDiameterCm) || 40,
+        avgLengthMeters: Number(avgLengthMeters || approxLengthM) || 3.0,
+        totalVolumeCubicMeters: Number(totalVolumeCubicMeters) || 1.2
       },
+      moistureContentPercent: 18,
+      intakeShipmentId: intakeShipmentId || null,
       featuredImage,
-      images: [featuredImage],
-      inspectionNotes: inspectionNotes || 'Quality-inspected municipal timber lot.',
+      inspectionNotes: inspectionNotes || description || 'Inspected, bark stripped, grade verified.',
       startingBidInr: startBid,
-      reservePriceInr: Number(reservePriceInr || startBid * 1.2),
-      bidStepIncrementInr: Number(bidStepIncrementInr || 500),
+      reservePriceInr: Number(reservePriceInr || reservePrice || startBid),
+      bidStepIncrementInr: Number(bidStepIncrementInr || bidIncrement || 500),
       currentHighestBidInr: startBid,
-      auctionStartTime: now,
-      auctionEndTime,
-      status: 'Live Bidding',
-      intakeShipmentId: intakeShipmentId || null
+      totalBidsCount: 0,
+      auctionStartTime: start,
+      auctionEndTime: end,
+      status: 'Live Bidding'
     });
 
     await lot.save();
 
-    // Link and update source WasteIntake if provided
-    if (req.body.intakeId || intakeShipmentId) {
+    if (intakeShipmentId) {
       try {
         const WasteIntake = require('../models/WasteIntake');
-        await WasteIntake.findOneAndUpdate(
-          { $or: [{ _id: req.body.intakeId }, { shipmentId: intakeShipmentId }].filter(Boolean) },
-          {
-            status: 'Verified',
-            allocatedStream: 'Timber Auction',
-            assignedTimberLotId: lot._id,
-            verifiedByName: req.body.verifiedByName || 'Official Timber Officer',
-            verifiedAt: new Date()
-          }
-        );
-      } catch (intakeErr) {
-        console.warn('WasteIntake link notice:', intakeErr.message);
+        await WasteIntake.findByIdAndUpdate(intakeShipmentId, {
+          assignedTimberLotId: lot._id,
+          status: 'Processed'
+        });
+      } catch (e) {
+        console.error('Could not link intake shipment to timber lot:', e.message);
       }
     }
 
-    res.status(201).json({ success: true, lot });
+    res.status(201).json({
+      success: true,
+      message: `🎉 Timber Auction Lot ${lot.lotNumber} listed successfully!`,
+      lot
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, message: err.message });
   }
 });
 
 // ── POST /api/timber-auctions/:id/bid (Place commercial bid)
 router.post('/:id/bid', async (req, res) => {
   try {
-    const { bidderId, bidderName, companyName, bidderEmail, bidderPhone, bidderGstin, bidAmountInr } = req.body;
+    const { bidderId, bidderName, companyName, bidderEmail, bidderPhone, bidderGstin } = req.body;
+    const bidAmountInr = req.body.bidAmountInr || req.body.bidAmount || req.body.amount;
     const lot = await TimberLot.findById(req.params.id);
-    if (!lot) return res.status(404).json({ error: 'Timber lot not found' });
+    if (!lot) return res.status(404).json({ error: 'Timber lot not found', message: 'Timber lot not found' });
 
-    if (lot.status !== 'Live Bidding' && new Date() > new Date(lot.auctionEndTime)) {
-      return res.status(400).json({ error: 'This auction has already closed.' });
+    const isClosed = ['Sold & Gate-Pass Issued', 'Collected', 'Ended - Awaiting Payment', 'Closed', 'SOLD'].includes(lot.status);
+    if (isClosed) {
+      return res.status(400).json({ error: 'This auction has already closed.', message: 'This auction has already closed.' });
     }
 
-    const minRequired = (lot.totalBidsCount === 0)
-      ? lot.startingBidInr
-      : lot.currentHighestBidInr + (lot.bidStepIncrementInr || 500);
+    const minRequired = (lot.totalBidsCount === 0 || !lot.currentHighestBidInr)
+      ? (lot.startingBidInr || 1000)
+      : (lot.currentHighestBidInr + (lot.bidStepIncrementInr || 500));
 
     const bidNum = Number(bidAmountInr);
     if (isNaN(bidNum) || bidNum < minRequired) {
+      const errMsg = `Bid must be at least ₹${minRequired.toLocaleString('en-IN')} (Current: ₹${(lot.currentHighestBidInr || 0).toLocaleString('en-IN')} + Min Step: ₹${lot.bidStepIncrementInr || 500})`;
       return res.status(400).json({
-        error: `Bid must be at least ₹${minRequired.toLocaleString('en-IN')} (Current: ₹${lot.currentHighestBidInr.toLocaleString('en-IN')} + Step: ₹${lot.bidStepIncrementInr || 500})`
+        error: errMsg,
+        message: errMsg
       });
     }
 
@@ -444,16 +385,19 @@ router.post('/:id/bid', async (req, res) => {
       bidderPhone: newBid.bidderPhone,
       bidTimestamp: new Date()
     };
+    if (lot.status !== 'Live Bidding') {
+      lot.status = 'Live Bidding';
+    }
     await lot.save();
 
     res.json({
       success: true,
-      message: `✅ Bid of ₹${bidNum.toLocaleString('en-IN')} placed successfully! You are now the highest bidder.`,
+      message: `✅ Bid of ₹${bidNum.toLocaleString('en-IN')} placed successfully! You are now the leading bidder.`,
       lot,
       bid: newBid
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, message: err.message });
   }
 });
 
@@ -498,7 +442,7 @@ router.post('/:id/declare-winner', async (req, res) => {
       lot
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, message: err.message });
   }
 });
 
@@ -507,7 +451,7 @@ router.post('/:id/settle-gatepass', async (req, res) => {
   try {
     const { vehicleNumber, verifiedByGuard } = req.body;
     const lot = await TimberLot.findById(req.params.id);
-    if (!lot) return res.status(404).json({ error: 'Timber lot not found' });
+    if (!lot) return res.status(404).json({ error: 'Timber lot not found', message: 'Timber lot not found' });
 
     const passCode = lot.gatePass?.passCode || `GP-${lot.lotNumber.replace('TMB-LOT-', '')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
@@ -524,7 +468,7 @@ router.post('/:id/settle-gatepass', async (req, res) => {
 
     res.json({ success: true, lot, gatePass: lot.gatePass });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, message: err.message });
   }
 });
 
@@ -533,7 +477,7 @@ router.patch('/:id/mark-delivered', async (req, res) => {
   try {
     const { vehicleNumber, verifiedByGuard, deliveryNotes } = req.body;
     const lot = await TimberLot.findById(req.params.id);
-    if (!lot) return res.status(404).json({ error: 'Timber lot not found' });
+    if (!lot) return res.status(404).json({ error: 'Timber lot not found', message: 'Timber lot not found' });
 
     lot.status = 'Delivered & Dispatched';
     if (!lot.gatePass) lot.gatePass = {};

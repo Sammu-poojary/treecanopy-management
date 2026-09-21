@@ -176,10 +176,24 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ── PUT /api/eco-products/:id (Update product)
+// ── PUT /api/eco-products/:id (Update product — handles imageBase64 Cloudinary upload)
 router.put('/:id', async (req, res) => {
   try {
-    const product = await EcoProduct.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updates = { ...req.body };
+    // Handle image upload if a base64 string is provided
+    if (updates.imageBase64 && updates.imageBase64.startsWith('data:image')) {
+      try {
+        const uploadRes = await cloudinary.uploader.upload(updates.imageBase64, {
+          folder: 'treecanopy/eco-store',
+          resource_type: 'image'
+        });
+        updates.image = uploadRes.secure_url;
+      } catch (uploadErr) {
+        console.warn('Product image update upload warning:', uploadErr.message);
+      }
+      delete updates.imageBase64;
+    }
+    const product = await EcoProduct.findByIdAndUpdate(req.params.id, updates, { new: true });
     if (!product) return res.status(404).json({ error: 'Product not found' });
     res.json({ success: true, product });
   } catch (err) {
@@ -198,3 +212,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+

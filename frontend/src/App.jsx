@@ -14,6 +14,7 @@ import ProcessingConsolePage from './pages/ProcessingConsolePage';
 import OfficialDeliveryAndPaymentsPage from './pages/OfficialDeliveryAndPaymentsPage';
 import DeliveryDashboardPage from './pages/DeliveryDashboardPage';
 import OfficialTimberManagementPage from './pages/OfficialTimberManagementPage';
+import EcoStoreManagementPage from './pages/EcoStoreManagementPage';
 import {
   AddPropertyPage,
   AdminConsolePage,
@@ -169,6 +170,8 @@ function App() {
         <Route path="/processing" element={<OfficialOnly><ProcessingConsolePage /></OfficialOnly>} />
         <Route path="/processing/dashboard" element={<OfficialOnly><ProcessingConsolePage /></OfficialOnly>} />
         <Route path="/official/processing" element={<OfficialOnly><ProcessingConsolePage /></OfficialOnly>} />
+        <Route path="/official/eco-store" element={<OfficialOnly><EcoStoreManagementPage /></OfficialOnly>} />
+        <Route path="/admin/eco-store" element={<AdminOnly><EcoStoreManagementPage /></AdminOnly>} />
         <Route path="/eco-store" element={<Navigate to="/citizen-dashboard?tab=store" replace />} />
 
         {/* ── Green Logistics, Delivery Fleet & Payment Desk Routes ── */}

@@ -361,10 +361,36 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // Allow flexible role matching for Delivery Partner & Processing Officer
-    const normPortal = (portal || '').toLowerCase();
-    const normRole = (user.role || '').toLowerCase();
-    if (portal && normPortal !== normRole && !normRole.includes(normPortal) && !normPortal.includes(normRole)) {
+    // Allow flexible role matching for Timber Buyer/Merchant, Delivery Partner, etc.
+    const normPortal = (portal || '').toLowerCase().trim();
+    const normRole = (user.role || '').toLowerCase().trim();
+
+    const isTimberPortal = normPortal.includes('timber') || normPortal.includes('merchant') || normPortal.includes('buyer');
+    const isTimberRole = normRole.includes('timber') || normRole.includes('merchant') || normRole.includes('buyer');
+
+    const isCutterPortal = normPortal.includes('cutter') || normPortal.includes('arborist');
+    const isCutterRole = normRole.includes('cutter') || normRole.includes('arborist');
+
+    const isDeliveryPortal = normPortal.includes('delivery');
+    const isDeliveryRole = normRole.includes('delivery');
+
+    const isCitizenPortal = normPortal.includes('citizen');
+    const isCitizenRole = normRole.includes('citizen');
+
+    const isOfficialPortal = normPortal.includes('official') || normPortal.includes('admin');
+    const isOfficialRole = normRole.includes('official') || normRole.includes('admin');
+
+    const matchesPortal = !portal ||
+      normPortal === normRole ||
+      normRole.includes(normPortal) ||
+      normPortal.includes(normRole) ||
+      (isTimberPortal && isTimberRole) ||
+      (isCutterPortal && isCutterRole) ||
+      (isDeliveryPortal && isDeliveryRole) ||
+      (isCitizenPortal && isCitizenRole) ||
+      (isOfficialPortal && isOfficialRole);
+
+    if (!matchesPortal) {
       return res.status(403).json({ msg: `This account is registered as ${user.role}` });
     }
 

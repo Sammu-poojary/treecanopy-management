@@ -262,6 +262,7 @@ const ROLE_NAV = {
       section: 'Circular Economy & Logistics',
       items: [
         { label: 'Biomass & Processing', href: '/processing', Icon: Recycle, desc: 'Composting & biomass yard' },
+        { label: 'Eco Store Manager', href: '/official/eco-store', Icon: ShoppingBag, desc: 'Products, stock & batch packaging' },
         { label: 'Timber Auction & Dispatch', href: '/official/timber-management', Icon: Gavel, desc: 'Declare winners & manage dispatch' },
         { label: 'Orders & Delivery Fleet', href: '/official/orders-delivery', Icon: Truck, desc: 'Eco-store dispatch & payments' },
       ],
@@ -294,6 +295,7 @@ const ROLE_NAV = {
       section: 'Circular Economy & Logistics',
       items: [
         { label: 'Biomass & Processing', href: '/processing', Icon: Recycle, desc: 'Composting & circular economy' },
+        { label: 'Eco Store Manager', href: '/admin/eco-store', Icon: ShoppingBag, desc: 'Products, stock & batch packaging' },
         { label: 'Timber Auction & Dispatch', href: '/official/timber-management', Icon: Gavel, desc: 'Declare winners & manage dispatch' },
         { label: 'Orders & Delivery Fleet', href: '/official/orders-delivery', Icon: Truck, desc: 'Eco-store dispatch & payments' },
       ],
@@ -407,6 +409,8 @@ const normalizeRole = (role) => {
   }
   if (r === 'official') return 'Official';
   if (r === 'admin') return 'Admin';
+  if (r === 'delivery' || r === 'delivery partner') return 'Delivery Partner';
+  if (r === 'timber buyer' || r === 'timber merchant' || r === 'timber' || r === 'merchant') return 'Timber Merchant';
   if (r === 'citizen' || r === 'public user' || r === 'public_user') return 'Citizen';
   return role;
 };
@@ -847,8 +851,33 @@ export function Topbar({ title = 'CanopyGuard', search = 'Search assets, zones, 
         {(() => {
           const isCitizen = displayRole === 'Citizen';
           const isAdmin = displayRole === 'Admin';
-          const profileLink = isAdmin ? '/admin' : (isCitizen ? '/citizen-dashboard?tab=profile' : '/task');
-          const profileTooltip = isAdmin ? 'Admin Console & Settings' : (isCitizen ? 'View Citizen Profile' : 'Go to Task Board & Profile');
+          const isOfficial = displayRole === 'Official';
+          const isTimber = displayRole === 'Timber Merchant' || displayRole === 'Timber Buyer';
+          const isDelivery = displayRole === 'Delivery Partner';
+          const isCutter = displayRole === 'Tree Cutter';
+
+          let profileLink = '/home';
+          let profileTooltip = 'View Profile';
+
+          if (isAdmin) {
+            profileLink = '/admin';
+            profileTooltip = 'Admin Console & Settings';
+          } else if (isOfficial) {
+            profileLink = '/official-management';
+            profileTooltip = 'Official Governance Portal';
+          } else if (isTimber) {
+            profileLink = '/timber-auction';
+            profileTooltip = `${userName} (${currentUser.company || currentUser.businessName || 'Timber Merchant'})`;
+          } else if (isDelivery) {
+            profileLink = '/delivery';
+            profileTooltip = `${userName} (Delivery Fleet)`;
+          } else if (isCutter) {
+            profileLink = '/treecutter/dashboard';
+            profileTooltip = `${userName} (Tree Cutter Dashboard)`;
+          } else if (isCitizen) {
+            profileLink = '/citizen-dashboard?tab=profile';
+            profileTooltip = 'View Citizen Profile';
+          }
 
           const avatarContent = (
             <>
@@ -1323,8 +1352,8 @@ export function DashboardPage() {
                   <Link to="/processing" style={{ flex: 1, padding: '8px', background: '#10b981', color: '#020617', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
                     Yard Console
                   </Link>
-                  <Link to="/timber-auction" style={{ flex: 1, padding: '8px', background: 'rgba(255, 255, 255, 0.08)', color: '#f8fafc', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
-                    Timber Bidding
+                  <Link to="/official/timber-management" style={{ flex: 1, padding: '8px', background: 'rgba(255, 255, 255, 0.08)', color: '#f8fafc', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
+                    Timber Desk
                   </Link>
                 </div>
               </div>
@@ -6526,13 +6555,13 @@ export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
               ['proofs', 'Proof Review'],
               ['adoptions', `Tree Adoptions (${officialAdoptions.length})`],
               ['processing', '🍂 Biomass & Compost Yard'],
-              ['timber', '🔨 Timber Salvage Bidding'],
+              ['timber', '🔨 Timber Salvage Management'],
             ].map(([id, label]) => (
               <button key={id} className={activeView === id ? 'active' : ''} onClick={() => {
                 if (id === 'processing') {
                   navigate('/processing');
                 } else if (id === 'timber') {
-                  navigate('/timber-auction');
+                  navigate('/official/timber-management');
                 } else {
                   setActiveView(id);
                 }
