@@ -1028,7 +1028,9 @@ export default function TreeCutterTaskPage() {
 
   const updateTask = (taskId, update) => {
     saveAllTasks(allTasks => allTasks.map(task => {
-      if (task.id !== taskId) return task;
+      const isMatch = (taskId && (task.id === taskId || task._id === taskId)) ||
+                      (selectedTask && (task.id === selectedTask.id || (task._id && task._id === selectedTask._id)));
+      if (!isMatch) return task;
       return typeof update === 'function' ? update(task) : { ...task, ...update };
     }));
   };
@@ -2387,8 +2389,8 @@ export default function TreeCutterTaskPage() {
                         <input
                           type="number"
                           min="0"
-                          value={selectedTask?.biomassLeavesKg ?? (selectedTask?.biomass?.leavesWeightKg || '')}
-                          onChange={e => updateTask(selectedTask.id, { biomassLeavesKg: e.target.value })}
+                          value={selectedTask?.biomassLeavesKg ?? (selectedTask?.biomass?.leavesWeightKg ?? '')}
+                          onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassLeavesKg: e.target.value })}
                           placeholder="e.g. 150 kg"
                           style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
                         />
@@ -2401,8 +2403,8 @@ export default function TreeCutterTaskPage() {
                         <input
                           type="number"
                           min="0"
-                          value={selectedTask?.biomassBranchesKg ?? (selectedTask?.biomass?.branchesWeightKg || '')}
-                          onChange={e => updateTask(selectedTask.id, { biomassBranchesKg: e.target.value })}
+                          value={selectedTask?.biomassBranchesKg ?? (selectedTask?.biomass?.branchesWeightKg ?? '')}
+                          onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassBranchesKg: e.target.value })}
                           placeholder="e.g. 200 kg"
                           style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
                         />
@@ -2421,8 +2423,8 @@ export default function TreeCutterTaskPage() {
                           <input
                             type="number"
                             min="0"
-                            value={selectedTask?.biomassLogCount ?? (selectedTask?.biomass?.logsCount || '')}
-                            onChange={e => updateTask(selectedTask.id, { biomassLogCount: e.target.value })}
+                            value={selectedTask?.biomassLogCount ?? (selectedTask?.biomass?.logsCount ?? '')}
+                            onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassLogCount: e.target.value })}
                             placeholder="e.g. 3 logs"
                             style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
                           />
@@ -2432,9 +2434,9 @@ export default function TreeCutterTaskPage() {
                           Tree Species
                           <input
                             type="text"
-                            value={selectedTask?.biomassSpecies || selectedTask?.treeSpecies || 'Neem / Rosewood'}
-                            onChange={e => updateTask(selectedTask.id, { biomassSpecies: e.target.value })}
-                            placeholder="e.g. Rosewood / Neem"
+                            value={selectedTask?.biomassSpecies ?? (selectedTask?.treeSpecies || '')}
+                            onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassSpecies: e.target.value })}
+                            placeholder="e.g. Rosewood / Neem / Teak"
                             style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
                           />
                         </label>
@@ -2444,8 +2446,8 @@ export default function TreeCutterTaskPage() {
                           <input
                             type="number"
                             min="0"
-                            value={selectedTask?.biomassLogsKg ?? (selectedTask?.biomass?.logsWeightKg || '')}
-                            onChange={e => updateTask(selectedTask.id, { biomassLogsKg: e.target.value })}
+                            value={selectedTask?.biomassLogsKg ?? (selectedTask?.biomass?.logsWeightKg ?? '')}
+                            onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassLogsKg: e.target.value })}
                             placeholder="e.g. 650 kg"
                             style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
                           />
@@ -2456,8 +2458,8 @@ export default function TreeCutterTaskPage() {
                           <input
                             type="number"
                             min="0"
-                            value={selectedTask?.biomassDiameterCm || ''}
-                            onChange={e => updateTask(selectedTask.id, { biomassDiameterCm: e.target.value })}
+                            value={selectedTask?.biomassDiameterCm ?? ''}
+                            onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassDiameterCm: e.target.value })}
                             placeholder="e.g. 45 cm"
                             style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
                           />
@@ -2470,7 +2472,7 @@ export default function TreeCutterTaskPage() {
                       <input
                         type="checkbox"
                         checked={Boolean(selectedTask?.isDiseasedBiomass)}
-                        onChange={e => updateTask(selectedTask.id, { isDiseasedBiomass: e.target.checked })}
+                        onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { isDiseasedBiomass: e.target.checked })}
                       />
                       ☣️ Mark as Diseased / Pest-Infested Wood (Requires Bio-Quarantine & Incineration)
                     </label>
@@ -2481,8 +2483,8 @@ export default function TreeCutterTaskPage() {
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                       Transport Vehicle Registration
                       <input
-                        value={selectedTask?.vehicleNumber || 'KA-20-TR-4821'}
-                        onChange={e => updateTask(selectedTask.id, { vehicleNumber: e.target.value })}
+                        value={selectedTask?.vehicleNumber ?? 'KA-20-TR-4821'}
+                        onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { vehicleNumber: e.target.value })}
                         placeholder="e.g. KA-20-TR-4821"
                         style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
                       />
@@ -2492,7 +2494,7 @@ export default function TreeCutterTaskPage() {
                       Vehicle Type
                       <select
                         value={selectedTask?.vehicleType || 'Mini Tipper Truck'}
-                        onChange={e => updateTask(selectedTask.id, { vehicleType: e.target.value })}
+                        onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { vehicleType: e.target.value })}
                         style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
                       >
                         <option>Mini Tipper Truck</option>
@@ -2508,7 +2510,7 @@ export default function TreeCutterTaskPage() {
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <select
                         value={selectedTask?.dumpingLocation || dumpingLocations[0]}
-                        onChange={e => updateDumpingLocation(selectedTask.id, e.target.value)}
+                        onChange={e => updateDumpingLocation(selectedTask?.id || selectedTask?._id, e.target.value)}
                         style={{ flex: 1, minWidth: '220px', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
                       >
                         {dumpingLocations.map(location => <option key={location}>{location}</option>)}

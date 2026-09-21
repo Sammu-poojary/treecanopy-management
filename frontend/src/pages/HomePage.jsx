@@ -94,6 +94,20 @@ const speciesImages = {
 
 const getTreeDisplayImage = (tree) => {
   if (!tree) return speciesImages.default;
+
+  if (tree.images && Array.isArray(tree.images) && tree.images.length > 0) {
+    let firstImg = tree.images[0];
+    if (typeof firstImg === 'object' && firstImg?.url) firstImg = firstImg.url;
+    if (typeof firstImg === 'string' && firstImg.trim() !== '') {
+      let img = firstImg.trim();
+      if (img.includes('http') && img.lastIndexOf('http') > 0) {
+        img = img.substring(img.lastIndexOf('http'));
+      }
+      if (img.startsWith('/uploads/')) img = `${API_URL}${img}`;
+      if (img.startsWith('http://') || img.startsWith('https://')) return img;
+    }
+  }
+
   if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
     let img = tree.image.trim();
     if (img.includes('http') && img.lastIndexOf('http') > 0) {

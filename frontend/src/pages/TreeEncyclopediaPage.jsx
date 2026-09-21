@@ -138,14 +138,20 @@ const getTreeImagesList = (tree) => {
   const list = [];
   if (Array.isArray(tree.images) && tree.images.length > 0) {
     tree.images.forEach(img => {
-      const url = typeof img === 'object' && img?.url ? img.url : img;
-      if (typeof url === 'string' && url.trim() && !list.includes(url.trim())) {
-        list.push(url.trim());
+      let u = typeof img === 'object' && img?.url ? img.url : img;
+      if (typeof u === 'string' && u.trim()) {
+        u = u.trim();
+        if (u.includes('http') && u.lastIndexOf('http') > 0) u = u.substring(u.lastIndexOf('http'));
+        if (u.startsWith('/uploads/')) u = `${API_URL}${u}`;
+        if (!list.includes(u)) list.push(u);
       }
     });
   }
-  if (tree.image && typeof tree.image === 'string' && tree.image.trim() && !list.includes(tree.image.trim())) {
-    list.unshift(tree.image.trim());
+  if (tree.image && typeof tree.image === 'string' && tree.image.trim()) {
+    let u = tree.image.trim();
+    if (u.includes('http') && u.lastIndexOf('http') > 0) u = u.substring(u.lastIndexOf('http'));
+    if (u.startsWith('/uploads/')) u = `${API_URL}${u}`;
+    if (!list.includes(u)) list.unshift(u);
   }
   if (list.length === 0) {
     list.push(getTreeDisplayImage(tree));

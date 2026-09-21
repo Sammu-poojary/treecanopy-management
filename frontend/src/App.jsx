@@ -119,8 +119,6 @@ function App() {
         <Route path="/admin/view-tree-cutter" element={<AdminOnly><ViewTreeCutterPage /></AdminOnly>} />
 
         {/* ── Official Namespaced Routes ── */}
-        <Route path="/official/login" element={<Navigate to="/login?portal=Official" replace />} />
-        <Route path="/official-login" element={<Navigate to="/login?portal=Official" replace />} />
         <Route path="/official" element={<OfficialOnly><DashboardPage /></OfficialOnly>} />
         <Route path="/official/dashboard" element={<OfficialOnly><DashboardPage /></OfficialOnly>} />
         <Route path="/official/adoptions" element={<OfficialOnly><OfficialAdoptionsPage /></OfficialOnly>} />

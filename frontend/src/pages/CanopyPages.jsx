@@ -7745,229 +7745,341 @@ export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
       )}
 
       {/* Official Care Schedule & Timeline Calendar Modal */}
-      {calendarModalSub && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9998,
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px'
-        }}>
+      {calendarModalSub && (() => {
+        const subTreeName = calendarModalSub.treeName || calendarModalSub.tree?.name || calendarModalSub.treeId?.name || 'Adopted Tree';
+        const subTreeScientific = calendarModalSub.treeScientificName || calendarModalSub.tree?.scientificName || '';
+        const subTreeLoc = calendarModalSub.treeLocation || calendarModalSub.tree?.location || 'Udupi Zone';
+        const subPlanLabel = calendarModalSub.adoptionType === 'self'
+          ? '🌱 Self-Care Pledge (Free)'
+          : `🌳 ${calendarModalSub.plan ? calendarModalSub.plan.charAt(0).toUpperCase() + calendarModalSub.plan.slice(1) : 'Monthly'} Subscription (₹${calendarModalSub.amount || 500})`;
+        const subTasks = Array.isArray(calendarModalSub.careTasks) && calendarModalSub.careTasks.length > 0
+          ? calendarModalSub.careTasks
+          : (Array.isArray(calendarModalSub.careSchedule) ? calendarModalSub.careSchedule : []);
+        const validatedCount = subTasks.filter(t => t.status === 'Validated' || t.status === 'completed' || t.status === 'verified').length;
+        const pendingCount = subTasks.filter(t => t.status === 'Pending' || t.status === 'pending_verification' || (t.proofImageUrl && t.status !== 'Validated')).length;
+        const cutterName = calendarModalSub.assignedCutterName || 'Not yet assigned';
+
+        return (
           <div style={{
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            maxWidth: '680px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            border: '1px solid #E2E8F0',
-            padding: '24px'
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9998,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #E2E8F0', paddingBottom: '16px', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Calendar size={22} color="#059669" />
-                  Care Activity Schedule & History
-                </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
-                  Tree: <strong>{calendarModalSub.tree?.name || calendarModalSub.tree?.treeId || 'N/A'}</strong> (Plan: {calendarModalSub.plan?.name || calendarModalSub.planType || 'Standard'})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCalendarModalSub(null)}
-                style={{
-                  background: '#F1F5F9',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '32px',
-                  height: '32px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <X size={18} color="#64748B" />
-              </button>
-            </div>
-
-            {/* Sub summary pill stats */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-              gap: '10px',
-              marginBottom: '20px'
+              background: '#FFFFFF',
+              borderRadius: '20px',
+              maxWidth: '720px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              border: '1px solid #E2E8F0',
+              padding: '24px'
             }}>
-              <div style={{ background: '#F8FAFC', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Total Tasks</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A' }}>
-                  {(calendarModalSub.careSchedule || []).length}
-                </span>
-              </div>
-              <div style={{ background: '#ECFDF5', padding: '10px', borderRadius: '8px', border: '1px solid #A7F3D0' }}>
-                <span style={{ fontSize: '0.72rem', color: '#047857', display: 'block' }}>Completed</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#065F46' }}>
-                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'completed' || t.status === 'verified').length}
-                </span>
-              </div>
-              <div style={{ background: '#FEF3C7', padding: '10px', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                <span style={{ fontSize: '0.72rem', color: '#B45309', display: 'block' }}>Pending Validation</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#92400E' }}>
-                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'pending_verification' || (t.proofImage && t.status !== 'verified')).length}
-                </span>
-              </div>
-              <div style={{ background: '#EFF6FF', padding: '10px', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
-                <span style={{ fontSize: '0.72rem', color: '#1D4ED8', display: 'block' }}>Upcoming</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1E40AF' }}>
-                  {(calendarModalSub.careSchedule || []).filter(t => t.status === 'scheduled' || (!t.status && !t.proofImage)).length}
-                </span>
-              </div>
-            </div>
-
-            {/* Care Schedule Timeline */}
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1E293B', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Clock size={16} color="#475569" /> Timeline of Scheduled Tasks
-            </div>
-
-            {(!calendarModalSub.careSchedule || calendarModalSub.careSchedule.length === 0) ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: '#94A3B8', fontStyle: 'italic', background: '#F8FAFC', borderRadius: '8px' }}>
-                No care activities currently scheduled for this adoption.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {calendarModalSub.careSchedule.map((task, idx) => {
-                  const isDone = task.status === 'completed' || task.status === 'verified';
-                  const isPending = task.status === 'pending_verification' || (task.proofImage && task.status !== 'verified');
-                  const dueDate = task.dueDate || task.date;
-                  const formattedDate = dueDate ? new Date(dueDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : `Milestone #${idx + 1}`;
-                  
-                  return (
-                    <div
-                      key={task._id || idx}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '12px',
-                        padding: '12px 14px',
-                        borderRadius: '10px',
-                        border: isDone ? '1px solid #BBF7D0' : isPending ? '1px solid #FDE68A' : '1px solid #E2E8F0',
-                        background: isDone ? '#F0FDF4' : isPending ? '#FFFBEB' : '#FFFFFF'
-                      }}
-                    >
-                      <div style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        background: isDone ? '#22C55E' : isPending ? '#F59E0B' : '#E2E8F0',
-                        color: '#FFFFFF'
-                      }}>
-                        {isDone ? <CheckCircle size={16} /> : isPending ? <Clock size={16} /> : <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B' }}>{idx + 1}</span>}
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                          <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1E293B' }}>
-                            {task.title || task.activityType || `Activity #${idx + 1}`}
-                          </span>
-                          <span style={{
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: '999px',
-                            textTransform: 'uppercase',
-                            background: isDone ? '#DCFCE7' : isPending ? '#FEF3C7' : '#F1F5F9',
-                            color: isDone ? '#15803D' : isPending ? '#B45309' : '#64748B'
-                          }}>
-                            {isDone ? 'Verified' : isPending ? 'Pending Review' : 'Scheduled'}
-                          </span>
-                        </div>
-
-                        <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: '3px' }}>
-                          📅 Due: {formattedDate}
-                        </div>
-
-                        {task.notes && (
-                          <div style={{ fontSize: '0.76rem', color: '#475569', marginTop: '4px', fontStyle: 'italic', background: 'rgba(0,0,0,0.02)', padding: '4px 8px', borderRadius: '4px' }}>
-                            "{task.notes}"
-                          </div>
-                        )}
-
-                        {task.proofImage && (
-                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <img
-                              src={task.proofImage}
-                              alt="Proof preview"
-                              style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #CBD5E1' }}
-                              onClick={() => {
-                                setPreviewModal({
-                                  isOpen: true,
-                                  imageUrl: task.proofImage,
-                                  title: `Proof: ${task.title || task.activityType || 'Care Activity'}`
-                                });
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCalendarModalSub(null);
-                                handleOpenValidationModal(calendarModalSub, task);
-                              }}
-                              style={{
-                                padding: '4px 10px',
-                                background: '#3B82F6',
-                                color: '#FFFFFF',
-                                border: 'none',
-                                borderRadius: '5px',
-                                fontSize: '0.72rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              Inspect Proof & Verify
-                            </button>
-                          </div>
-                        )}
-                      </div>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #E2E8F0', paddingBottom: '16px', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                  {calendarModalSub.treeImage ? (
+                    <img
+                      src={calendarModalSub.treeImage}
+                      alt={subTreeName}
+                      style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #10b981', flexShrink: 0 }}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
+                      🌳
                     </div>
-                  );
-                })}
+                  )}
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Calendar size={22} color="#059669" />
+                      Care Activity Schedule & History
+                    </h3>
+                    <div style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: '#475569', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                      <span>Tree: <strong style={{ color: '#065F46' }}>{subTreeName}</strong> {subTreeScientific && <em>({subTreeScientific})</em>}</span>
+                      <span>•</span>
+                      <span style={{ color: '#0284C7', fontWeight: 600 }}>{subPlanLabel}</span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: '3px' }}>
+                      👤 Adopter: <strong>{calendarModalSub.userName || 'Citizen'}</strong> {calendarModalSub.treeLocation ? `• 📍 ${calendarModalSub.treeLocation}` : ''}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCalendarModalSub(null)}
+                  style={{
+                    background: '#F1F5F9',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <X size={18} color="#64748B" />
+                </button>
               </div>
-            )}
 
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setCalendarModalSub(null)}
-                style={{
-                  padding: '8px 18px',
-                  background: '#F1F5F9',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: '8px',
-                  color: '#475569',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer'
-                }}
-              >
-                Close Schedule
-              </button>
+              {/* Sub summary pill stats */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: '10px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', fontWeight: 600 }}>Total Care Tasks</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A' }}>
+                    {subTasks.length}
+                  </span>
+                </div>
+                <div style={{ background: '#ECFDF5', padding: '10px 14px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#047857', display: 'block', fontWeight: 600 }}>Validated Proofs</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#065F46' }}>
+                    {validatedCount}
+                  </span>
+                </div>
+                <div style={{ background: '#FEF3C7', padding: '10px 14px', borderRadius: '10px', border: '1px solid #FDE68A' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#B45309', display: 'block', fontWeight: 600 }}>Pending Review</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#92400E' }}>
+                    {pendingCount}
+                  </span>
+                </div>
+                <div style={{ background: '#F0F9FF', padding: '10px 14px', borderRadius: '10px', border: '1px solid #BAE6FD' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#0369A1', display: 'block', fontWeight: 600 }}>Assigned Cutter</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0C4A6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                    {cutterName}
+                  </span>
+                </div>
+              </div>
+
+              {/* Standard Routine Schedule Banner */}
+              <div style={{
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '12px',
+                padding: '14px 16px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>🗓️ Routine Maintenance Cycle:</span>
+                  <span style={{ color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>Weekly Care Interval</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', fontSize: '0.78rem', color: '#64748B' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>💧</span> <span>Weekly Deep Watering & Soil Check</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>🧪</span> <span>Bi-Weekly Organic Fertilization</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>🔍</span> <span>Monthly Canopy & Pest Inspection</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Care Schedule Timeline */}
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1E293B', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Clock size={17} color="#059669" /> Recorded Care Activities & Field Proofs ({subTasks.length})
+                </span>
+                {subTasks.length > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Showing newest first</span>
+                )}
+              </div>
+
+              {subTasks.length === 0 ? (
+                <div style={{ padding: '32px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px', border: '1px dashed #CBD5E1' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🌿</div>
+                  <h4 style={{ margin: '0 0 6px', color: '#334155', fontSize: '1rem', fontWeight: 700 }}>No Care Tasks Submitted Yet</h4>
+                  <p style={{ margin: 0, color: '#64748B', fontSize: '0.85rem', lineHeight: 1.5, maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
+                    {calendarModalSub.assignedCutterName
+                      ? `This tree is actively assigned to ${calendarModalSub.assignedCutterName}. Routine care tasks will appear here as soon as the arborist uploads proof photos from the field.`
+                      : calendarModalSub.adoptionType === 'self'
+                      ? `This is a Citizen Self-Adoption pledge by ${calendarModalSub.userName || 'the user'}. The citizen can submit self-care proof logs.`
+                      : 'No tree cutter has been assigned yet. Please assign a tree cutter from the adoptions desk to initiate routine field care visits.'}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {subTasks.slice().reverse().map((task, idx) => {
+                    const isDone = task.status === 'Validated' || task.status === 'completed' || task.status === 'verified';
+                    const isPending = task.status === 'Pending' || task.status === 'pending_verification';
+                    const isRejected = task.status === 'Rejected';
+                    const taskDate = task.uploadedAt || task.date || task.dueDate || task.createdAt;
+                    const formattedDate = taskDate ? new Date(taskDate).toLocaleString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : `Activity #${subTasks.length - idx}`;
+                    const taskType = task.taskType || task.title || task.activityType || 'Routine Care';
+                    const proofUrl = task.proofImageUrl || task.proofImage || task.imageUrl;
+
+                    const getTaskIcon = (type) => {
+                      const t = (type || '').toLowerCase();
+                      if (t.includes('water')) return '💧';
+                      if (t.includes('fertiliz') || t.includes('nutrient')) return '🧪';
+                      if (t.includes('prun') || t.includes('trim') || t.includes('cut')) return '✂️';
+                      if (t.includes('inspect') || t.includes('check') || t.includes('health')) return '🔍';
+                      if (t.includes('mulch') || t.includes('soil')) return '🌱';
+                      return '🌿';
+                    };
+
+                    return (
+                      <div
+                        key={task._id || idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '14px',
+                          padding: '14px 16px',
+                          borderRadius: '12px',
+                          border: isDone ? '1.5px solid #BBF7D0' : isPending ? '1.5px solid #FDE68A' : isRejected ? '1.5px solid #FECDD3' : '1px solid #E2E8F0',
+                          background: isDone ? '#F0FDF4' : isPending ? '#FFFBEB' : isRejected ? '#FFF1F2' : '#FFFFFF',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          background: isDone ? '#22C55E' : isPending ? '#F59E0B' : isRejected ? '#EF4444' : '#E2E8F0',
+                          color: '#FFFFFF',
+                          fontSize: '1.1rem'
+                        }}>
+                          {getTaskIcon(taskType)}
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0F172A' }}>
+                              {taskType}
+                            </span>
+                            <span style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '3px 10px',
+                              borderRadius: '999px',
+                              textTransform: 'uppercase',
+                              background: isDone ? '#DCFCE7' : isPending ? '#FEF3C7' : isRejected ? '#FEE2E2' : '#F1F5F9',
+                              color: isDone ? '#15803D' : isPending ? '#B45309' : isRejected ? '#B91C1C' : '#64748B'
+                            }}>
+                              {isDone ? '✓ Validated' : isPending ? '⏳ Pending Review' : isRejected ? '✕ Rejected' : 'Scheduled'}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '3px' }}>
+                            📅 Recorded on: <strong>{formattedDate}</strong> {task.uploadedByName ? `by ${task.uploadedByName} (${task.uploadedByRole || 'Tree Cutter'})` : ''}
+                          </div>
+
+                          {task.description && (
+                            <div style={{ fontSize: '0.82rem', color: '#334155', marginTop: '6px', background: 'rgba(0,0,0,0.03)', padding: '6px 10px', borderRadius: '6px' }}>
+                              "{task.description}"
+                            </div>
+                          )}
+
+                          {task.validationNote && (
+                            <div style={{ fontSize: '0.78rem', color: '#047857', marginTop: '4px', fontStyle: 'italic' }}>
+                              Validation note: "{task.validationNote}" {task.validatedByName ? `— ${task.validatedByName}` : ''}
+                            </div>
+                          )}
+
+                          {proofUrl && (
+                            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                              <img
+                                src={proofUrl}
+                                alt="Proof preview"
+                                style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1.5px solid #CBD5E1', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}
+                                onClick={() => {
+                                  if (typeof setPreviewModal === 'function') {
+                                    setPreviewModal({
+                                      isOpen: true,
+                                      imageUrl: proofUrl,
+                                      title: `Proof: ${taskType}`
+                                    });
+                                  } else {
+                                    window.open(proofUrl, '_blank');
+                                  }
+                                }}
+                              />
+                              {isPending && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCalendarModalSub(null);
+                                    if (typeof handleOpenValidationModal === 'function') {
+                                      handleOpenValidationModal(calendarModalSub, task);
+                                    } else {
+                                      setValidatingTaskModal({
+                                        subId: calendarModalSub._id || calendarModalSub.id,
+                                        task,
+                                        treeName: subTreeName,
+                                        userName: calendarModalSub.userName
+                                      });
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '6px 14px',
+                                    background: 'linear-gradient(135deg, #059669, #047857)',
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    boxShadow: '0 2px 8px rgba(5,150,105,0.3)'
+                                  }}
+                                >
+                                  <CheckCircle size={14} /> Inspect Proof & Verify
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setCalendarModalSub(null)}
+                  style={{
+                    padding: '9px 22px',
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '10px',
+                    color: '#334155',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Close Schedule
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
 
       {/* Proof Photo Lightbox Preview Modal */}
@@ -11389,6 +11501,7 @@ export function ViewTreePage() {
   const [carouselIndices, setCarouselIndices] = useState({}); // treeId -> currentSlide
   const [galleryTree, setGalleryTree] = useState(null);       // tree object for lightbox
   const [galleryIdx, setGalleryIdx] = useState(0);            // active photo in lightbox
+  const [detailActiveImgIndex, setDetailActiveImgIndex] = useState(0); // active photo in detail view
   const carouselTimers = useRef({});
 
   // Start auto-scroll for a tree card when it mounts/becomes visible
@@ -11412,11 +11525,29 @@ export function ViewTreePage() {
   useEffect(() => { return () => Object.values(carouselTimers.current).forEach(clearInterval); }, []);
 
   const getTreeImages = (tree) => {
-    const imgs = Array.isArray(tree.images) && tree.images.length > 0 ? tree.images : [];
-    const primary = getTreeDisplayImage(tree);
-    // merge, deduplicate
-    const all = [primary, ...imgs.filter(u => u && u !== primary)];
-    return [...new Set(all)].filter(Boolean);
+    if (!tree) return [speciesImages.default];
+    const list = [];
+    if (Array.isArray(tree.images) && tree.images.length > 0) {
+      tree.images.forEach(img => {
+        let u = typeof img === 'object' && img?.url ? img.url : img;
+        if (typeof u === 'string' && u.trim()) {
+          u = u.trim();
+          if (u.includes('http') && u.lastIndexOf('http') > 0) u = u.substring(u.lastIndexOf('http'));
+          if (u.startsWith('/uploads/')) u = `${API_URL}${u}`;
+          if (!list.includes(u)) list.push(u);
+        }
+      });
+    }
+    if (tree.image && typeof tree.image === 'string' && tree.image.trim()) {
+      let u = tree.image.trim();
+      if (u.includes('http') && u.lastIndexOf('http') > 0) u = u.substring(u.lastIndexOf('http'));
+      if (u.startsWith('/uploads/')) u = `${API_URL}${u}`;
+      if (!list.includes(u)) list.unshift(u);
+    }
+    if (list.length === 0) {
+      list.push(getTreeDisplayImage(tree));
+    }
+    return list;
   };
 
   const effectiveUserId = currentUser.id || currentUser._id || currentUser.userId || 'guest-citizen';
@@ -11661,25 +11792,99 @@ export function ViewTreePage() {
           marginBottom: '24px', boxShadow: '0 10px 40px rgba(4,50,36,0.25)',
           position: 'relative'
         }}>
-          {/* Tree image */}
-          <div style={{
-            width: '200px', minWidth: '160px', height: '200px', borderRadius: '14px',
-            overflow: 'hidden', background: 'rgba(255,255,255,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, border: '2px solid rgba(255,255,255,0.2)'
-          }}>
-            <img
-              src={getTreeDisplayImage(selectedTree)}
-              alt={selectedTree.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              onError={(e) => {
-                const fallback = speciesImages.default;
-                if (e.currentTarget.src !== fallback) {
-                  e.currentTarget.src = fallback;
-                }
-              }}
-            />
-          </div>
+          {/* Tree image & gallery */}
+          {(() => {
+            const allDetailImgs = getTreeImages(selectedTree);
+            const activeDetailImg = allDetailImgs[detailActiveImgIndex] || allDetailImgs[0] || getTreeDisplayImage(selectedTree);
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                <div
+                  style={{
+                    width: '200px', minWidth: '160px', height: '200px', borderRadius: '16px',
+                    overflow: 'hidden', background: 'rgba(255,255,255,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, border: '2px solid rgba(255,255,255,0.25)',
+                    position: 'relative', cursor: 'pointer', boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+                  }}
+                  onClick={() => { setGalleryTree(selectedTree); setGalleryIdx(detailActiveImgIndex); }}
+                  title="Click to view full photo in gallery"
+                >
+                  <img
+                    src={activeDetailImg}
+                    alt={selectedTree.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      const fallback = speciesImages.default;
+                      if (e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
+                    }}
+                  />
+                  {allDetailImgs.length > 1 && (
+                    <span style={{
+                      position: 'absolute', top: '8px', left: '8px',
+                      background: 'rgba(0,0,0,0.75)', color: '#fff',
+                      fontSize: '0.75rem', fontWeight: 700, padding: '3px 9px',
+                      borderRadius: '12px', backdropFilter: 'blur(4px)'
+                    }}>
+                      📸 {detailActiveImgIndex + 1}/{allDetailImgs.length}
+                    </span>
+                  )}
+                  {allDetailImgs.length > 1 && (
+                    <div style={{ position: 'absolute', bottom: '8px', left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0 8px' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setDetailActiveImgIndex(prev => prev > 0 ? prev - 1 : allDetailImgs.length - 1); }}
+                        style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 'bold' }}
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setDetailActiveImgIndex(prev => prev < allDetailImgs.length - 1 ? prev + 1 : 0); }}
+                        style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 'bold' }}
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Thumbnails */}
+                {allDetailImgs.length > 1 && (
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: '200px', padding: '4px 2px' }}>
+                    {allDetailImgs.map((imgUrl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setDetailActiveImgIndex(idx)}
+                        style={{
+                          width: '42px', height: '42px', borderRadius: '8px', overflow: 'hidden', padding: 0, flexShrink: 0,
+                          border: idx === detailActiveImgIndex ? '2px solid #34d399' : '1px solid rgba(255,255,255,0.25)',
+                          background: '#042217', cursor: 'pointer', opacity: idx === detailActiveImgIndex ? 1 : 0.5,
+                          transition: 'all 0.2s', transform: idx === detailActiveImgIndex ? 'scale(1.08)' : 'scale(1)'
+                        }}
+                      >
+                        <img src={imgUrl} alt={`Thumb ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => { setGalleryTree(selectedTree); setGalleryIdx(detailActiveImgIndex); }}
+                  style={{
+                    background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+                    borderRadius: '8px', padding: '4px 12px', fontSize: '0.75rem', color: '#fff',
+                    cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px'
+                  }}
+                >
+                  🔍 View Full Gallery ({allDetailImgs.length})
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Tree headline info */}
           <div style={{ flex: 1, minWidth: '220px' }}>
@@ -11943,7 +12148,7 @@ export function ViewTreePage() {
               return (
                 <article
                   key={tree._id || tree.id}
-                  onClick={() => setSelectedTree(tree)}
+                  onClick={() => { setSelectedTree(tree); setDetailActiveImgIndex(0); }}
                   style={{
                     background: 'var(--bg-surface, #0b2518)', borderRadius: '16px', overflow: 'hidden',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -12366,6 +12571,7 @@ export function ViewTreePage() {
           {renderDetailContent()}
           {renderAdoptModal()}
           {renderPledgeModal()}
+          {renderGalleryLightbox()}
         </div>
       );
     } else {
@@ -12377,6 +12583,7 @@ export function ViewTreePage() {
             {renderDetailContent()}
             {renderAdoptModal()}
             {renderPledgeModal()}
+            {renderGalleryLightbox()}
           </div>
         </div>
       );

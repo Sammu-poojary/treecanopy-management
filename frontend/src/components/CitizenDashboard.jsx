@@ -45,6 +45,9 @@ const getTreeDisplayImage = (tree) => {
     if (typeof firstImg === 'object' && firstImg?.url) firstImg = firstImg.url;
     if (typeof firstImg === 'string' && firstImg.trim() !== '') {
       let img = firstImg.trim();
+      if (img.includes('http') && img.lastIndexOf('http') > 0) {
+        img = img.substring(img.lastIndexOf('http'));
+      }
       if (img.startsWith('/uploads/')) img = `${API_URL}${img}`;
       return img;
     }
@@ -53,6 +56,9 @@ const getTreeDisplayImage = (tree) => {
   // Always display the actual uploaded image
   if (tree.image && typeof tree.image === 'string' && tree.image.trim() !== '') {
     let img = tree.image.trim();
+    if (img.includes('http') && img.lastIndexOf('http') > 0) {
+      img = img.substring(img.lastIndexOf('http'));
+    }
     if (img.startsWith('/uploads/')) {
       img = `${API_URL}${img}`;
     }
@@ -75,6 +81,32 @@ const getTreeDisplayImage = (tree) => {
   if (nameStr.includes('honge') || nameStr.includes('pongamia')) return speciesImages.honge;
   if (nameStr.includes('coconut') || nameStr.includes('cocos')) return speciesImages.coconut;
   return speciesImages.default;
+};
+
+const getTreeImagesList = (tree) => {
+  if (!tree) return [speciesImages.default];
+  const list = [];
+  if (Array.isArray(tree.images) && tree.images.length > 0) {
+    tree.images.forEach(img => {
+      let u = typeof img === 'object' && img?.url ? img.url : img;
+      if (typeof u === 'string' && u.trim()) {
+        u = u.trim();
+        if (u.includes('http') && u.lastIndexOf('http') > 0) u = u.substring(u.lastIndexOf('http'));
+        if (u.startsWith('/uploads/')) u = `${API_URL}${u}`;
+        if (!list.includes(u)) list.push(u);
+      }
+    });
+  }
+  if (tree.image && typeof tree.image === 'string' && tree.image.trim()) {
+    let u = tree.image.trim();
+    if (u.includes('http') && u.lastIndexOf('http') > 0) u = u.substring(u.lastIndexOf('http'));
+    if (u.startsWith('/uploads/')) u = `${API_URL}${u}`;
+    if (!list.includes(u)) list.unshift(u);
+  }
+  if (list.length === 0) {
+    list.push(getTreeDisplayImage(tree));
+  }
+  return list;
 };
 
 const resolveImageUrl = (rawUrl) => {
@@ -417,6 +449,7 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [inventoryTrees, setInventoryTrees] = useState([]);
   const [treesLoading, setTreesLoading] = useState(false);
   const [selectedTree, setSelectedTree] = useState(null);
+  const [treeDetailImgIdx, setTreeDetailImgIdx] = useState(0);
   const [treeSearch, setTreeSearch] = useState('');
   const [treeHealthFilter, setTreeHealthFilter] = useState('all');
   const [favTreeId, setFavTreeId] = useState(() => localStorage.getItem('citizenFavTree') || null);
@@ -2624,6 +2657,8 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
           const pests    = Array.isArray(selectedTree.pests)    ? selectedTree.pests    : [];
           const diseases = Array.isArray(selectedTree.diseases) ? selectedTree.diseases : [];
           const isFav = favTreeId === (selectedTree._id || selectedTree.id);
+          const allTreeImgs = getTreeImagesList(selectedTree);
+          const activeTreeImg = allTreeImgs[treeDetailImgIdx] || allTreeImgs[0] || getTreeDisplayImage(selectedTree);
 
           return (
             <div>
@@ -2682,17 +2717,85 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                 display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap',
                 marginBottom: '20px'
               }}>
-                <div style={{
-                  width: '140px', height: '140px', borderRadius: '12px', overflow: 'hidden',
-                  background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', flexShrink: 0, border: '2px solid rgba(255,255,255,0.2)'
-                }}>
-                  <img
-                    src={getTreeDisplayImage(selectedTree)}
-                    alt={selectedTree.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => { e.currentTarget.src = speciesImages.default; }}
-                  />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: '160px', height: '160px', borderRadius: '12px', overflow: 'hidden',
+                      background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', flexShrink: 0, border: '2px solid rgba(255,255,255,0.25)',
+                      position: 'relative', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.3)'
+                    }}
+                    onClick={() => setSelectedImagePreview(activeTreeImg)}
+                    title="Click to view full photo"
+                  >
+                    <img
+                      src={activeTreeImg}
+                      alt={selectedTree.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { e.currentTarget.src = speciesImages.default; }}
+                    />
+                    {allTreeImgs.length > 1 && (
+                      <span style={{
+                        position: 'absolute', top: '8px', left: '8px',
+                        background: 'rgba(0,0,0,0.75)', color: '#fff',
+                        fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px',
+                        borderRadius: '12px', backdropFilter: 'blur(4px)'
+                      }}>
+                        📸 {treeDetailImgIdx + 1}/{allTreeImgs.length}
+                      </span>
+                    )}
+                    {allTreeImgs.length > 1 && (
+                      <div style={{ position: 'absolute', bottom: '6px', left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0 6px' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setTreeDetailImgIdx(prev => prev > 0 ? prev - 1 : allTreeImgs.length - 1); }}
+                          style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setTreeDetailImgIdx(prev => prev < allTreeImgs.length - 1 ? prev + 1 : 0); }}
+                          style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}
+                        >
+                          ›
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Thumbnail Row */}
+                  {allTreeImgs.length > 1 && (
+                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', maxWidth: '170px', padding: '2px' }}>
+                      {allTreeImgs.map((imgUrl, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setTreeDetailImgIdx(idx)}
+                          style={{
+                            width: '36px', height: '36px', borderRadius: '8px', overflow: 'hidden', padding: 0, flexShrink: 0,
+                            border: idx === treeDetailImgIdx ? '2px solid #34d399' : '1px solid rgba(255,255,255,0.3)',
+                            background: '#042217', cursor: 'pointer', opacity: idx === treeDetailImgIdx ? 1 : 0.6,
+                            transition: 'all 0.2s', transform: idx === treeDetailImgIdx ? 'scale(1.08)' : 'scale(1)'
+                          }}
+                        >
+                          <img src={imgUrl} alt={`Thumb ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImagePreview(activeTreeImg)}
+                    style={{
+                      background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+                      borderRadius: '8px', padding: '3px 10px', fontSize: '0.72rem', color: '#fff',
+                      cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px'
+                    }}
+                  >
+                    🔍 View Full Photo
+                  </button>
                 </div>
                 <div style={{ flex: 1, minWidth: '200px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
@@ -2873,10 +2976,11 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                   const hColor = getHealthColor(hs);
                   const hLabel = getHealthLabel(hs);
                   const isThisFav = favTreeId === (tree._id || tree.id);
+                  const treeImgs = getTreeImagesList(tree);
                   return (
                     <div
                       key={tree._id || tree.id}
-                      onClick={() => setSelectedTree(tree)}
+                      onClick={() => { setSelectedTree(tree); setTreeDetailImgIdx(0); }}
                       style={{
                         background: '#fff', borderRadius: '14px', overflow: 'hidden',
                         border: isThisFav ? '2px solid #f59e0b' : '1px solid #e5e7eb',
@@ -2905,6 +3009,11 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                         <span style={{ position: 'absolute', top: '8px', right: '8px', background: hColor, color: '#fff', borderRadius: '20px', padding: '2px 10px', fontSize: '0.72rem', fontWeight: 700 }}>
                           {hLabel}
                         </span>
+                        {treeImgs.length > 1 && (
+                          <span style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(4, 50, 36, 0.85)', color: '#fff', borderRadius: '12px', padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700, backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                            📸 {treeImgs.length} photos
+                          </span>
+                        )}
                         {isThisFav && (
                           <span style={{ position: 'absolute', top: '8px', left: '8px', background: '#f59e0b', color: '#fff', borderRadius: '20px', padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700 }}>⭐ My Tree</span>
                         )}

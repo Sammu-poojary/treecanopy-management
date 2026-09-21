@@ -102,6 +102,8 @@ router.post('/', async (req, res) => {
       } catch (uploadErr) {
         console.warn('Cloudinary upload warning:', uploadErr.message);
       }
+    } else if (proofImageBase64) {
+      proofImageUrl = proofImageBase64;
     }
 
     const count = await WasteIntake.countDocuments();
