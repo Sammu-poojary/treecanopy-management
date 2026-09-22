@@ -110,11 +110,13 @@ router.get('/payments-summary', async (req, res) => {
     
     let totalRevenueInr = 0;
     let totalOnlineRazorpayInr = 0;
+    let totalOnlinePendingInr = 0;
     let totalCodInr = 0;
-    let totalCodPendingInr = 0;
-    let totalCodCollectedInr = 0;
+    let totalDriverCashInHandInr = 0; // Collected by drivers from citizens, pending turn-in to office
+    let totalCodDepositedInr = 0; // Cleared and deposited into municipal treasury
+    let totalCodPendingInr = 0; // Pending delivery to citizen
     let totalEcoPointsRedeemed = 0;
-    
+
     const ordersByStatus = {
       'Order Placed': 0,
       'Packed & Ready': 0,
@@ -131,18 +133,32 @@ router.get('/payments-summary', async (req, res) => {
       'Refunded': 0
     };
 
+    const driverCashMap = {};
+
     allOrders.forEach(ord => {
       const amt = Number(ord.totalAmountInr) || 0;
       const pts = Number(ord.totalEcoPointsUsed) || 0;
-      totalRevenueInr += amt;
       totalEcoPointsRedeemed += pts;
 
-      if (ord.paymentMethod === 'Razorpay Online' && ord.paymentStatus === 'Paid') {
-        totalOnlineRazorpayInr += amt;
-      } else if (ord.paymentMethod === 'Cash on Delivery') {
+      const isCod = ord.paymentMethod === 'Cash on Delivery' || ord.paymentMethod === 'COD';
+
+      if (ord.paymentMethod === 'Razorpay Online') {
+        if (ord.paymentStatus === 'Paid') {
+          totalOnlineRazorpayInr += amt;
+          totalRevenueInr += amt;
+        } else {
+          totalOnlinePendingInr += amt;
+        }
+      } else if (isCod) {
         totalCodInr += amt;
-        if (ord.cashCollectionStatus === 'Collected' || ord.cashCollectionStatus === 'Deposited' || ord.paymentStatus === 'Paid') {
-          totalCodCollectedInr += amt;
+        if (ord.cashCollectionStatus === 'Deposited') {
+          totalCodDepositedInr += amt;
+          totalRevenueInr += amt;
+        } else if (ord.cashCollectionStatus === 'Collected') {
+          const cashAmt = Number(ord.cashCollected) || amt;
+          totalDriverCashInHandInr += cashAmt;
+          const driverKey = ord.assignedDeliveryPartnerName || 'Unassigned Driver';
+          driverCashMap[driverKey] = (driverCashMap[driverKey] || 0) + cashAmt;
         } else {
           totalCodPendingInr += amt;
         }
@@ -161,10 +177,13 @@ router.get('/payments-summary', async (req, res) => {
       totalOrdersCount: allOrders.length,
       totalRevenueInr,
       totalOnlineRazorpayInr,
+      totalOnlinePendingInr,
       totalCodInr,
-      totalCodCollectedInr,
+      totalDriverCashInHandInr,
+      totalCodDepositedInr,
       totalCodPendingInr,
       totalEcoPointsRedeemed,
+      driverCashMap,
       ordersByStatus,
       ordersByPaymentStatus,
       recentOrders: allOrders.slice(0, 10)
@@ -384,10 +403,12 @@ router.post('/verify-payment', async (req, res) => {
     const order = await EcoOrder.findById(orderId);
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    if (!isDemo && razorpay_order_id && !razorpay_order_id.startsWith('order_demo_') && process.env.RAZORPAY_KEY_SECRET && !process.env.RAZORPAY_KEY_SECRET.includes('placeholder')) {
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+
+    if (!isDemo && razorpay_order_id && !razorpay_order_id.startsWith('order_demo_') && keySecret && !keySecret.includes('placeholder')) {
       try {
         const expectedSig = crypto
-          .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+          .createHmac('sha256', keySecret)
           .update(`${razorpay_order_id}|${razorpay_payment_id}`)
           .digest('hex');
         if (expectedSig !== razorpay_signature) {
@@ -395,11 +416,13 @@ router.post('/verify-payment', async (req, res) => {
         }
       } catch (sigErr) {
         console.warn('Signature verification check notice:', sigErr.message);
+        return res.status(400).json({ error: 'Payment verification failed: ' + sigErr.message });
       }
     }
 
     order.paymentStatus = 'Paid';
     order.razorpayPaymentId = razorpay_payment_id || `pay_${Date.now()}`;
+    if (razorpay_order_id) order.razorpayOrderId = razorpay_order_id;
     order.statusTimeline.push({
       status: 'Payment Verified',
       timestamp: new Date(),
@@ -412,6 +435,17 @@ router.post('/verify-payment', async (req, res) => {
     // Deduct inventory
     for (const it of order.items) {
       await EcoProduct.findByIdAndUpdate(it.productId, { $inc: { stockQuantity: -it.quantity } });
+    }
+
+    // Deduct Eco-Points if used for partial payment
+    if (order.totalEcoPointsUsed > 0) {
+      await new EcoPointsTransaction({
+        userId: (order.userId || '').toString(),
+        userEmail: (order.userEmail || '').toLowerCase(),
+        type: 'REDEEM',
+        points: -order.totalEcoPointsUsed,
+        description: `Eco-Store Purchase (${order.orderNumber})`
+      }).save();
     }
 
     // Send Order Placed & Confirmed Email
@@ -539,24 +573,24 @@ router.patch('/:id/delivery-status', async (req, res) => {
       if (proofPhoto) order.deliveryProofPhoto = proofPhoto;
       if (signature) order.recipientSignature = signature;
 
-      // Handle Cash Collection for COD
-      if (order.paymentMethod === 'Cash on Delivery') {
+      // Handle Cash Collection for COD: Collected by driver from customer, pending turn-in to office
+      if (order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD') {
         order.cashCollected = Number(cashCollected || order.totalAmountInr);
-        order.cashCollectionStatus = 'Collected';
-        order.paymentStatus = 'Paid';
+        order.cashCollectionStatus = 'Collected'; // Held by delivery driver
+        order.paymentStatus = 'Pending'; // Awaiting official treasury settlement
       }
 
       order.statusTimeline.push({
-        status: 'Delivered / Completed',
+        status: 'Delivered / Handover Completed',
         timestamp: new Date(),
-        note: `Handover verified with OTP. Proof photo recorded.${order.paymentMethod === 'Cash on Delivery' ? ` ₹${order.cashCollected} COD collected in cash.` : ''}`,
+        note: `Handover verified with OTP.${order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? ` ₹${order.cashCollected} COD collected in cash by driver ${updatedBy || order.assignedDeliveryPartnerName || 'Driver'}. In transit for Municipal Treasury deposit.` : ' Pre-paid online via Razorpay.'}`,
         updatedBy: updatedBy || order.assignedDeliveryPartnerName || 'Delivery Partner'
       });
 
       await order.save();
 
       // Send Delivered Email
-      sendDeliveredEmail(order, order.deliveryProofPhoto).catch(e => console.error('Email error:', e.message));
+      sendDeliveredEmail(order).catch(e => console.error('Email error:', e.message));
 
       return res.json({ success: true, order, message: 'Delivery completed successfully! 🎉' });
     }
@@ -579,6 +613,78 @@ router.patch('/:id/delivery-status', async (req, res) => {
     await order.save();
 
     res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/eco-orders/:id/settle-cash (Official / Admin clears single order COD cash into treasury)
+router.post('/:id/settle-cash', async (req, res) => {
+  try {
+    const { settledBy, notes } = req.body;
+    const order = await EcoOrder.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (!order.cashCollected) order.cashCollected = order.totalAmountInr;
+    order.cashCollectionStatus = 'Deposited';
+    order.paymentStatus = 'Paid';
+    order.treasurySettledAt = new Date();
+    order.treasurySettledBy = settledBy || 'Municipal Treasury Official';
+
+    order.statusTimeline.push({
+      status: 'COD Cash Settled to Treasury',
+      timestamp: new Date(),
+      note: `₹${order.cashCollected} physical cash received from delivery executive ${order.assignedDeliveryPartnerName || 'Executive'} and cleared into Municipal Treasury. Verified by ${settledBy || 'Municipal Official'}.${notes ? ` (${notes})` : ''}`,
+      updatedBy: settledBy || 'Municipal Official'
+    });
+
+    await order.save();
+    res.json({ success: true, order, message: `₹${order.cashCollected} COD cash cleared into Municipal Treasury!` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/eco-orders/settle-driver-cash (Official / Admin clears all collected cash for a delivery partner)
+router.post('/settle-driver-cash', async (req, res) => {
+  try {
+    const { partnerId, partnerName, settledBy, notes } = req.body;
+    const query = {
+      $or: [
+        ...(partnerId ? [{ assignedDeliveryPartnerId: partnerId }] : []),
+        ...(partnerName ? [{ assignedDeliveryPartnerName: partnerName }] : [])
+      ],
+      cashCollectionStatus: 'Collected'
+    };
+
+    const pendingOrders = await EcoOrder.find(query);
+    if (pendingOrders.length === 0) {
+      return res.json({ success: true, count: 0, totalSettled: 0, message: 'No pending cash to settle for this driver.' });
+    }
+
+    let totalSettled = 0;
+    for (const order of pendingOrders) {
+      const amt = Number(order.cashCollected) || Number(order.totalAmountInr) || 0;
+      totalSettled += amt;
+      order.cashCollectionStatus = 'Deposited';
+      order.paymentStatus = 'Paid';
+      order.treasurySettledAt = new Date();
+      order.treasurySettledBy = settledBy || 'Municipal Treasury Official';
+      order.statusTimeline.push({
+        status: 'COD Cash Settled to Treasury',
+        timestamp: new Date(),
+        note: `₹${amt} physical cash submitted & deposited into Municipal Treasury from delivery partner ${partnerName || order.assignedDeliveryPartnerName}. Verified by ${settledBy || 'Municipal Official'}.${notes ? ` (${notes})` : ''}`,
+        updatedBy: settledBy || 'Municipal Official'
+      });
+      await order.save();
+    }
+
+    res.json({
+      success: true,
+      count: pendingOrders.length,
+      totalSettled,
+      message: `Successfully cleared ${pendingOrders.length} orders totaling ₹${totalSettled} from ${partnerName || 'delivery partner'} into Municipal Treasury!`
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

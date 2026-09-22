@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { Topbar } from './CanopyPages';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // Mock yard location for Udupi Municipal Biomass Center
 const YARD_COORDS = { lat: 13.3409, lng: 74.7421, name: 'Ajjarkadu Municipal Biomass Center' };
 
@@ -36,10 +38,10 @@ export default function DeliveryDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('ACTIVE'); // 'ACTIVE', 'COMPLETED', 'ALL'
 
-  // Logged-in delivery partner profile
+  // Logged-in delivery partner profile (dynamically read from localStorage)
   const [partner, setPartner] = useState(() => {
     try {
-      const saved = localStorage.getItem('user') || localStorage.getItem('delivery_user');
+      const saved = localStorage.getItem('currentUser') || localStorage.getItem('user') || localStorage.getItem('delivery_user');
       if (saved) {
         const u = JSON.parse(saved);
         if (u.role === 'Delivery Partner' || u.role === 'Delivery') return u;
@@ -57,6 +59,18 @@ export default function DeliveryDashboardPage() {
     };
   });
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('currentUser') || localStorage.getItem('user') || localStorage.getItem('delivery_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u.role === 'Delivery Partner' || u.role === 'Delivery') {
+          setPartner(u);
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   // Attendance state
   const [shiftStatus, setShiftStatus] = useState('Checked In');
   const [clockInTime, setClockInTime] = useState('09:15 AM');
@@ -70,9 +84,29 @@ export default function DeliveryDashboardPage() {
 
   const [handoverOrder, setHandoverOrder] = useState(null);
   const [enteredOtp, setEnteredOtp] = useState('');
-  const [proofPhoto, setProofPhoto] = useState('');
   const [cashCollectedInput, setCashCollectedInput] = useState('');
   const [submittingHandover, setSubmittingHandover] = useState(false);
+
+  const handleLogout = () => {
+    Swal.fire({
+      title: 'Log out from Delivery Portal?',
+      text: `Are you sure you want to log out, ${partner.name}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#334155',
+      confirmButtonText: 'Yes, Log Out',
+      cancelButtonText: 'Stay Logged In'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('user');
+        localStorage.removeItem('delivery_user');
+        sessionStorage.removeItem('deliveryAuthed');
+        navigate('/login');
+      }
+    });
+  };
 
   const mapContainerRef = useRef(null);
   const leafletMapRef = useRef(null);
@@ -80,13 +114,15 @@ export default function DeliveryDashboardPage() {
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/eco-orders/delivery-tasks?partnerPhone=${partner.phone || ''}`);
+      const partnerId = partner._id || partner.id || '';
+      const partnerPhone = partner.phone || '';
+      const res = await fetch(`${API_URL}/api/eco-orders/delivery-tasks?partnerId=${partnerId}&partnerPhone=${partnerPhone}`);
       if (res.ok) {
         const data = await res.json();
         setTasks(Array.isArray(data) ? data : []);
       } else {
         // Fallback fetch all home deliveries
-        const allRes = await fetch('http://localhost:5000/api/eco-orders/all?fulfillmentType=Home Delivery');
+        const allRes = await fetch(`${API_URL}/api/eco-orders/all?fulfillmentType=Home Delivery`);
         if (allRes.ok) {
           const allData = await allRes.json();
           setTasks(Array.isArray(allData) ? allData : []);
@@ -101,12 +137,12 @@ export default function DeliveryDashboardPage() {
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+  }, [partner._id, partner.phone]);
 
   // Update Status: Out for Delivery
   const handleMarkOutForDelivery = async (order) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/eco-orders/${order._id}/delivery-status`, {
+      const res = await fetch(`${API_URL}/api/eco-orders/${order._id}/delivery-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -134,7 +170,7 @@ export default function DeliveryDashboardPage() {
   // Update Status: Arrived at Location
   const handleMarkArrived = async (order) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/eco-orders/${order._id}/delivery-status`, {
+      const res = await fetch(`${API_URL}/api/eco-orders/${order._id}/delivery-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -174,13 +210,12 @@ export default function DeliveryDashboardPage() {
 
     setSubmittingHandover(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/eco-orders/${handoverOrder._id}/delivery-status`, {
+      const res = await fetch(`${API_URL}/api/eco-orders/${handoverOrder._id}/delivery-status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'Delivered',
           otp: enteredOtp,
-          proofPhoto: proofPhoto || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=600&auto=format&fit=crop&q=60',
           cashCollected: handoverOrder.paymentMethod === 'Cash on Delivery' ? (cashCollectedInput || handoverOrder.totalAmountInr) : 0,
           updatedBy: partner.name
         })
@@ -192,13 +227,12 @@ export default function DeliveryDashboardPage() {
       Swal.fire({
         icon: 'success',
         title: 'Delivery Completed! 🎉',
-        text: `Order ${handoverOrder.orderNumber} successfully delivered. Proof recorded & confirmation email sent to citizen.`,
+        text: `Order ${handoverOrder.orderNumber} successfully delivered. Handover confirmed & confirmation email sent to citizen.`,
         confirmButtonColor: '#10b981'
       });
 
       setHandoverOrder(null);
       setEnteredOtp('');
-      setProofPhoto('');
       setCashCollectedInput('');
       fetchTasks();
     } catch (err) {
@@ -304,6 +338,88 @@ export default function DeliveryDashboardPage() {
     return true;
   });
 
+  // Calculate total COD cash currently held in hand by this delivery partner
+  const cashInHand = tasks.filter(t =>
+    (t.paymentMethod === 'Cash on Delivery' || t.paymentMethod === 'COD') &&
+    t.cashCollectionStatus === 'Collected'
+  ).reduce((sum, t) => sum + (Number(t.cashCollected) || Number(t.totalAmountInr) || 0), 0);
+
+  const getPaymentBadge = (order) => {
+    const isCod = order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD';
+    const isPoints = order.paymentMethod === 'Eco-Points Full Redemption';
+    const isPaid = order.paymentStatus === 'Paid';
+    const isCollected = order.cashCollectionStatus === 'Collected';
+    const isDeposited = order.cashCollectionStatus === 'Deposited';
+
+    if (isPoints) {
+      return {
+        bg: 'rgba(168, 85, 247, 0.15)',
+        border: 'rgba(168, 85, 247, 0.3)',
+        color: '#c084fc',
+        label: '🪙 Paid via Eco-Points',
+        sub: 'Points Redeemed • ₹0 Due'
+      };
+    }
+
+    if (isCod) {
+      if (isDeposited || (isPaid && !isCollected)) {
+        return {
+          bg: 'rgba(16, 185, 129, 0.15)',
+          border: 'rgba(16, 185, 129, 0.3)',
+          color: '#34d399',
+          label: `✅ COD Settled to Treasury (₹${order.cashCollected || order.totalAmountInr})`,
+          sub: 'Cash turned in & verified by office'
+        };
+      }
+      if (isCollected) {
+        return {
+          bg: 'rgba(245, 158, 11, 0.18)',
+          border: 'rgba(245, 158, 11, 0.4)',
+          color: '#fbbf24',
+          label: `📦 Cash with You: ₹${order.cashCollected || order.totalAmountInr}`,
+          sub: 'Deposit to biomass yard office'
+        };
+      }
+      return {
+        bg: 'rgba(239, 68, 68, 0.15)',
+        border: 'rgba(239, 68, 68, 0.35)',
+        color: '#f87171',
+        label: `💵 Collect ₹${order.totalAmountInr} COD Cash`,
+        sub: '⚠️ Collect exact cash before OTP handover'
+      };
+    }
+
+    // Razorpay Online
+    if (isPaid) {
+      return {
+        bg: 'rgba(16, 185, 129, 0.15)',
+        border: 'rgba(16, 185, 129, 0.3)',
+        color: '#34d399',
+        label: `✅ Paid Online (₹${order.totalAmountInr})`,
+        sub: 'Pre-paid digitally via Razorpay'
+      };
+    }
+
+    if (order.paymentStatus === 'Failed') {
+      return {
+        bg: 'rgba(239, 68, 68, 0.2)',
+        border: 'rgba(239, 68, 68, 0.4)',
+        color: '#f87171',
+        label: `❌ Online Payment Failed (₹${order.totalAmountInr})`,
+        sub: 'Citizen payment attempt failed'
+      };
+    }
+
+    // Pending / Unpaid Online
+    return {
+      bg: 'rgba(245, 158, 11, 0.15)',
+      border: 'rgba(245, 158, 11, 0.35)',
+      color: '#fbbf24',
+      label: `⚠️ Unpaid Online: Pending (₹${order.totalAmountInr})`,
+      sub: 'Online checkout pending / not completed'
+    };
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#090d16', color: '#f8fafc', fontFamily: 'Inter, sans-serif' }}>
       <Topbar role="Delivery Partner" />
@@ -351,6 +467,25 @@ export default function DeliveryDashboardPage() {
                 <div style={{ fontSize: '14px', fontWeight: 700, color: '#38bdf8' }}>{clockInTime} (Morning)</div>
               </div>
 
+              {/* Cash in Hand Indicator for COD Handover */}
+              <div style={{
+                textAlign: 'right',
+                background: cashInHand > 0 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+                border: cashInHand > 0 ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(16, 185, 129, 0.25)',
+                padding: '5px 12px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '10px', color: cashInHand > 0 ? '#fbbf24' : '#34d399', textTransform: 'uppercase', fontWeight: 700 }}>
+                  💵 Cash in Hand
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: cashInHand > 0 ? '#f59e0b' : '#10b981' }}>
+                  ₹{cashInHand}
+                </div>
+                <div style={{ fontSize: '9px', color: '#94a3b8' }}>
+                  {cashInHand > 0 ? 'Turn in at yard' : 'All cleared'}
+                </div>
+              </div>
+
               <button
                 onClick={() => setShowLeaveModal(true)}
                 style={{
@@ -369,6 +504,7 @@ export default function DeliveryDashboardPage() {
 
               <button
                 onClick={fetchTasks}
+                title="Refresh Delivery Tasks"
                 style={{
                   background: 'rgba(2, 132, 199, 0.2)',
                   border: '1px solid rgba(2, 132, 199, 0.4)',
@@ -379,6 +515,27 @@ export default function DeliveryDashboardPage() {
                 }}
               >
                 <RefreshCw size={14} className={loading ? 'spin' : ''} />
+              </button>
+
+              <button
+                onClick={handleLogout}
+                title="Log Out of Delivery Portal"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  color: '#f87171',
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'background 0.2s ease'
+                }}
+              >
+                <LogOut size={14} /> Log Out
               </button>
             </div>
           </div>
@@ -482,24 +639,26 @@ export default function DeliveryDashboardPage() {
                     </div>
 
                     {/* Payment Badge */}
-                    <div style={{
-                      background: isCod && order.paymentStatus !== 'Paid' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                      border: isCod && order.paymentStatus !== 'Paid' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
-                      padding: '6px 12px',
-                      borderRadius: '10px',
-                      textAlign: 'right'
-                    }}>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Payment Status</div>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: isCod && order.paymentStatus !== 'Paid' ? '#f87171' : '#34d399' }}>
-                        {isCod ? (
-                          order.paymentStatus === 'Paid' ? `✅ COD Collected (₹${order.cashCollected || order.totalAmountInr})` : `💵 Collect ₹${order.totalAmountInr} COD Cash`
-                        ) : order.paymentMethod === 'Eco-Points Full Redemption' ? (
-                          `🪙 Paid via Eco-Points (₹0 Due)`
-                        ) : (
-                          `✅ Paid Online (₹${order.totalAmountInr})`
-                        )}
-                      </div>
-                    </div>
+                    {(() => {
+                      const badge = getPaymentBadge(order);
+                      return (
+                        <div style={{
+                          background: badge.bg,
+                          border: `1px solid ${badge.border}`,
+                          padding: '6px 14px',
+                          borderRadius: '10px',
+                          textAlign: 'right'
+                        }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Payment Status</div>
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: badge.color, marginTop: '1px' }}>
+                            {badge.label}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>
+                            {badge.sub}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Address Box */}
@@ -648,11 +807,9 @@ export default function DeliveryDashboardPage() {
                       <div style={{ fontSize: '13px', color: '#34d399', fontWeight: 600 }}>
                         ✅ Delivered on {order.deliveredAt ? new Date(order.deliveredAt).toLocaleTimeString('en-IN') : 'Today'}
                       </div>
-                      {order.deliveryProofPhoto && (
-                        <a href={order.deliveryProofPhoto} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#38bdf8', textDecoration: 'underline' }}>
-                          View Handover Photo
-                        </a>
-                      )}
+                      <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
+                        OTP Verified Handover
+                      </span>
                     </div>
                   )}
                 </div>
@@ -792,21 +949,7 @@ export default function DeliveryDashboardPage() {
                 </div>
               )}
 
-              {/* Proof Photo URL / Camera */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '6px' }}>
-                  Delivery Proof Photo URL (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://... (or leave default compost proof)"
-                  value={proofPhoto}
-                  onChange={(e) => setProofPhoto(e.target.value)}
-                  style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
                 <button type="button" onClick={() => setHandoverOrder(null)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#94a3b8', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" disabled={submittingHandover} style={{ background: '#059669', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
                   {submittingHandover ? 'Verifying...' : 'Verify OTP & Complete Delivery 🎉'}

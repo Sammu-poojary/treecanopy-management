@@ -92,6 +92,8 @@ const ecoOrderSchema = new mongoose.Schema({
     enum: ['Not Applicable', 'Pending Collection', 'Collected', 'Deposited'],
     default: 'Not Applicable'
   },
+  treasurySettledAt: { type: Date, default: null },
+  treasurySettledBy: { type: String, default: '' },
   
   statusTimeline: [{
     status: { type: String, required: true },

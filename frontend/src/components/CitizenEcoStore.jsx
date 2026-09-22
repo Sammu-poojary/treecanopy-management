@@ -79,7 +79,6 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
   const [activeSubTab, setActiveSubTab] = useState('browse'); // 'browse' | 'my-orders'
   const [myOrders, setMyOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
 
   // Product Details Modal State
   const [selectedProductDetails, setSelectedProductDetails] = useState(null);
@@ -391,7 +390,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
         setCheckoutStep('success');
 
         if (onPointsUpdated && data.order?.totalEcoPointsUsed) {
-          onPointsUpdated(Math.max(0, availableEcoPoints - data.order.totalEcoPointsUsed));
+          onPointsUpdated(Math.max(0, userEcoPoints - data.order.totalEcoPointsUsed));
         }
         setPlacingOrder(false);
         return;
@@ -459,7 +458,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
             setCheckoutStep('success');
 
             if (onPointsUpdated && data.order?.totalEcoPointsUsed) {
-              onPointsUpdated(Math.max(0, availableEcoPoints - data.order.totalEcoPointsUsed));
+              onPointsUpdated(Math.max(0, userEcoPoints - data.order.totalEcoPointsUsed));
             }
           } catch (verifyErr) {
             console.error('Razorpay verification error:', verifyErr);
@@ -1179,9 +1178,9 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary, #0f172a)' }}>
                 My Circular Economy Orders
               </h2>
-              <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: 'var(--text-secondary, #64748b)' }}>
-                Track active compost bags, gate-pickup passes, and past purchases.
-              </p>
+              <p style={{ margin: '4px 0 0', fontSize: '0.86rem', color: '#64748b' }}>
+              Track active compost bags, deliveries, and past purchases.
+            </p>
             </div>
             <button
               onClick={fetchMyOrders}
@@ -1324,28 +1323,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                       </div>
                     </div>
 
-                    {/* Pickup Pass / QR Code Action */}
-                    {isPickup && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '14px', padding: '12px 18px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <QrCode size={22} color="#047857" />
-                          <div>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#064e3b' }}>
-                              Digital Gate-Pickup Pass Available
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: '#047857' }}>
-                              Show this QR code at the weighbridge/security gate for instant item hand-off.
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setSelectedOrderDetails(order)}
-                          style={{ background: '#059669', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '8px 16px', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <QrCode size={14} /> View Digital QR Pass
-                        </button>
-                      </div>
-                    )}
+
                   </div>
                 );
               })}
@@ -1526,7 +1504,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '0.88rem', color: deliveryMethod === 'pickup' ? '#064e3b' : '#334155' }}>
                           <Building2 size={16} /> Yard Self-Pickup
                         </div>
-                        <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, marginTop: '2px' }}>FREE (₹0 fee + QR pass)</div>
+                        <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, marginTop: '2px' }}>FREE (₹0 collection fee)</div>
                       </button>
 
                       <button
@@ -1566,7 +1544,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                         <option value="Eastern Lake-Buffer Bio-Hub">Eastern Lake-Buffer Bio-Hub</option>
                       </select>
                       <p style={{ margin: '8px 0 0', fontSize: '0.74rem', color: '#64748b' }}>
-                        💡 You will receive an instant digital QR Gate Pass for pickup between 08:00 AM – 06:00 PM.
+                        💡 Collection hours: 08:00 AM – 06:00 PM on all municipal working days.
                       </p>
                     </div>
                   ) : (
@@ -1885,15 +1863,12 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                   </div>
 
                   {completedOrder.fulfillmentType === 'Yard Pickup' && completedOrder.pickupYard && (
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '18px', width: '100%', marginTop: '4px' }}>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#064e3b', marginBottom: '8px' }}>
-                        🏢 Digital Gate-Pass Code
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', width: '100%', marginTop: '4px' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#064e3b', marginBottom: '4px' }}>
+                        🏢 Pickup Yard Location
                       </div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#059669', letterSpacing: '0.1em', background: '#ecfdf5', padding: '8px 16px', borderRadius: '8px', border: '1px dashed #a7f3d0' }}>
-                        {completedOrder.pickupYard?.pickupPassCode || 'GATE-PASS-ECO'}
-                      </div>
-                      <p style={{ margin: '8px 0 0', fontSize: '0.74rem', color: '#64748b' }}>
-                        Show this pass at <strong>{completedOrder.pickupYard?.yardName || 'Municipal Yard'}</strong> for instant collection.
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: '#475569' }}>
+                        {completedOrder.pickupYard?.yardName || completedOrder.pickupYard || 'Municipal Biomass Processing Center'}
                       </p>
                     </div>
                   )}
@@ -1917,7 +1892,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                       cursor: 'pointer'
                     }}
                   >
-                    View My Orders &amp; QR Pass
+                    View My Orders
                   </button>
                 </div>
               )}
@@ -1926,67 +1901,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
         </div>
       )}
 
-      {/* ── QR CODE GATE PASS LIGHTBOX MODAL ── */}
-      {selectedOrderDetails && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.82)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 999999,
-            display: 'grid',
-            placeItems: 'center',
-            padding: '20px'
-          }}
-          onClick={() => setSelectedOrderDetails(null)}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: '24px',
-              padding: '28px',
-              maxWidth: '420px',
-              width: '100%',
-              textAlign: 'center',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-              border: '1px solid #e2e8f0'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#047857', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <ShieldCheck size={18} /> Municipal Gate-Pickup Pass
-              </span>
-              <button onClick={() => setSelectedOrderDetails(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                <X size={20} />
-              </button>
-            </div>
 
-            {/* QR Mock Rendering */}
-            <div style={{ background: '#ecfdf5', border: '2px dashed #059669', borderRadius: '16px', padding: '24px', display: 'grid', placeItems: 'center', margin: '0 auto 16px' }}>
-              <QrCode size={160} color="#064e3b" />
-              <div style={{ marginTop: '12px', fontWeight: 900, fontSize: '1.2rem', color: '#064e3b', letterSpacing: '0.08em' }}>
-                {selectedOrderDetails.pickupPassCode || selectedOrderDetails.orderNumber || 'GATE-PASS-ECO'}
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'left', background: '#f8fafc', padding: '14px', borderRadius: '12px', fontSize: '0.82rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div><strong>Order Ref:</strong> #{selectedOrderDetails.orderNumber}</div>
-              <div><strong>Pickup Location:</strong> {selectedOrderDetails.pickupYard}</div>
-              <div><strong>Customer:</strong> {selectedOrderDetails.userName}</div>
-              <div><strong>Status:</strong> <span style={{ color: '#059669', fontWeight: 700 }}>{selectedOrderDetails.orderStatus}</span></div>
-            </div>
-
-            <button
-              onClick={() => setSelectedOrderDetails(null)}
-              style={{ marginTop: '18px', width: '100%', background: '#0f172a', color: '#ffffff', border: 'none', padding: '11px', borderRadius: '12px', fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer' }}
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

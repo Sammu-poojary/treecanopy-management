@@ -194,6 +194,10 @@ const LoginPage = () => {
       }
 
       localStorage.setItem('currentUser', JSON.stringify(data.user));
+      localStorage.setItem('user', JSON.stringify(data.user));
+      if (data.user.role === 'Delivery Partner' || data.user.role === 'Delivery') {
+        localStorage.setItem('delivery_user', JSON.stringify(data.user));
+      }
       if (data.user.role === 'Timber Buyer' || data.user.role === 'Timber Merchant') {
         localStorage.setItem('timber_merchant_profile', JSON.stringify({
           bidderId: data.user.id || data.user._id,

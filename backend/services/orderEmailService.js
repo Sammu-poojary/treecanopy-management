@@ -83,8 +83,7 @@ async function sendOrderPlacedEmail(order) {
             ` : `
               <div style="font-size: 13px; color: #64748b; margin-top: 8px;">
                 <b>Yard Pickup Location:</b><br/>
-                ${order.pickupYard?.yardName || 'Municipal Biomass Yard'}<br/>
-                Pickup Pass Code: <b style="color: #059669; font-size: 16px;">${order.pickupYard?.pickupPassCode || 'PASS-ECO'}</b>
+                ${order.pickupYard?.yardName || 'Municipal Biomass Processing Yard'}
               </div>
             `}
           </div>
@@ -278,13 +277,6 @@ async function sendDeliveredEmail(order, proofUrl) {
             <span style="font-size: 13px; color: #166534; font-weight: 700;">DELIVERY STATUS: COMPLETED & VERIFIED</span>
             <div style="font-size: 14px; color: #166534; margin-top: 4px;">Delivered by ${order.assignedDeliveryPartnerName || 'Municipal Green Partner'}</div>
           </div>
-
-          ${proofUrl ? `
-            <div style="margin: 16px 0; text-align: center;">
-              <span style="font-size: 12px; color: #64748b; display: block; margin-bottom: 6px;">Delivery Handover Proof:</span>
-              <img src="${proofUrl}" alt="Delivery Proof" style="max-width: 100%; max-height: 220px; border-radius: 10px; border: 1px solid #e2e8f0; object-fit: cover;" />
-            </div>
-          ` : ''}
 
           <p style="font-size: 13px; color: #475569; line-height: 1.5;">
             By choosing municipal compost created from recycled urban tree trimmings, you have helped divert organic biomass from city landfills and enriched our local soil! 🌳

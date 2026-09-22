@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import {
   Truck,
@@ -22,17 +22,42 @@ import {
   ChevronRight,
   ExternalLink,
   Eye,
+  EyeOff,
   Check,
   X,
   FileText,
   Sparkles,
-  QrCode
+  QrCode,
+  LogOut
 } from 'lucide-react';
 import { Topbar, Sidebar } from './CanopyPages';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 export default function OfficialDeliveryAndPaymentsPage() {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'partners', 'payments'
+
+  const handleLogout = () => {
+    Swal.fire({
+      title: 'Log out from Official Portal?',
+      text: 'Are you sure you want to end your official session?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#334155',
+      confirmButtonText: 'Yes, Log Out',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem('currentUser');
+        sessionStorage.removeItem('officialAuthed');
+        sessionStorage.removeItem('adminAuthed');
+        navigate('/login');
+      }
+    });
+  };
   
   // Data State
   const [orders, setOrders] = useState([]);
@@ -53,6 +78,8 @@ export default function OfficialDeliveryAndPaymentsPage() {
   const [assigning, setAssigning] = useState(false);
 
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
+  const [addingPartner, setAddingPartner] = useState(false);
+  const [showPartnerPassword, setShowPartnerPassword] = useState(false);
   const [newPartnerForm, setNewPartnerForm] = useState({
     name: '',
     email: '',
@@ -91,7 +118,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
     if (!paymentModalOrder) return;
     setUpdatingPayment(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/eco-orders/${paymentModalOrder._id}/update-payment`, {
+      const res = await fetch(`${API_URL}/api/eco-orders/${paymentModalOrder._id}/update-payment`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,13 +150,169 @@ export default function OfficialDeliveryAndPaymentsPage() {
     }
   };
 
+  // ── Clear / Settle Single Order COD Cash into Municipal Treasury ──
+  const handleSettleOrderCash = async (order) => {
+    const cashAmt = order.cashCollected || order.totalAmountInr || 0;
+    const result = await Swal.fire({
+      title: 'Clear & Deposit Cash to Treasury?',
+      html: `<p>Confirm physical receipt of <strong>₹${cashAmt}</strong> collected from citizen for order <strong>${order.orderNumber}</strong> by driver <strong>${order.assignedDeliveryPartnerName || 'Delivery Partner'}</strong>.</p>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#334155',
+      confirmButtonText: 'Yes, Clear & Deposit',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/eco-orders/${order._id}/settle-cash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settledBy: 'Official Operations Desk',
+          notes: 'Driver handed over cash at Ajjarkadu Biomass Office counter'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to settle cash');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Cash Deposited to Treasury! 🏦',
+        text: `₹${cashAmt} for order ${order.orderNumber} has been officially cleared into Municipal Treasury.`,
+        confirmButtonColor: '#10b981'
+      });
+
+      fetchData();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+  };
+
+  // ── Clear All Pending COD Cash for a Specific Driver in One Click ──
+  const handleSettleDriverCash = async (partner, amount) => {
+    const result = await Swal.fire({
+      title: `Reconcile Cash for ${partner.name}?`,
+      html: `<p>Confirm physical turn-in of <strong>₹${amount}</strong> total collected COD cash from delivery partner <strong>${partner.name}</strong>.</p><p style="font-size:12px;color:#94a3b8">This will reconcile all delivered COD orders and clear their cash liability to ₹0.</p>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#334155',
+      confirmButtonText: `Yes, Accept ₹${amount} Cash`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/eco-orders/settle-driver-cash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partnerId: partner._id,
+          partnerName: partner.name,
+          settledBy: 'Official Operations Desk',
+          notes: 'Driver shift cash reconciled at biomass yard office'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to settle driver cash');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Driver Cash Reconciled! 🏦',
+        text: data.message || `₹${amount} has been cleared into the Municipal Treasury.`,
+        confirmButtonColor: '#10b981'
+      });
+
+      fetchData();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+  };
+
+  // Helper: Accurate Official Payment Badge
+  const getOfficialPaymentBadge = (order) => {
+    const isCod = order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD';
+    const isPoints = order.paymentMethod === 'Eco-Points Full Redemption';
+    const isPaid = order.paymentStatus === 'Paid';
+    const isCollected = order.cashCollectionStatus === 'Collected';
+    const isDeposited = order.cashCollectionStatus === 'Deposited';
+
+    if (isPoints) {
+      return {
+        bg: 'rgba(168, 85, 247, 0.15)',
+        border: 'rgba(168, 85, 247, 0.3)',
+        color: '#c084fc',
+        text: '✓ Eco-Points (₹0 Due)'
+      };
+    }
+
+    if (isCod) {
+      if (isDeposited || (isPaid && !isCollected)) {
+        return {
+          bg: 'rgba(16, 185, 129, 0.15)',
+          border: 'rgba(16, 185, 129, 0.3)',
+          color: '#34d399',
+          text: `✓ COD Settled (₹${order.cashCollected || order.totalAmountInr})`,
+          isSettled: true
+        };
+      }
+      if (isCollected) {
+        return {
+          bg: 'rgba(245, 158, 11, 0.18)',
+          border: 'rgba(245, 158, 11, 0.4)',
+          color: '#fbbf24',
+          text: `🚚 Cash with Driver: ₹${order.cashCollected || order.totalAmountInr}`,
+          canSettle: true
+        };
+      }
+      return {
+        bg: 'rgba(239, 68, 68, 0.15)',
+        border: 'rgba(239, 68, 68, 0.3)',
+        color: '#f87171',
+        text: `💵 COD Pending: ₹${order.totalAmountInr}`
+      };
+    }
+
+    // Razorpay Online
+    if (isPaid) {
+      return {
+        bg: 'rgba(16, 185, 129, 0.15)',
+        border: 'rgba(16, 185, 129, 0.3)',
+        color: '#34d399',
+        text: `✓ Paid Online (₹${order.totalAmountInr})`
+      };
+    }
+
+    if (order.paymentStatus === 'Failed') {
+      return {
+        bg: 'rgba(239, 68, 68, 0.2)',
+        border: 'rgba(239, 68, 68, 0.35)',
+        color: '#f87171',
+        text: `❌ Online Failed (₹${order.totalAmountInr})`
+      };
+    }
+
+    return {
+      bg: 'rgba(245, 158, 11, 0.15)',
+      border: 'rgba(245, 158, 11, 0.35)',
+      color: '#fbbf24',
+      text: `⚠️ Online Pending / Unpaid (₹${order.totalAmountInr})`
+    };
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
       const [ordersRes, partnersRes, summaryRes] = await Promise.all([
-        fetch('http://localhost:5000/api/eco-orders/all'),
-        fetch('http://localhost:5000/api/auth/delivery-partners'),
-        fetch('http://localhost:5000/api/eco-orders/payments-summary')
+        fetch(`${API_URL}/api/eco-orders/all`),
+        fetch(`${API_URL}/api/auth/delivery-partners`),
+        fetch(`${API_URL}/api/eco-orders/payments-summary`)
       ]);
 
       if (ordersRes.ok) {
@@ -167,7 +350,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
     setAssigning(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/eco-orders/${selectedOrder._id}/assign-delivery`, {
+      const res = await fetch(`${API_URL}/api/eco-orders/${selectedOrder._id}/assign-delivery`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -206,7 +389,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
     e.preventDefault();
     setAddingPartner(true);
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register-delivery-partner', {
+      const res = await fetch(`${API_URL}/api/auth/register-delivery-partner`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPartnerForm)
@@ -218,7 +401,18 @@ export default function OfficialDeliveryAndPaymentsPage() {
       Swal.fire({
         icon: 'success',
         title: 'Delivery Partner Added! 🎉',
-        text: `${newPartnerForm.name} is now registered and verified for green dispatch.`,
+        html: `
+          <div style="text-align: left; background: #0f172a; padding: 16px; border-radius: 12px; color: #f8fafc; font-size: 13px; line-height: 1.6; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight: 700; color: #38bdf8; margin-bottom: 8px; font-size: 14px;">📋 Login Credentials Configured:</div>
+            <div style="margin-bottom: 4px;">👤 <b>Name:</b> ${newPartnerForm.name}</div>
+            <div style="margin-bottom: 4px;">✉️ <b>Login Email:</b> <span style="color: #38bdf8; font-family: monospace; font-weight: 700;">${newPartnerForm.email}</span></div>
+            <div style="margin-bottom: 4px;">🔑 <b>Password:</b> <span style="color: #10b981; font-family: monospace; font-weight: 700;">${newPartnerForm.password || 'Delivery@123'}</span></div>
+            <div style="margin-bottom: 4px;">🚚 <b>Zone:</b> ${newPartnerForm.deliveryZone}</div>
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: #94a3b8;">
+              💡 <b>How to Log In:</b> Partner opens <b>/login</b>, clicks the <b>Delivery</b> tab, and enters these credentials to access their route dispatch console.
+            </div>
+          </div>
+        `,
         confirmButtonColor: '#10b981'
       });
 
@@ -243,7 +437,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
   // Toggle Partner Availability
   const handleToggleAvailability = async (partner) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/auth/delivery-partners/${partner._id}/toggle-availability`, {
+      const res = await fetch(`${API_URL}/api/auth/delivery-partners/${partner._id}/toggle-availability`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isAvailable: !partner.isAvailable })
@@ -341,23 +535,52 @@ export default function OfficialDeliveryAndPaymentsPage() {
                 >
                   <RefreshCw size={15} className={loading ? 'spin' : ''} /> Refresh
                 </button>
+                <button
+                  onClick={handleLogout}
+                  title="Log Out of Official Portal"
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    color: '#f87171',
+                    padding: '10px 16px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <LogOut size={15} /> Log Out
+                </button>
               </div>
             </div>
 
             {/* Metrics Overview Cards */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
               gap: '16px',
               marginTop: '24px'
             }}>
               <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '16px 20px' }}>
-                <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Eco-Store Revenue</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Settled Treasury Revenue</div>
                 <div style={{ fontSize: '26px', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
                   ₹{(paymentsSummary?.totalRevenueInr || 0).toLocaleString('en-IN')}
                 </div>
                 <div style={{ fontSize: '11px', color: '#7dd3fc', marginTop: '4px' }}>
-                  ₹{(paymentsSummary?.totalOnlineRazorpayInr || 0).toLocaleString('en-IN')} Online • ₹{(paymentsSummary?.totalCodCollectedInr || 0).toLocaleString('en-IN')} COD
+                  ₹{(paymentsSummary?.totalOnlineRazorpayInr || 0).toLocaleString('en-IN')} Online • ₹{(paymentsSummary?.totalCodDepositedInr || 0).toLocaleString('en-IN')} Settled COD
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '14px', padding: '16px 20px' }}>
+                <div style={{ fontSize: '12px', color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>🚚 Driver Cash in Hand</div>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>
+                  ₹{(paymentsSummary?.totalDriverCashInHandInr || 0).toLocaleString('en-IN')}
+                </div>
+                <div style={{ fontSize: '11px', color: '#fde68a', marginTop: '4px' }}>
+                  Collected from citizens • Awaiting turn-in
                 </div>
               </div>
 
@@ -373,18 +596,10 @@ export default function OfficialDeliveryAndPaymentsPage() {
 
               <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '16px 20px' }}>
                 <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Active Delivery Fleet</div>
-                <div style={{ fontSize: '26px', fontWeight: 800, color: '#fbbf24', marginTop: '4px' }}>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: '#a78bfa', marginTop: '4px' }}>
                   {partners.filter(p => p.isAvailable).length} <span style={{ fontSize: '13px', color: '#64748b' }}>on duty</span>
                 </div>
-                <div style={{ fontSize: '11px', color: '#fde68a', marginTop: '4px' }}>{partners.length} total registered partners</div>
-              </div>
-
-              <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '16px 20px' }}>
-                <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Pending Dispatch</div>
-                <div style={{ fontSize: '26px', fontWeight: 800, color: '#f43f5e', marginTop: '4px' }}>
-                  {orders.filter(o => o.fulfillmentType === 'Home Delivery' && (!o.assignedDeliveryPartnerId || o.currentDeliveryStatus === 'Unassigned')).length}
-                </div>
-                <div style={{ fontSize: '11px', color: '#fda4af', marginTop: '4px' }}>Requires partner assignment</div>
+                <div style={{ fontSize: '11px', color: '#c4b5fd', marginTop: '4px' }}>{partners.length} total registered partners</div>
               </div>
             </div>
 
@@ -604,22 +819,25 @@ export default function OfficialDeliveryAndPaymentsPage() {
                             <span style={{ fontSize: '15px', fontWeight: 800, color: '#10b981' }}>
                               ₹{order.totalAmountInr}
                             </span>
-                            <span style={{
-                              fontSize: '11px',
-                              padding: '3px 8px',
-                              borderRadius: '6px',
-                              background: order.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: order.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24',
-                              border: order.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
-                              fontWeight: 700,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              {order.paymentStatus === 'Paid'
-                                ? (order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? `✓ COD Collected (₹${order.cashCollected || order.totalAmountInr})` : `✓ Paid (${order.paymentMethod || 'Online'})`)
-                                : (order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? `💵 COD Pending (₹${order.totalAmountInr})` : `⚠️ ${order.paymentMethod} - Pending`)}
-                            </span>
+                            {(() => {
+                              const badge = getOfficialPaymentBadge(order);
+                              return (
+                                <span style={{
+                                  fontSize: '11px',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  background: badge.bg,
+                                  color: badge.color,
+                                  border: `1px solid ${badge.border}`,
+                                  fontWeight: 700,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}>
+                                  {badge.text}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
 
@@ -686,6 +904,30 @@ export default function OfficialDeliveryAndPaymentsPage() {
                             </button>
                           )}
 
+                          {/* Clear Cash Action Button for Collected COD Orders */}
+                          {order.cashCollectionStatus === 'Collected' && (
+                            <button
+                              onClick={() => handleSettleOrderCash(order)}
+                              style={{
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                border: 'none',
+                                color: '#ffffff',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                              }}
+                            >
+                              <ShieldCheck size={14} /> Clear Cash (Deposit ₹{order.cashCollected || order.totalAmountInr})
+                            </button>
+                          )}
+
                           {/* Update Payment Button */}
                           <button
                             onClick={() => openPaymentModal(order)}
@@ -704,7 +946,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
                               gap: '6px'
                             }}
                           >
-                            <CreditCard size={13} /> {order.paymentStatus === 'Paid' ? 'Update Payment' : 'Mark as Paid / COD'}
+                            <CreditCard size={13} /> {order.paymentStatus === 'Paid' ? 'Edit Payment' : 'Mark as Paid / COD'}
                           </button>
 
                           <button
@@ -837,6 +1079,56 @@ export default function OfficialDeliveryAndPaymentsPage() {
                             <div style={{ fontSize: '11px', color: '#94a3b8' }}>Delivered</div>
                           </div>
                         </div>
+
+                        {/* Driver Cash in Hand & Reconcile Button */}
+                        {(() => {
+                          const driverCash = (paymentsSummary?.driverCashMap?.[p.name]) || orders.filter(o =>
+                            (o.assignedDeliveryPartnerId === p._id || o.assignedDeliveryPartnerName === p.name) &&
+                            o.cashCollectionStatus === 'Collected'
+                          ).reduce((sum, o) => sum + (Number(o.cashCollected) || Number(o.totalAmountInr) || 0), 0);
+
+                          return (
+                            <div style={{
+                              background: driverCash > 0 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.08)',
+                              border: driverCash > 0 ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(16, 185, 129, 0.2)',
+                              padding: '10px 12px',
+                              borderRadius: '10px',
+                              marginTop: '12px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <div>
+                                <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
+                                  Collected COD Cash
+                                </div>
+                                <div style={{ fontSize: '15px', fontWeight: 800, color: driverCash > 0 ? '#f59e0b' : '#34d399', marginTop: '2px' }}>
+                                  ₹{driverCash} {driverCash > 0 ? '(In-Hand)' : '(All Cleared)'}
+                                </div>
+                              </div>
+                              {driverCash > 0 && (
+                                <button
+                                  onClick={() => handleSettleDriverCash(p, driverCash)}
+                                  style={{
+                                    background: '#10b981',
+                                    border: 'none',
+                                    color: '#fff',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <ShieldCheck size={12} /> Clear Cash
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -868,20 +1160,28 @@ export default function OfficialDeliveryAndPaymentsPage() {
                     <div style={{ fontSize: '11px', color: '#34d399', marginTop: '2px' }}>Settled to Municipal Bank</div>
                   </div>
 
-                  <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '16px', borderRadius: '12px' }}>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Cash on Delivery Collected</div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
-                      ₹{(paymentsSummary?.totalCodCollectedInr || 0).toLocaleString('en-IN')}
+                  <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '16px', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '12px', color: '#fbbf24', fontWeight: 700 }}>🚚 Driver Cash in Hand</div>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>
+                      ₹{(paymentsSummary?.totalDriverCashInHandInr || 0).toLocaleString('en-IN')}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#7dd3fc', marginTop: '2px' }}>Collected by Delivery Fleet</div>
+                    <div style={{ fontSize: '11px', color: '#fde68a', marginTop: '2px' }}>Collected • Pending office turn-in</div>
                   </div>
 
                   <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '16px', borderRadius: '12px' }}>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Pending COD Cash</div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>COD Settled to Treasury</div>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+                      ₹{(paymentsSummary?.totalCodDepositedInr || 0).toLocaleString('en-IN')}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#7dd3fc', marginTop: '2px' }}>Cleared & Deposited to Account</div>
+                  </div>
+
+                  <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '16px', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Pending Customer COD</div>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#f43f5e', marginTop: '4px' }}>
                       ₹{(paymentsSummary?.totalCodPendingInr || 0).toLocaleString('en-IN')}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#fbbf24', marginTop: '2px' }}>In-transit with riders</div>
+                    <div style={{ fontSize: '11px', color: '#fda4af', marginTop: '2px' }}>Awaiting customer delivery</div>
                   </div>
 
                   <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '16px', borderRadius: '12px' }}>
@@ -926,17 +1226,22 @@ export default function OfficialDeliveryAndPaymentsPage() {
                           <td style={{ padding: '14px 20px' }}>{o.paymentMethod}</td>
                           <td style={{ padding: '14px 20px', fontWeight: 800, color: '#10b981' }}>₹{o.totalAmountInr}</td>
                           <td style={{ padding: '14px 20px' }}>
-                            <span style={{
-                              padding: '3px 8px',
-                              borderRadius: '6px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              background: o.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                              color: o.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24',
-                              border: o.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
-                            }}>
-                              {o.paymentStatus === 'Paid' ? (o.paymentMethod === 'Cash on Delivery' || o.paymentMethod === 'COD' ? '✓ COD Collected' : '✓ Paid') : '💵 Pending COD'}
-                            </span>
+                            {(() => {
+                              const badge = getOfficialPaymentBadge(o);
+                              return (
+                                <span style={{
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  background: badge.bg,
+                                  color: badge.color,
+                                  border: `1px solid ${badge.border}`
+                                }}>
+                                  {badge.text}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td style={{ padding: '14px 20px' }}>
                             <span style={{ fontSize: '12px', color: '#cbd5e1' }}>{o.orderStatus}</span>
@@ -945,24 +1250,47 @@ export default function OfficialDeliveryAndPaymentsPage() {
                             {new Date(o.createdAt).toLocaleDateString('en-IN')}
                           </td>
                           <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                            <button
-                              onClick={() => openPaymentModal(o)}
-                              style={{
-                                background: o.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.2)',
-                                border: o.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.4)',
-                                color: o.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              <CreditCard size={12} /> {o.paymentStatus === 'Paid' ? 'Edit Payment' : 'Mark as Paid'}
-                            </button>
+                            <div style={{ display: 'inline-flex', gap: '6px' }}>
+                              {o.cashCollectionStatus === 'Collected' && (
+                                <button
+                                  onClick={() => handleSettleOrderCash(o)}
+                                  title="Clear & deposit collected cash into treasury"
+                                  style={{
+                                    background: '#10b981',
+                                    border: 'none',
+                                    color: '#fff',
+                                    padding: '6px 10px',
+                                    borderRadius: '8px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <ShieldCheck size={12} /> Clear Cash
+                                </button>
+                              )}
+                              <button
+                                onClick={() => openPaymentModal(o)}
+                                style={{
+                                  background: o.paymentStatus === 'Paid' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.2)',
+                                  border: o.paymentStatus === 'Paid' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.4)',
+                                  color: o.paymentStatus === 'Paid' ? '#34d399' : '#fbbf24',
+                                  padding: '6px 12px',
+                                  borderRadius: '8px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <CreditCard size={12} /> {o.paymentStatus === 'Paid' ? 'Edit' : 'Update'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1143,7 +1471,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>Email Address</label>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>Email Address (Login Username)</label>
                     <input
                       type="email"
                       required
@@ -1163,6 +1491,34 @@ export default function OfficialDeliveryAndPaymentsPage() {
                       onChange={(e) => setNewPartnerForm({ ...newPartnerForm, phone: e.target.value })}
                       style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
                     />
+                  </div>
+                </div>
+
+                {/* Login Password Input Field */}
+                <div style={{ marginBottom: '12px', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.25)', borderRadius: '10px', padding: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>
+                      🔑 Login Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowPartnerPassword(!showPartnerPassword)}
+                      style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      {showPartnerPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                      {showPartnerPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <input
+                    type={showPartnerPassword ? 'text' : 'password'}
+                    required
+                    value={newPartnerForm.password}
+                    onChange={(e) => setNewPartnerForm({ ...newPartnerForm, password: e.target.value })}
+                    placeholder="Set password (default: Delivery@123)"
+                    style={{ width: '100%', background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                  />
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', lineHeight: 1.4 }}>
+                    ℹ️ The agent logs in at <code>/login</code> under the <strong>Delivery</strong> tab using this email &amp; password.
                   </div>
                 </div>
 
@@ -1220,7 +1576,7 @@ export default function OfficialDeliveryAndPaymentsPage() {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
             <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '16px', width: '100%', maxWidth: '540px', maxHeight: '85vh', overflowY: 'auto', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Order Timeline & Proof</h3>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Order Timeline & Status History</h3>
                 <button onClick={() => setViewingTimelineOrder(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={20} /></button>
               </div>
 
@@ -1229,13 +1585,6 @@ export default function OfficialDeliveryAndPaymentsPage() {
                 <div style={{ fontSize: '13px', color: '#f8fafc', marginTop: '2px' }}>Citizen: {viewingTimelineOrder.userName} ({viewingTimelineOrder.userEmail})</div>
                 <div style={{ fontSize: '13px', color: '#10b981', fontWeight: 700, marginTop: '2px' }}>Total Amount: ₹{viewingTimelineOrder.totalAmountInr} ({viewingTimelineOrder.paymentMethod})</div>
               </div>
-
-              {viewingTimelineOrder.deliveryProofPhoto && (
-                <div style={{ marginBottom: '16px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>Delivered Handover Proof Photo</div>
-                  <img src={viewingTimelineOrder.deliveryProofPhoto} alt="Delivery Proof" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', objectFit: 'cover' }} />
-                </div>
-              )}
 
               <div style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>Status Log & Automated Email Triggers</div>
 
