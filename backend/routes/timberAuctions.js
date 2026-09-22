@@ -24,7 +24,7 @@ router.put('/:id', async (req, res) => {
       delete updates.imageBase64;
     }
 
-    const lot = await TimberLot.findByIdAndUpdate(req.params.id, updates, { new: true });
+    const lot = await TimberLot.findByIdAndUpdate(req.params.id, updates, { returnDocument: 'after' });
     if (!lot) return res.status(404).json({ error: 'Timber lot not found' });
     res.json({ success: true, lot });
   } catch (err) {
@@ -269,11 +269,15 @@ router.post('/', async (req, res) => {
 
     let featuredImage = 'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?w=800&auto=format&fit=crop&q=80';
     if (imageBase64 && imageBase64.startsWith('data:image')) {
-      const filename = `timber-lot-${Date.now()}.jpg`;
-      const filepath = path.join(UPLOAD_DIR, filename);
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
-      featuredImage = `/uploads/timber-auctions/${filename}`;
+      try {
+        const uploadRes = await cloudinary.uploader.upload(imageBase64, {
+          folder: 'treecanopy/timber-lots',
+          resource_type: 'image'
+        });
+        featuredImage = uploadRes.secure_url;
+      } catch (uploadErr) {
+        console.warn('Timber photo upload warning:', uploadErr.message);
+      }
     }
 
     const startBid = Number(startingBidInr || reservePriceInr || reservePrice || 10000);

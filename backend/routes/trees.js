@@ -1215,7 +1215,7 @@ router.put('/:id', async (req, res) => {
     const updatedTree = await Tree.findByIdAndUpdate(
       req.params.id,
       { $set: req.body },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!updatedTree) {
       return res.status(404).json({ msg: 'Tree not found' });
@@ -2137,7 +2137,7 @@ router.post('/:id/images', async (req, res) => {
     const tree = await Tree.findByIdAndUpdate(
       req.params.id,
       { $push: { images: { $each: urls } } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!tree) return res.status(404).json({ msg: 'Tree not found' });
     res.json({ msg: `${urls.length} image(s) added to gallery`, images: tree.images });

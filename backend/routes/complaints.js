@@ -161,7 +161,7 @@ router.get('/:id', async (req, res) => {
 // @access  Public
 router.patch('/:id', async (req, res) => {
   try {
-    const complaint = await Complaint.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const complaint = await Complaint.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
     if (!complaint) {
       return res.status(404).json({ msg: 'Complaint not found' });
     }
@@ -218,7 +218,7 @@ router.patch('/:id/status', async (req, res) => {
       }
     }
 
-    const complaint = await Complaint.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const complaint = await Complaint.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
 
     // Send notification to citizen
     if (complaint.submittedByUserId) {
@@ -315,7 +315,7 @@ router.patch('/:id/images', async (req, res) => {
     }
     if (status) updateData.status = status;
 
-    const complaint = await Complaint.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const complaint = await Complaint.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
     if (!complaint) {
       return res.status(404).json({ msg: 'Complaint not found' });
     }
@@ -352,7 +352,7 @@ router.patch('/:id/verify-images', async (req, res) => {
     if (afterImageStatus) updateData.afterImageStatus = afterImageStatus;
     if (wasteProofStatus) updateData.wasteProofStatus = wasteProofStatus;
 
-    const complaint = await Complaint.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const complaint = await Complaint.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
     if (!complaint) {
       return res.status(404).json({ msg: 'Complaint not found' });
     }

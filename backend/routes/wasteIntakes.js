@@ -178,7 +178,7 @@ router.patch('/:id/verify', async (req, res) => {
         verificationNotes: verificationNotes || '',
         allocatedStream: allocatedStream || undefined
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!intake) return res.status(404).json({ error: 'Shipment not found' });
     res.json({ success: true, intake });
@@ -194,7 +194,7 @@ router.patch('/:id', async (req, res) => {
       ? { _id: req.params.id }
       : { shipmentId: req.params.id };
 
-    const intake = await WasteIntake.findOneAndUpdate(filter, req.body, { new: true });
+    const intake = await WasteIntake.findOneAndUpdate(filter, req.body, { returnDocument: 'after' });
     if (!intake) return res.status(404).json({ error: 'Shipment not found' });
     res.json({ success: true, intake });
   } catch (err) {

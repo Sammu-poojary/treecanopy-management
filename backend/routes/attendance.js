@@ -346,7 +346,7 @@ router.patch('/leaves/:id/status', async (req, res) => {
         reviewedBy: reviewedBy || 'Municipal Admin',
         reviewedAt: new Date(),
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!leave) {

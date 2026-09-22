@@ -383,7 +383,7 @@ router.post('/', async (req, res) => {
 // @access  Admin
 router.put('/:id', async (req, res) => {
   try {
-    const reward = await Reward.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const reward = await Reward.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
     if (!reward) return res.status(404).json({ msg: 'Reward not found' });
     res.json({ msg: 'Reward updated successfully', reward });
   } catch (err) {

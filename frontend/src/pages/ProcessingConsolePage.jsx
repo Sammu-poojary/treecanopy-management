@@ -36,7 +36,8 @@ import {
   Edit,
   Edit2,
   Trash2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Camera
 } from 'lucide-react';
 import { Topbar, Sidebar } from './CanopyPages';
 
@@ -163,6 +164,75 @@ export default function ProcessingConsolePage() {
     targetProductId: '',
     newStockQty: ''
   });
+
+  // Dynamic packet packaging state (for the full Package modal)
+  const [pkgPacketRows, setPkgPacketRows] = useState([]);
+  const [pkgMulchKg, setPkgMulchKg] = useState(0);
+  const [pkgPricePerKgMulch, setPkgPricePerKgMulch] = useState(15);
+  const [pkgGrade, setPkgGrade] = useState('Grade A Premium Organic');
+  const [pkgNotes, setPkgNotes] = useState('');
+  const [pkgMarkCompleted, setPkgMarkCompleted] = useState(true);
+  const [pkgBusy, setPkgBusy] = useState(false);
+
+  const getDefaultPriceForKg = (kg) => {
+    if (kg === 25) return 399;
+    if (kg === 10) return 179;
+    if (kg === 5)  return 99;
+    if (kg === 2)  return 49;
+    if (kg === 1)  return 29;
+    return Math.round(kg * 16);
+  };
+
+  const openPackageBatchModal = (b) => {
+    const estYield = Math.round((b.rawBiomassInputKg || b.initialWeightKg || 500) * 0.45);
+    const alreadyKg = b.totalYieldKg || 0;
+    const availableKg = Math.max(estYield - alreadyKg, estYield);
+    let initialKg = 25;
+    if (availableKg < 25 && availableKg >= 10) initialKg = 10;
+    else if (availableKg < 10) initialKg = 5;
+    const initialQty = Math.max(1, Math.floor(availableKg / initialKg));
+    const initialPrice = getDefaultPriceForKg(initialKg);
+    setPkgPacketRows([{ id: Date.now(), weightKg: initialKg, quantity: initialQty, priceInr: initialPrice, priceEcoPoints: Math.round(initialPrice * 0.4) }]);
+    setPkgMulchKg(0);
+    setPkgPricePerKgMulch(15);
+    setPkgGrade(b.qualityCertificationGrade || 'Grade A Premium Organic');
+    setPkgNotes('');
+    setPkgMarkCompleted(true);
+    setPackageBatchModal(b);
+  };
+
+  const doPackageBatch = async () => {
+    const totalKg = pkgPacketRows.reduce((s, r) => s + Number(r.weightKg || 0) * Number(r.quantity || 0), 0) + Number(pkgMulchKg || 0);
+    if (totalKg <= 0) { Swal.fire('Enter Details', 'Set at least 1 packet with weight & quantity > 0.', 'warning'); return; }
+    setPkgBusy(true);
+    try {
+      const payload = {
+        packages: pkgPacketRows.map(r => ({
+          weightKg: Number(r.weightKg),
+          quantity: Number(r.quantity),
+          priceInr: Number(r.priceInr),
+          priceEcoPoints: Number(r.priceEcoPoints),
+          name: `CanopyGuard Organic Compost (${r.weightKg} kg ${Number(r.weightKg) >= 25 ? 'Sack' : 'Bag'})`
+        })),
+        bulkMulchKg: Number(pkgMulchKg || 0),
+        pricePerKgMulch: Number(pkgPricePerKgMulch || 15),
+        qualityGrade: pkgGrade,
+        packagingNotes: pkgNotes,
+        markAsCompleted: pkgMarkCompleted
+      };
+      const res = await fetch(`http://localhost:5000/api/compost-batches/${packageBatchModal._id}/package-to-store`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to package batch');
+      setPackageBatchModal(null);
+      await fetchData();
+      Swal.fire({ icon: 'success', title: '🌿 Stock Added to Citizen Eco Store!', html: `<b>Total Packaged:</b> ${data.totalKg || totalKg} kg<br/><span style="color:#10b981">✓ Products updated in store inventory.</span>`, confirmButtonColor: '#10b981', background: '#0f172a', color: '#f8fafc' });
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Packaging Failed', text: e.message });
+    }
+    setPkgBusy(false);
+  };
 
   // New Timber Lot Modal
   const lotImgRef = useRef();
@@ -1891,7 +1961,8 @@ export default function ProcessingConsolePage() {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
                   {batches.map(batch => {
-                    const isReady = batch.currentStage === 'READY_FOR_PACKAGING';
+                    const isReady = batch.currentStage === 'Retail Packaging';
+                    const isCompleted = batch.currentStage === 'Completed' || batch.status === 'Completed';
 
                     return (
                       <div
@@ -1914,10 +1985,10 @@ export default function ProcessingConsolePage() {
                             borderRadius: '6px',
                             fontSize: '11px',
                             fontWeight: 700,
-                            background: isReady ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.15)',
-                            color: isReady ? '#34d399' : '#fbbf24'
+                            background: isCompleted ? 'rgba(16, 185, 129, 0.15)' : isReady ? 'rgba(245, 158, 11, 0.2)' : 'rgba(99, 102, 241, 0.15)',
+                            color: isCompleted ? '#34d399' : isReady ? '#fbbf24' : '#a5b4fc'
                           }}>
-                            {isReady ? '✓ READY TO PACKAGE' : (batch.currentStage || 'Active').replace(/_/g, ' ')}
+                            {isCompleted ? '✅ COMPLETED' : isReady ? '📦 READY TO PACKAGE' : (batch.currentStage || 'Active').replace(/_/g, ' ')}
                           </span>
                         </div>
 
@@ -1970,29 +2041,63 @@ export default function ProcessingConsolePage() {
                           </button>
 
                           {isReady && (
-                            <button
-                              onClick={() => {
-                                setPackageBatchModal(batch);
-                                setPackageForm({
-                                  yieldKg: Math.round((batch.initialWeightKg || 500) * 0.45),
-                                  targetProductId: products[0]?._id || '',
-                                  newStockQty: 25
-                                });
-                              }}
-                              style={{
-                                flex: 1,
-                                background: '#10b981',
-                                border: 'none',
-                                color: '#ffffff',
-                                padding: '8px',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Package for Store
-                            </button>
+                            <>
+                              <button
+                                onClick={() => {
+                                  setPackageBatchModal(batch);
+                                  setPackageForm({
+                                    yieldKg: Math.round((batch.initialWeightKg || batch.rawBiomassInputKg || 500) * 0.45),
+                                    targetProductId: products[0]?._id || '',
+                                    newStockQty: 25
+                                  });
+                                }}
+                                style={{
+                                  flex: 1,
+                                  background: '#10b981',
+                                  border: 'none',
+                                  color: '#ffffff',
+                                  padding: '8px',
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                📦 Package for Store
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const r = await fetch(`http://localhost:5000/api/compost-batches/${batch._id}/advance-stage`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ newStage: 'Completed', progress: 100, actionTaken: 'Batch marked as completed by processing officer' })
+                                    });
+                                    if (r.ok) {
+                                      setBatches(prev => prev.map(b => b._id === batch._id ? { ...b, currentStage: 'Completed', status: 'Completed', stageProgress: 100 } : b));
+                                    }
+                                  } catch (e) { console.error(e); }
+                                }}
+                                style={{
+                                  flex: 1,
+                                  background: 'rgba(16, 185, 129, 0.15)',
+                                  border: '1px solid #10b981',
+                                  color: '#34d399',
+                                  padding: '8px',
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                ✓ Mark Completed
+                              </button>
+                            </>
+                          )}
+                          {isCompleted && (
+                            <div style={{ flex: 1, textAlign: 'center', fontSize: '12px', fontWeight: 700, color: '#34d399', padding: '8px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                              ✅ Batch Completed & Archived
+                            </div>
                           )}
                         </div>
                       </div>
@@ -2185,6 +2290,46 @@ export default function ProcessingConsolePage() {
                   );
                 })}
               </div>
+
+              {/* ── Package from Completed Compost Batches ── */}
+              {batches.filter(b => ['Retail Packaging', 'Completed'].includes(b.currentStage)).length > 0 && (
+                <div style={{ marginTop: '28px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: t.textPrimary }}>📦 Package Completed Compost into Store</h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: t.textSecondary }}>Select a matured compost batch, set packet weights & rates, and add directly to store inventory.</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '12px' }}>
+                    {batches.filter(b => ['Retail Packaging', 'Completed'].includes(b.currentStage)).map(b => {
+                      const estYield = Math.round((b.rawBiomassInputKg || 500) * 0.45);
+                      const packagedKg = b.totalYieldKg || 0;
+                      const availableKg = Math.max(0, estYield - packagedKg);
+                      const isFullyDone = packagedKg >= estYield && packagedKg > 0;
+                      return (
+                        <div key={b._id} style={{ background: t.bgCard, border: `1px solid ${isFullyDone ? 'rgba(52,211,153,0.3)' : 'rgba(16,185,129,0.4)'}`, borderRadius: '12px', padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'center', boxShadow: t.cardShadow }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: '#10b981', marginBottom: '2px' }}>{b.batchNumber || b.batchCode}</div>
+                            <div style={{ fontSize: '11.5px', color: t.textSecondary, marginBottom: '4px' }}>{b.facilityName || b.location || 'Processing Yard'}</div>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '11px', color: t.textMuted }}>🌱 Raw: <b style={{ color: t.textPrimary }}>{b.rawBiomassInputKg || 500} kg</b></span>
+                              <span style={{ fontSize: '11px', color: t.textMuted }}>🎯 Est. Yield: <b style={{ color: '#10b981' }}>{estYield} kg</b></span>
+                              {availableKg > 0 && <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 700 }}>📦 {availableKg} kg available</span>}
+                              {isFullyDone && <span style={{ fontSize: '11px', color: '#34d399', fontWeight: 700 }}>✅ Fully packaged</span>}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => openPackageBatchModal(b)}
+                            style={{ background: isFullyDone ? 'rgba(16,185,129,0.12)' : 'linear-gradient(135deg,#10b981,#059669)', border: isFullyDone ? '1px solid rgba(16,185,129,0.4)' : 'none', color: isFullyDone ? '#34d399' : '#fff', padding: '8px 14px', borderRadius: '9px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            {isFullyDone ? '+ Add More' : '📦 Package'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2225,6 +2370,88 @@ export default function ProcessingConsolePage() {
                   style={{ background: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
                 >
                   Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ Package Compost into Packets Modal ═══ */}
+        {packageBatchModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px', backdropFilter: 'blur(4px)' }} onClick={e => { if (e.target === e.currentTarget && !pkgBusy) setPackageBatchModal(null); }}>
+            <div style={{ background: t.modalBg, borderRadius: '20px', border: '1px solid rgba(16,185,129,0.35)', width: '100%', maxWidth: '640px', maxHeight: '94vh', overflowY: 'auto', padding: '24px', boxShadow: t.cardShadow }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '19px', fontWeight: 800, color: t.textPrimary }}>📦 Package Compost into Packets</h2>
+                  <div style={{ fontSize: '12.5px', color: t.textMuted, marginTop: '4px' }}>Batch: <b style={{ color: '#10b981' }}>{packageBatchModal.batchNumber || packageBatchModal.batchCode}</b> · {packageBatchModal.facilityName || packageBatchModal.location}</div>
+                </div>
+                <button onClick={() => setPackageBatchModal(null)} style={{ background: 'transparent', border: 'none', color: t.textSecondary, cursor: 'pointer', fontSize: '22px', lineHeight: 1 }}>×</button>
+              </div>
+
+              {/* Available yield summary */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
+                {[{ label: 'Raw Biomass', val: `${packageBatchModal.rawBiomassInputKg || packageBatchModal.initialWeightKg || 500} kg`, color: '#94a3b8' }, { label: 'Est. Compost Yield', val: `${Math.round((packageBatchModal.rawBiomassInputKg || packageBatchModal.initialWeightKg || 500) * 0.45)} kg`, color: '#10b981' }, { label: 'Already Packaged', val: `${packageBatchModal.totalYieldKg || 0} kg`, color: '#a855f7' }].map(k => (
+                  <div key={k.label} style={{ flex: 1, minWidth: 100, background: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', border: `1px solid ${t.border}`, borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: t.textMuted, fontWeight: 700, marginBottom: '3px' }}>{k.label.toUpperCase()}</div>
+                    <div style={{ fontSize: '15px', fontWeight: 800, color: k.color }}>{k.val}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Packet Rows */}
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: t.textSecondary }}>PACKET CONFIGURATIONS</label>
+                  <button onClick={() => setPkgPacketRows(rows => [...rows, { id: Date.now(), weightKg: 5, quantity: 1, priceInr: 99, priceEcoPoints: 40 }])} style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399', padding: '5px 12px', borderRadius: '7px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>+ Add Row</button>
+                </div>
+                {/* Header */}
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 70px 90px 90px 36px', gap: '6px', marginBottom: '6px', padding: '0 2px' }}>
+                  {['Weight (kg)', 'Qty', 'Price (₹)', 'Eco-Pts', ''].map(h => <div key={h} style={{ fontSize: '10px', fontWeight: 700, color: t.textMuted, textTransform: 'uppercase' }}>{h}</div>)}
+                </div>
+                {pkgPacketRows.map(row => (
+                  <div key={row.id} style={{ display: 'grid', gridTemplateColumns: '80px 70px 90px 90px 36px', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
+                    <input type="number" min="1" value={row.weightKg} onChange={e => setPkgPacketRows(rows => rows.map(r => { if (r.id !== row.id) return r; const kg = Number(e.target.value) || 1; const price = getDefaultPriceForKg(kg); return { ...r, weightKg: kg, priceInr: price, priceEcoPoints: Math.round(price * 0.4) }; }))} style={{ padding: '7px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '7px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box', width: '100%' }} />
+                    <input type="number" min="1" value={row.quantity} onChange={e => setPkgPacketRows(rows => rows.map(r => r.id === row.id ? { ...r, quantity: Number(e.target.value) } : r))} style={{ padding: '7px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '7px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box', width: '100%' }} />
+                    <input type="number" min="1" value={row.priceInr} onChange={e => setPkgPacketRows(rows => rows.map(r => r.id === row.id ? { ...r, priceInr: Number(e.target.value), priceEcoPoints: Math.round(Number(e.target.value) * 0.4) } : r))} style={{ padding: '7px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '7px', color: isDark ? '#10b981' : '#059669', fontWeight: 700, fontSize: '13px', boxSizing: 'border-box', width: '100%' }} />
+                    <input type="number" min="0" value={row.priceEcoPoints} onChange={e => setPkgPacketRows(rows => rows.map(r => r.id === row.id ? { ...r, priceEcoPoints: Number(e.target.value) } : r))} style={{ padding: '7px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '7px', color: isDark ? '#fbbf24' : '#d97706', fontWeight: 700, fontSize: '13px', boxSizing: 'border-box', width: '100%' }} />
+                    <button onClick={() => setPkgPacketRows(rows => rows.filter(r => r.id !== row.id))} style={{ background: 'rgba(239,68,68,0.15)', border: 'none', color: '#f87171', borderRadius: '7px', cursor: 'pointer', fontSize: '16px', fontWeight: 700, padding: '6px 8px' }}>×</button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bulk Mulch */}
+              <div style={{ background: isDark ? 'rgba(245,158,11,0.07)' : '#fffbeb', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '10px', padding: '12px 14px', marginBottom: '14px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#fbbf24', marginBottom: '8px' }}>🌿 Loose Bio-Mulch (Optional)</div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <div style={{ flex: 1 }}><div style={{ fontSize: '10px', color: t.textMuted, fontWeight: 700, marginBottom: '4px' }}>WEIGHT (KG)</div><input type="number" min="0" value={pkgMulchKg} onChange={e => setPkgMulchKg(Number(e.target.value))} style={{ width: '100%', padding: '7px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '7px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }} /></div>
+                  <div style={{ flex: 1 }}><div style={{ fontSize: '10px', color: t.textMuted, fontWeight: 700, marginBottom: '4px' }}>PRICE / KG (₹)</div><input type="number" min="1" value={pkgPricePerKgMulch} onChange={e => setPkgPricePerKgMulch(Number(e.target.value))} style={{ width: '100%', padding: '7px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '7px', color: isDark ? '#10b981' : '#059669', fontWeight: 700, fontSize: '13px', boxSizing: 'border-box' }} /></div>
+                </div>
+              </div>
+
+              {/* Grade & Notes */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                <div><div style={{ fontSize: '10px', color: t.textMuted, fontWeight: 700, marginBottom: '4px' }}>QUALITY GRADE</div><select value={pkgGrade} onChange={e => setPkgGrade(e.target.value)} style={{ width: '100%', padding: '8px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '12px' }}><option>Grade A Premium Organic</option><option>Grade B Standard</option><option>Grade C Industrial</option></select></div>
+                <div><div style={{ fontSize: '10px', color: t.textMuted, fontWeight: 700, marginBottom: '4px' }}>PACKAGING NOTES</div><input type="text" placeholder="e.g. Bagged on 22 Sep 2026" value={pkgNotes} onChange={e => setPkgNotes(e.target.value)} style={{ width: '100%', padding: '8px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '12px', boxSizing: 'border-box' }} /></div>
+              </div>
+
+              {/* Revenue summary */}
+              {pkgPacketRows.length > 0 && (
+                <div style={{ background: isDark ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '10px', padding: '10px 14px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', fontSize: '13px', flexWrap: 'wrap', gap: '8px' }}>
+                  <span>📦 Total to Package: <b style={{ color: '#10b981' }}>{pkgPacketRows.reduce((s, r) => s + Number(r.weightKg || 0) * Number(r.quantity || 0), 0) + Number(pkgMulchKg || 0)} kg</b></span>
+                  <span>💰 Est. Revenue: <b style={{ color: '#10b981' }}>₹{(pkgPacketRows.reduce((s, r) => s + Number(r.priceInr || 0) * Number(r.quantity || 0), 0) + Number(pkgMulchKg || 0) * Number(pkgPricePerKgMulch || 15)).toLocaleString('en-IN')}</b></span>
+                </div>
+              )}
+
+              {/* Mark completed checkbox */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px', cursor: 'pointer', fontSize: '13px', color: t.textSecondary }}>
+                <input type="checkbox" checked={pkgMarkCompleted} onChange={e => setPkgMarkCompleted(e.target.checked)} style={{ accentColor: '#10b981', width: '15px', height: '15px' }} />
+                Mark this compost batch as <b style={{ color: '#34d399' }}>Completed</b> after packaging
+              </label>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setPackageBatchModal(null)} disabled={pkgBusy} style={{ flex: 1, padding: '11px', background: isDark ? 'rgba(255,255,255,0.07)' : '#e2e8f0', border: 'none', borderRadius: '9px', color: t.textSecondary, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                <button onClick={doPackageBatch} disabled={pkgBusy} style={{ flex: 2, padding: '11px', background: pkgBusy ? '#334155' : 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '9px', color: '#fff', fontWeight: 700, cursor: pkgBusy ? 'not-allowed' : 'pointer', fontSize: '14px' }}>
+                  {pkgBusy ? '⏳ Packaging…' : '🌿 Package & Add to Store'}
                 </button>
               </div>
             </div>

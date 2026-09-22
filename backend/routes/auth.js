@@ -792,9 +792,9 @@ router.patch('/profile/:id', async (req, res) => {
 
     let user;
     if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-      user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true }).select('-password');
+      user = await User.findByIdAndUpdate(req.params.id, updateFields, { returnDocument: 'after' }).select('-password');
     } else {
-      user = await User.findOneAndUpdate({ email: req.params.id.toLowerCase().trim() }, updateFields, { new: true }).select('-password');
+      user = await User.findOneAndUpdate({ email: req.params.id.toLowerCase().trim() }, updateFields, { returnDocument: 'after' }).select('-password');
     }
     if (!user) return res.status(404).json({ msg: 'User not found' });
     res.json({ msg: 'Profile updated successfully', user });
@@ -824,9 +824,9 @@ router.patch('/users/:id', async (req, res) => {
 
     let user;
     if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-      user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true }).select('-password');
+      user = await User.findByIdAndUpdate(req.params.id, updateFields, { returnDocument: 'after' }).select('-password');
     } else {
-      user = await User.findOneAndUpdate({ email: req.params.id.toLowerCase().trim() }, updateFields, { new: true }).select('-password');
+      user = await User.findOneAndUpdate({ email: req.params.id.toLowerCase().trim() }, updateFields, { returnDocument: 'after' }).select('-password');
     }
     if (!user) return res.status(404).json({ msg: 'User not found' });
     res.json({ msg: 'User updated successfully', user });

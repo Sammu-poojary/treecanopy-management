@@ -193,7 +193,7 @@ router.put('/:id', async (req, res) => {
       }
       delete updates.imageBase64;
     }
-    const product = await EcoProduct.findByIdAndUpdate(req.params.id, updates, { new: true });
+    const product = await EcoProduct.findByIdAndUpdate(req.params.id, updates, { returnDocument: 'after' });
     if (!product) return res.status(404).json({ error: 'Product not found' });
     res.json({ success: true, product });
   } catch (err) {

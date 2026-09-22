@@ -480,7 +480,7 @@ router.patch('/:id/assign-cutter', async (req, res) => {
         assignedAt: new Date(), assignedBy: assignedById || null,
         assignedByName: assignedByName || '', status: 'assigned',
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!sub) return res.status(404).json({ error: 'Subscription not found' });
 
@@ -574,7 +574,7 @@ router.patch('/:id/cancel', async (req, res) => {
     const sub = await Subscription.findByIdAndUpdate(
       req.params.id,
       { status: 'cancelled' },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!sub) return res.status(404).json({ error: 'Subscription not found' });
     await Tree.findByIdAndUpdate(sub.treeId, { isAdopted: false, activeSubscriptionId: null });
