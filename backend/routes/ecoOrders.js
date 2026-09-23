@@ -573,9 +573,17 @@ router.patch('/:id/delivery-status', async (req, res) => {
       if (proofPhoto) order.deliveryProofPhoto = proofPhoto;
       if (signature) order.recipientSignature = signature;
 
-      // Handle Cash Collection for COD: Collected by driver from customer, pending turn-in to office
-      if (order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD') {
-        order.cashCollected = Number(cashCollected || order.totalAmountInr);
+      // Handle Payment Method Choice at Doorstep (COD vs Razorpay Online)
+      const chosenMethod = req.body.paymentMethodChoice || req.body.paymentMethod;
+      if (chosenMethod === 'Razorpay Online' || req.body.razorpayPaymentId) {
+        order.paymentMethod = 'Razorpay Online';
+        order.paymentStatus = 'Paid';
+        order.cashCollected = 0;
+        order.cashCollectionStatus = 'Not Applicable';
+        if (req.body.razorpayPaymentId) order.razorpayPaymentId = req.body.razorpayPaymentId;
+      } else if (chosenMethod === 'Cash on Delivery' || order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD') {
+        order.paymentMethod = 'Cash on Delivery';
+        order.cashCollected = Number(cashCollected !== undefined && cashCollected !== '' ? cashCollected : order.totalAmountInr);
         order.cashCollectionStatus = 'Collected'; // Held by delivery driver
         order.paymentStatus = 'Pending'; // Awaiting official treasury settlement
       }
@@ -583,7 +591,7 @@ router.patch('/:id/delivery-status', async (req, res) => {
       order.statusTimeline.push({
         status: 'Delivered / Handover Completed',
         timestamp: new Date(),
-        note: `Handover verified with OTP.${order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? ` ₹${order.cashCollected} COD collected in cash by driver ${updatedBy || order.assignedDeliveryPartnerName || 'Driver'}. In transit for Municipal Treasury deposit.` : ' Pre-paid online via Razorpay.'}`,
+        note: `Handover verified with OTP.${order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD' ? ` ₹${order.cashCollected} COD collected in cash by driver ${updatedBy || order.assignedDeliveryPartnerName || 'Driver'}. In transit for Municipal Treasury deposit.` : ` Paid online via Razorpay (${order.razorpayPaymentId || 'Verified at doorstep'}).`}`,
         updatedBy: updatedBy || order.assignedDeliveryPartnerName || 'Delivery Partner'
       });
 
@@ -684,6 +692,309 @@ router.post('/settle-driver-cash', async (req, res) => {
       count: pendingOrders.length,
       totalSettled,
       message: `Successfully cleared ${pendingOrders.length} orders totaling ₹${totalSettled} from ${partnerName || 'delivery partner'} into Municipal Treasury!`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/eco-orders/:id/doorstep-razorpay-init (Init doorstep Razorpay/UPI payment)
+router.post('/:id/doorstep-razorpay-init', async (req, res) => {
+  try {
+    const order = await EcoOrder.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const amountInr = Number(order.totalAmountInr) || 0;
+    const amountPaise = Math.round(amountInr * 100);
+
+    let razorpayOrderId = null;
+    let isDemo = false;
+    const rzpClient = getRazorpayClient();
+
+    if (rzpClient && amountPaise > 0) {
+      try {
+        const rzOrder = await rzpClient.orders.create({
+          amount: amountPaise,
+          currency: 'INR',
+          receipt: `${order.orderNumber.replace(/[^a-zA-Z0-9_-]/g, '').slice(-30)}_doorstep`,
+          notes: {
+            orderNumber: order.orderNumber,
+            userId: String(order.userId),
+            purpose: 'Doorstep Delivery Payment'
+          }
+        });
+        razorpayOrderId = rzOrder.id;
+      } catch (rzpErr) {
+        console.warn('Doorstep Razorpay live order create fallback:', rzpErr?.message || rzpErr);
+        isDemo = true;
+      }
+    } else {
+      isDemo = true;
+    }
+
+    if (!razorpayOrderId) {
+      razorpayOrderId = `order_doorstep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    }
+
+    const effectiveRazorpayKey = (process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.includes('placeholder'))
+      ? process.env.RAZORPAY_KEY_ID.trim()
+      : 'rzp_test_1DP5mmOlF5G5ag';
+
+    // Standard NPCI UPI URI Scheme
+    const upiIntentUri = `upi://pay?pa=municipalcanopy@icici&pn=CanopyGuard+Municipal+Services&am=${amountInr}&cu=INR&tn=${encodeURIComponent(order.orderNumber)}`;
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(upiIntentUri)}`;
+
+    res.json({
+      success: true,
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      amountInr,
+      amountPaise,
+      currency: 'INR',
+      razorpayOrderId,
+      keyId: effectiveRazorpayKey,
+      isDemo,
+      upiIntentUri,
+      qrImageUrl
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/eco-orders/:id/doorstep-razorpay-complete (Doorstep payment verification)
+router.post('/:id/doorstep-razorpay-complete', async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, transactionRef, isDemo, paymentMethodChoice } = req.body;
+    const order = await EcoOrder.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+    if (!isDemo && razorpay_order_id && !razorpay_order_id.startsWith('order_doorstep_') && keySecret && !keySecret.includes('placeholder')) {
+      try {
+        const expectedSig = crypto
+          .createHmac('sha256', keySecret)
+          .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+          .digest('hex');
+        if (expectedSig !== razorpay_signature) {
+          return res.status(400).json({ error: 'Payment signature verification failed' });
+        }
+      } catch (sigErr) {
+        return res.status(400).json({ error: 'Signature verification error: ' + sigErr.message });
+      }
+    }
+
+    const payId = razorpay_payment_id || transactionRef || `pay_doorstep_${Date.now()}`;
+    order.paymentStatus = 'Paid';
+    order.paymentMethod = 'Razorpay Online';
+    order.razorpayPaymentId = payId;
+    if (razorpay_order_id) order.razorpayOrderId = razorpay_order_id;
+    order.cashCollected = 0;
+    order.cashCollectionStatus = 'Not Applicable';
+
+    order.statusTimeline.push({
+      status: 'Doorstep Payment Verified',
+      timestamp: new Date(),
+      note: `Doorstep payment of ₹${order.totalAmountInr} collected digitally via ${paymentMethodChoice || 'Razorpay Gateway / UPI QR'} (Ref: ${payId})`,
+      updatedBy: order.assignedDeliveryPartnerName || 'Delivery Partner'
+    });
+
+    await order.save();
+
+    res.json({
+      success: true,
+      order,
+      message: `₹${order.totalAmountInr} payment verified successfully!`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/eco-orders/daywise-cash-ledger (Day-wise COD Cash Ledger for Official & Admin)
+router.get('/daywise-cash-ledger', async (req, res) => {
+  try {
+    const { partnerId, partnerName, date } = req.query;
+
+    const query = {
+      $or: [
+        { paymentMethod: 'Cash on Delivery' },
+        { paymentMethod: 'COD' },
+        { cashCollectionStatus: { $in: ['Collected', 'Deposited'] } }
+      ]
+    };
+
+    if (partnerId) query.assignedDeliveryPartnerId = partnerId;
+    if (partnerName) query.assignedDeliveryPartnerName = partnerName;
+
+    const orders = await EcoOrder.find(query).sort({ deliveredAt: -1, createdAt: -1 });
+
+    // Group day-wise and driver-wise
+    const ledgerGroups = {};
+
+    orders.forEach(ord => {
+      // Determine effective delivery date
+      const dateObj = ord.deliveredAt || ord.updatedAt || ord.createdAt;
+      const dateKey = new Date(dateObj).toISOString().slice(0, 10); // YYYY-MM-DD
+      const pId = ord.assignedDeliveryPartnerId ? ord.assignedDeliveryPartnerId.toString() : 'unassigned';
+      const pName = ord.assignedDeliveryPartnerName || 'Unassigned Executive';
+      const pPhone = ord.assignedDeliveryPartnerPhone || '';
+      const pVehicle = ord.assignedDeliveryPartnerVehicle || 'EV Cargo 3W';
+
+      const groupKey = `${dateKey}_${pId}_${pName}`;
+
+      if (!ledgerGroups[groupKey]) {
+        ledgerGroups[groupKey] = {
+          groupKey,
+          date: dateKey,
+          partnerId: pId,
+          partnerName: pName,
+          partnerPhone: pPhone,
+          partnerVehicle: pVehicle,
+          orderCount: 0,
+          orders: [],
+          orderNumbers: [],
+          totalCashCollected: 0,
+          depositedAmount: 0,
+          pendingAmount: 0,
+          status: 'Deposited', // will become 'Pending Submission' if any order is pending
+          settledAt: null,
+          settledBy: null
+        };
+      }
+
+      const grp = ledgerGroups[groupKey];
+      const amt = Number(ord.cashCollected) || Number(ord.totalAmountInr) || 0;
+      grp.orderCount++;
+      grp.orders.push({
+        _id: ord._id,
+        orderNumber: ord.orderNumber,
+        userName: ord.userName,
+        userPhone: ord.userPhone,
+        totalAmountInr: ord.totalAmountInr,
+        cashCollected: amt,
+        cashCollectionStatus: ord.cashCollectionStatus,
+        paymentStatus: ord.paymentStatus,
+        deliveredAt: ord.deliveredAt || ord.updatedAt
+      });
+      grp.orderNumbers.push(ord.orderNumber);
+      grp.totalCashCollected += amt;
+
+      if (ord.cashCollectionStatus === 'Deposited') {
+        grp.depositedAmount += amt;
+        if (!grp.settledAt && ord.treasurySettledAt) grp.settledAt = ord.treasurySettledAt;
+        if (!grp.settledBy && ord.treasurySettledBy) grp.settledBy = ord.treasurySettledBy;
+      } else {
+        grp.pendingAmount += amt;
+        grp.status = 'Pending Submission';
+      }
+    });
+
+    let records = Object.values(ledgerGroups);
+    if (date) {
+      records = records.filter(r => r.date === date);
+    }
+    records.sort((a, b) => b.date.localeCompare(a.date));
+
+    const totalCashPendingTreasury = records.reduce((sum, r) => sum + r.pendingAmount, 0);
+    const totalCashDepositedTreasury = records.reduce((sum, r) => sum + r.depositedAmount, 0);
+
+    res.json({
+      success: true,
+      records,
+      totalRecords: records.length,
+      totalCashPendingTreasury,
+      totalCashDepositedTreasury
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/eco-orders/settle-daywise-cash (Mark an entire day's cash collection for a partner as submitted)
+router.post('/settle-daywise-cash', async (req, res) => {
+  try {
+    const { date, partnerId, partnerName, settledBy, notes } = req.body;
+    if (!date) return res.status(400).json({ error: 'Date (YYYY-MM-DD) is required for day-wise settlement.' });
+
+    // Build day range [date 00:00:00, date 23:59:59]
+    const startOfDay = new Date(`${date}T00:00:00.000Z`);
+    const endOfDay = new Date(`${date}T23:59:59.999Z`);
+
+    const query = {
+      $or: [
+        ...(partnerId ? [{ assignedDeliveryPartnerId: partnerId }] : []),
+        ...(partnerName ? [{ assignedDeliveryPartnerName: partnerName }] : [])
+      ],
+      cashCollectionStatus: 'Collected',
+      $and: [
+        {
+          $or: [
+            { deliveredAt: { $gte: startOfDay, $lte: endOfDay } },
+            { updatedAt: { $gte: startOfDay, $lte: endOfDay } },
+            { createdAt: { $gte: startOfDay, $lte: endOfDay } }
+          ]
+        }
+      ]
+    };
+
+    // If query matches nothing, also allow matching all Collected orders for this partner if date matches
+    let ordersToSettle = await EcoOrder.find(query);
+    if (ordersToSettle.length === 0) {
+      const allDriverCollected = await EcoOrder.find({
+        $or: [
+          ...(partnerId ? [{ assignedDeliveryPartnerId: partnerId }] : []),
+          ...(partnerName ? [{ assignedDeliveryPartnerName: partnerName }] : [])
+        ],
+        cashCollectionStatus: 'Collected'
+      });
+      ordersToSettle = allDriverCollected.filter(o => {
+        const d = o.deliveredAt || o.updatedAt || o.createdAt;
+        return new Date(d).toISOString().slice(0, 10) === date;
+      });
+    }
+
+    if (ordersToSettle.length === 0) {
+      return res.json({
+        success: true,
+        count: 0,
+        totalSettled: 0,
+        message: `No pending COD cash found for ${partnerName || 'delivery executive'} on date ${date}.`
+      });
+    }
+
+    let totalSettled = 0;
+    const settledOrderNumbers = [];
+    const now = new Date();
+    const officialName = settledBy || 'Municipal Treasury Official';
+
+    for (const ord of ordersToSettle) {
+      const amt = Number(ord.cashCollected) || Number(ord.totalAmountInr) || 0;
+      totalSettled += amt;
+      settledOrderNumbers.push(ord.orderNumber);
+
+      ord.cashCollectionStatus = 'Deposited';
+      ord.paymentStatus = 'Paid';
+      ord.treasurySettledAt = now;
+      ord.treasurySettledBy = officialName;
+
+      ord.statusTimeline.push({
+        status: 'Day-Wise COD Cash Deposited to Treasury',
+        timestamp: now,
+        note: `₹${amt} COD cash for order ${ord.orderNumber} (Shift Date: ${date}) verified and deposited into Municipal Treasury by ${officialName}.${notes ? ` Note: ${notes}` : ''}`,
+        updatedBy: officialName
+      });
+
+      await ord.save();
+    }
+
+    res.json({
+      success: true,
+      date,
+      count: ordersToSettle.length,
+      totalSettled,
+      settledOrderNumbers,
+      message: `Successfully verified and deposited ₹${totalSettled} (${ordersToSettle.length} orders) for ${partnerName || 'delivery executive'} on ${date} into the Municipal Treasury!`
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

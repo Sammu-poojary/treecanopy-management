@@ -28,7 +28,9 @@ import {
   FileText,
   Sparkles,
   QrCode,
-  LogOut
+  LogOut,
+  Calendar,
+  Receipt
 } from 'lucide-react';
 import { Topbar, Sidebar } from './CanopyPages';
 
@@ -63,6 +65,10 @@ export default function OfficialDeliveryAndPaymentsPage() {
   const [orders, setOrders] = useState([]);
   const [partners, setPartners] = useState([]);
   const [paymentsSummary, setPaymentsSummary] = useState(null);
+  const [daywiseLedger, setDaywiseLedger] = useState([]);
+  const [daywiseDateFilter, setDaywiseDateFilter] = useState('ALL');
+  const [daywisePartnerFilter, setDaywisePartnerFilter] = useState('ALL');
+  const [settlingDayKey, setSettlingDayKey] = useState(null);
   const [loading, setLoading] = useState(true);
   
   // Filter & Search
@@ -309,10 +315,11 @@ export default function OfficialDeliveryAndPaymentsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, partnersRes, summaryRes] = await Promise.all([
+      const [ordersRes, partnersRes, summaryRes, ledgerRes] = await Promise.all([
         fetch(`${API_URL}/api/eco-orders/all`),
         fetch(`${API_URL}/api/auth/delivery-partners`),
-        fetch(`${API_URL}/api/eco-orders/payments-summary`)
+        fetch(`${API_URL}/api/eco-orders/payments-summary`),
+        fetch(`${API_URL}/api/eco-orders/daywise-cash-ledger`)
       ]);
 
       if (ordersRes.ok) {
@@ -327,10 +334,74 @@ export default function OfficialDeliveryAndPaymentsPage() {
         const sData = await summaryRes.json();
         setPaymentsSummary(sData);
       }
+      if (ledgerRes.ok) {
+        const lData = await ledgerRes.json();
+        setDaywiseLedger(lData.records || []);
+      }
     } catch (err) {
       console.error('Error fetching delivery data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ── Settle Entire Day's Cash Collection for a Partner into Treasury ──
+  const handleSettleDaywiseCash = async (record) => {
+    const result = await Swal.fire({
+      title: 'Deposit Day Cash into Treasury? 🏦',
+      html: `
+        <div style="text-align: left; background: rgba(15, 23, 42, 0.7); padding: 14px; border-radius: 12px; margin: 12px 0; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);">
+          <div style="margin-bottom: 4px;">📅 <b>Shift Date:</b> ${new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
+          <div style="margin-bottom: 4px;">🚴 <b>Delivery Partner:</b> ${record.partnerName} (${record.partnerPhone || 'No phone'})</div>
+          <div style="margin-bottom: 4px;">🛵 <b>Vehicle:</b> ${record.partnerVehicle || 'EV 3W'}</div>
+          <div style="margin-bottom: 6px;">📦 <b>Orders Count:</b> ${record.orderCount} (${record.orderNumbers.join(', ')})</div>
+          <div style="font-size: 17px; font-weight: 800; color: #10b981; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+            💵 Cash to Clear: ₹${record.pendingAmount}
+          </div>
+        </div>
+        <p style="font-size: 12px; color: #94a3b8; margin: 0;">
+          Confirm physical handover of ₹${record.pendingAmount} collected cash at the municipal counter. All orders for this day will be marked as officially deposited into the Municipal Treasury.
+        </p>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#334155',
+      confirmButtonText: `Yes, Clear ₹${record.pendingAmount} to Treasury`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setSettlingDayKey(record.groupKey);
+    try {
+      const res = await fetch(`${API_URL}/api/eco-orders/settle-daywise-cash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: record.date,
+          partnerId: record.partnerId !== 'unassigned' ? record.partnerId : undefined,
+          partnerName: record.partnerName,
+          settledBy: 'Official / Admin Treasury Desk',
+          notes: 'Shift physical cash remitted at Ajjarkadu Biomass Office counter'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to settle day cash');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Day Cash Deposited to Treasury! 🏦',
+        text: data.message || `Successfully cleared ₹${record.pendingAmount} into Municipal Treasury.`,
+        confirmButtonColor: '#10b981'
+      });
+
+      fetchData();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Settlement Error', text: err.message });
+    } finally {
+      setSettlingDayKey(null);
     }
   };
 
@@ -1192,6 +1263,290 @@ export default function OfficialDeliveryAndPaymentsPage() {
                     <div style={{ fontSize: '11px', color: '#c4b5fd', marginTop: '2px' }}>Citizen loyalty discount</div>
                   </div>
                 </div>
+              </div>
+
+              {/* SECTION: DAY-WISE DELIVERY CASH COLLECTION & REMITTANCE LEDGER */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                marginBottom: '24px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+              }}>
+                <div style={{
+                  padding: '20px 24px',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '14px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '12px',
+                      background: 'rgba(245, 158, 11, 0.15)',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Receipt size={22} color="#fbbf24" />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#f8fafc' }}>
+                        🗓️ Day-Wise Delivery Cash Collection & Remittance Ledger
+                      </h4>
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                        Audit daily cash collections by delivery executives and officially mark cash submitted into the Municipal Treasury.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Filter Controls */}
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px' }}>
+                      {['ALL', 'TODAY', 'YESTERDAY'].map(f => (
+                        <button
+                          key={f}
+                          onClick={() => setDaywiseDateFilter(f)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            background: daywiseDateFilter === f ? '#0284c7' : 'transparent',
+                            color: daywiseDateFilter === f ? '#fff' : '#94a3b8'
+                          }}
+                        >
+                          {f === 'ALL' ? 'All Dates' : f === 'TODAY' ? 'Today' : 'Yesterday'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <select
+                      value={daywisePartnerFilter}
+                      onChange={(e) => setDaywisePartnerFilter(e.target.value)}
+                      style={{
+                        background: '#1e293b',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        color: '#f8fafc',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: 600
+                      }}
+                    >
+                      <option value="ALL">All Delivery Executives</option>
+                      {partners.map(p => (
+                        <option key={p._id} value={p.name}>{p.name} ({p.phone})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Day-Wise Ledger Highlights */}
+                {(() => {
+                  const filteredLedger = daywiseLedger.filter(record => {
+                    if (daywiseDateFilter === 'TODAY') {
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      if (record.date !== todayStr) return false;
+                    } else if (daywiseDateFilter === 'YESTERDAY') {
+                      const yest = new Date();
+                      yest.setDate(yest.getDate() - 1);
+                      const yestStr = yest.toISOString().slice(0, 10);
+                      if (record.date !== yestStr) return false;
+                    }
+                    if (daywisePartnerFilter !== 'ALL') {
+                      if (record.partnerId !== daywisePartnerFilter && record.partnerName !== daywisePartnerFilter) return false;
+                    }
+                    return true;
+                  });
+
+                  const totalFilteredCollected = filteredLedger.reduce((sum, r) => sum + r.totalCashCollected, 0);
+                  const totalFilteredPending = filteredLedger.reduce((sum, r) => sum + r.pendingAmount, 0);
+                  const totalFilteredDeposited = filteredLedger.reduce((sum, r) => sum + r.depositedAmount, 0);
+
+                  return (
+                    <div>
+                      {/* Metric Strip */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                        gap: '12px',
+                        padding: '16px 24px',
+                        background: 'rgba(0,0,0,0.25)',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)'
+                      }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 14px', borderRadius: '10px' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Collected COD Cash</div>
+                          <div style={{ fontSize: '20px', fontWeight: 800, color: '#f8fafc', marginTop: '2px' }}>₹{totalFilteredCollected.toLocaleString('en-IN')}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>{filteredLedger.length} shift records</div>
+                        </div>
+
+                        <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '12px 14px', borderRadius: '10px' }}>
+                          <div style={{ fontSize: '11px', color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>⚠️ In-Hand Cash Pending Turn-in</div>
+                          <div style={{ fontSize: '20px', fontWeight: 800, color: '#f59e0b', marginTop: '2px' }}>₹{totalFilteredPending.toLocaleString('en-IN')}</div>
+                          <div style={{ fontSize: '11px', color: '#fde68a' }}>Held by drivers • Ready to settle</div>
+                        </div>
+
+                        <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '12px 14px', borderRadius: '10px' }}>
+                          <div style={{ fontSize: '11px', color: '#34d399', textTransform: 'uppercase', fontWeight: 700 }}>✓ Deposited to Treasury</div>
+                          <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>₹{totalFilteredDeposited.toLocaleString('en-IN')}</div>
+                          <div style={{ fontSize: '11px', color: '#a7f3d0' }}>Officially cleared into Municipal Account</div>
+                        </div>
+                      </div>
+
+                      {/* Day-Wise Table */}
+                      <div style={{ overflowX: 'auto' }}>
+                        {filteredLedger.length === 0 ? (
+                          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                            <Package size={36} color="#64748b" style={{ margin: '0 auto 8px', opacity: 0.6 }} />
+                            <div>No COD cash collections recorded for the selected filter.</div>
+                          </div>
+                        ) : (
+                          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                            <thead>
+                              <tr style={{ background: 'rgba(255, 255, 255, 0.02)', color: '#94a3b8', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                <th style={{ padding: '12px 20px' }}>Shift Date</th>
+                                <th style={{ padding: '12px 20px' }}>Delivery Executive</th>
+                                <th style={{ padding: '12px 20px' }}>Delivered COD Orders</th>
+                                <th style={{ padding: '12px 20px' }}>Collected Cash</th>
+                                <th style={{ padding: '12px 20px' }}>Remittance Status</th>
+                                <th style={{ padding: '12px 20px', textAlign: 'right' }}>Official Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredLedger.map((record) => {
+                                const isPending = record.pendingAmount > 0;
+                                const isSettlingThis = settlingDayKey === record.groupKey;
+
+                                return (
+                                  <tr key={record.groupKey} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', color: '#f8fafc' }}>
+                                    <td style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Calendar size={15} color="#38bdf8" />
+                                        <span style={{ fontWeight: 800 }}>
+                                          {new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </span>
+                                      </div>
+                                    </td>
+
+                                    <td style={{ padding: '14px 20px' }}>
+                                      <div style={{ fontWeight: 700, color: '#f8fafc' }}>{record.partnerName}</div>
+                                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                        📞 {record.partnerPhone || 'No phone'} • 🛵 {record.partnerVehicle}
+                                      </div>
+                                    </td>
+
+                                    <td style={{ padding: '14px 20px' }}>
+                                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(2, 132, 199, 0.2)', color: '#38bdf8' }}>
+                                          {record.orderCount} {record.orderCount === 1 ? 'Order' : 'Orders'}
+                                        </span>
+                                        {record.orderNumbers.map((ordNum, i) => (
+                                          <span key={i} style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.06)', color: '#cbd5e1' }}>
+                                            {ordNum}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </td>
+
+                                    <td style={{ padding: '14px 20px' }}>
+                                      <div style={{ fontSize: '15px', fontWeight: 800, color: '#10b981' }}>
+                                        ₹{record.totalCashCollected}
+                                      </div>
+                                      {record.pendingAmount > 0 && record.depositedAmount > 0 && (
+                                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+                                          ₹{record.depositedAmount} cleared • ₹{record.pendingAmount} due
+                                        </div>
+                                      )}
+                                    </td>
+
+                                    <td style={{ padding: '14px 20px' }}>
+                                      {isPending ? (
+                                        <span style={{
+                                          padding: '4px 10px',
+                                          borderRadius: '8px',
+                                          fontSize: '11px',
+                                          fontWeight: 700,
+                                          background: 'rgba(245, 158, 11, 0.18)',
+                                          color: '#fbbf24',
+                                          border: '1px solid rgba(245, 158, 11, 0.4)',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '4px'
+                                        }}>
+                                          ⚠️ Pending Submission: ₹{record.pendingAmount}
+                                        </span>
+                                      ) : (
+                                        <div>
+                                          <span style={{
+                                            padding: '4px 10px',
+                                            borderRadius: '8px',
+                                            fontSize: '11px',
+                                            fontWeight: 700,
+                                            background: 'rgba(16, 185, 129, 0.15)',
+                                            color: '#34d399',
+                                            border: '1px solid rgba(16, 185, 129, 0.35)',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}>
+                                            <CheckCircle2 size={12} /> ✓ Submitted to Treasury (₹{record.depositedAmount})
+                                          </span>
+                                          {record.settledBy && (
+                                            <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                                              Cleared by {record.settledBy}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </td>
+
+                                    <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                                      {isPending ? (
+                                        <button
+                                          onClick={() => handleSettleDaywiseCash(record)}
+                                          disabled={isSettlingThis}
+                                          style={{
+                                            background: '#10b981',
+                                            border: 'none',
+                                            color: '#ffffff',
+                                            padding: '8px 14px',
+                                            borderRadius: '8px',
+                                            fontSize: '12px',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                                          }}
+                                        >
+                                          <ShieldCheck size={14} /> {isSettlingThis ? 'Clearing...' : '✓ Mark Day Cash as Submitted'}
+                                        </button>
+                                      ) : (
+                                        <span style={{ fontSize: '12px', color: '#34d399', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                          <Check size={14} /> Deposited
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Payment Records Table */}
