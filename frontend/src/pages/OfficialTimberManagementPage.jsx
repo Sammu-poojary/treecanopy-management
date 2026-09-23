@@ -982,11 +982,11 @@ export default function OfficialTimberManagementPage() {
                             </div>
                             <div>
                               <div style={{ fontSize: '10px', color: t.textMuted, textTransform: 'uppercase' }}>Weight</div>
-                              <div style={{ fontSize: '13px', fontWeight: 700, color: '#f59e0b' }}>{weight} kg</div>
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: '#f59e0b' }}>{(weight > 10 ? (weight / 1000).toFixed(2) : weight)} Ton</div>
                             </div>
                             <div>
                               <div style={{ fontSize: '10px', color: t.textMuted, textTransform: 'uppercase' }}>Avg Ø</div>
-                              <div style={{ fontSize: '13px', fontWeight: 700, color: t.textPrimary }}>{diameter} cm</div>
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: t.textPrimary }}>{(diameter > 10 ? (diameter / 30.48).toFixed(1) : diameter)} ft</div>
                             </div>
                             <div>
                               <div style={{ fontSize: '10px', color: t.textMuted, textTransform: 'uppercase' }}>Length</div>
@@ -1196,7 +1196,7 @@ export default function OfficialTimberManagementPage() {
                           {species} Logs
                         </h3>
                         <p style={{ margin: '0 0 12px 0', color: t.textSecondary, fontSize: '13px' }}>
-                          {logs} Trunk Logs • Est. {weight} kg • Vehicle {intake.vehicleNumber || 'KA-20'}
+                          {logs} Trunk Logs • Est. {(weight > 10 ? (weight / 1000).toFixed(2) : weight)} Ton • Vehicle {intake.vehicleNumber || 'KA-20'}
                         </p>
 
                         <div style={{ background: isDark ? 'rgba(0, 0, 0, 0.3)' : '#f8fafc', border: `1px solid ${t.border}`, borderRadius: '10px', padding: '12px', marginBottom: '16px', fontSize: '12px', color: t.textSecondary }}>
@@ -1553,20 +1553,22 @@ export default function OfficialTimberManagementPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Weight (kg)</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Weight (Ton)</label>
                     <input
                       type="number"
-                      value={editForm.totalWeightKg}
-                      onChange={(e) => setEditForm({ ...editForm, totalWeightKg: Number(e.target.value) })}
+                      step="0.01"
+                      value={editForm.totalWeightKg ? (editForm.totalWeightKg / 1000).toFixed(2) : ''}
+                      onChange={(e) => setEditForm({ ...editForm, totalWeightKg: Math.round(Number(e.target.value) * 1000) })}
                       style={{ width: '100%', padding: '8px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Avg Ø (cm)</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Avg Ø (feet)</label>
                     <input
                       type="number"
-                      value={editForm.avgDiameterCm}
-                      onChange={(e) => setEditForm({ ...editForm, avgDiameterCm: Number(e.target.value) })}
+                      step="0.1"
+                      value={editForm.avgDiameterCm ? (editForm.avgDiameterCm / 30.48).toFixed(1) : ''}
+                      onChange={(e) => setEditForm({ ...editForm, avgDiameterCm: Math.round(Number(e.target.value) * 30.48) })}
                       style={{ width: '100%', padding: '8px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>
@@ -1799,20 +1801,22 @@ export default function OfficialTimberManagementPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Weight (kg)</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Weight (Ton)</label>
                     <input
                       type="number"
-                      value={directForm.totalWeightKg}
-                      onChange={(e) => setDirectForm({ ...directForm, totalWeightKg: Number(e.target.value) })}
+                      step="0.01"
+                      value={directForm.totalWeightKg ? (directForm.totalWeightKg / 1000).toFixed(2) : ''}
+                      onChange={(e) => setDirectForm({ ...directForm, totalWeightKg: Math.round(Number(e.target.value) * 1000) })}
                       style={{ width: '100%', padding: '8px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Avg Ø (cm)</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Avg Ø (feet)</label>
                     <input
                       type="number"
-                      value={directForm.avgDiameterCm}
-                      onChange={(e) => setDirectForm({ ...directForm, avgDiameterCm: Number(e.target.value) })}
+                      step="0.1"
+                      value={directForm.avgDiameterCm ? (directForm.avgDiameterCm / 30.48).toFixed(1) : ''}
+                      onChange={(e) => setDirectForm({ ...directForm, avgDiameterCm: Math.round(Number(e.target.value) * 30.48) })}
                       style={{ width: '100%', padding: '8px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>
@@ -1972,7 +1976,7 @@ export default function OfficialTimberManagementPage() {
                     <div><strong>Awarded Entity:</strong> {certificateModalLot.allotmentCertificate?.awardedTo || certificateModalLot.highestBidder?.companyName}</div>
                     <div><strong>Contact:</strong> {certificateModalLot.allotmentCertificate?.bidderContact || certificateModalLot.highestBidder?.bidderPhone}</div>
                     <div><strong>Winning Bid:</strong> <span style={{ color: '#059669', fontWeight: 'bold' }}>₹{Number(certificateModalLot.allotmentCertificate?.winningBidAmountInr || certificateModalLot.currentHighestBidInr || 0).toLocaleString('en-IN')}</span></div>
-                    <div><strong>Total Weight:</strong> {certificateModalLot.totalWeightKg} kg ({certificateModalLot.logCount} logs)</div>
+                    <div><strong>Total Weight:</strong> {(certificateModalLot.totalWeightKg > 10 ? (certificateModalLot.totalWeightKg / 1000).toFixed(2) : certificateModalLot.totalWeightKg)} Ton ({certificateModalLot.logCount} logs)</div>
                   </div>
                 </div>
 
@@ -2220,22 +2224,23 @@ export default function OfficialTimberManagementPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Weight (kg) *</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Weight (Ton) *</label>
                     <input
                       type="number"
                       required
-                      min="10"
-                      value={verifyForm.totalWeightKg}
-                      onChange={(e) => setVerifyForm({ ...verifyForm, totalWeightKg: Number(e.target.value) })}
+                      step="0.01"
+                      value={verifyForm.totalWeightKg ? (verifyForm.totalWeightKg / 1000).toFixed(2) : ''}
+                      onChange={(e) => setVerifyForm({ ...verifyForm, totalWeightKg: Math.round(Number(e.target.value) * 1000) })}
                       style={{ width: '100%', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', padding: '8px 10px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Avg Ø (cm)</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Avg Ø (feet)</label>
                     <input
                       type="number"
-                      value={verifyForm.avgDiameterCm}
-                      onChange={(e) => setVerifyForm({ ...verifyForm, avgDiameterCm: Number(e.target.value) })}
+                      step="0.1"
+                      value={verifyForm.avgDiameterCm ? (verifyForm.avgDiameterCm / 30.48).toFixed(1) : ''}
+                      onChange={(e) => setVerifyForm({ ...verifyForm, avgDiameterCm: Math.round(Number(e.target.value) * 30.48) })}
                       style={{ width: '100%', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', padding: '8px 10px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>

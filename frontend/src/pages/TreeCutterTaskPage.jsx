@@ -1277,12 +1277,12 @@ export default function TreeCutterTaskPage() {
             vehicleNumber: task.vehicleNumber || 'KA-20-TR-4821',
             vehicleType: task.vehicleType || 'Mini Tipper Truck',
             biomass: {
-              leavesWeightKg: Number(task.biomassLeavesKg || 120),
-              branchesWeightKg: Number(task.biomassBranchesKg || 180),
+              leavesWeightKg: Number(task.biomassLeavesKg || (task.biomassLeavesTon ? Math.round(Number(task.biomassLeavesTon) * 1000) : 120)),
+              branchesWeightKg: Number(task.biomassBranchesKg || (task.biomassBranchesTon ? Math.round(Number(task.biomassBranchesTon) * 1000) : 180)),
               logsCount: Number(task.biomassLogCount || 2),
-              logsWeightKg: Number(task.biomassLogsKg || 400),
+              logsWeightKg: Number(task.biomassLogsKg || (task.biomassLogsTon ? Math.round(Number(task.biomassLogsTon) * 1000) : 400)),
               treeSpecies: task.biomassSpecies || task.treeSpecies || 'Mixed Municipal Species',
-              approxLogDiameterCm: Number(task.biomassDiameterCm || 35),
+              approxLogDiameterCm: Number(task.biomassDiameterCm || (task.biomassDiameterFt ? Math.round(Number(task.biomassDiameterFt) * 30.48) : 35)),
               approxLogLengthMeters: 2.5,
               isDiseased: Boolean(task.isDiseasedBiomass)
             },
@@ -1332,6 +1332,147 @@ export default function TreeCutterTaskPage() {
   const [saplingImagePreview, setSaplingImagePreview] = useState('');
   const [replanting, setReplanting] = useState(false);
   const [uploadingSaplingImage, setUploadingSaplingImage] = useState(false);
+  const [aiFilling, setAiFilling] = useState(false);
+  const [aiScanningPhoto, setAiScanningPhoto] = useState(false);
+
+  const handleAiAutoFill = async (overrideName) => {
+    const targetName = (overrideName || saplingForm.saplingName || '').trim();
+    if (!targetName) {
+      Swal.fire({
+        icon: 'info',
+        title: '🌱 Enter Sapling Name',
+        text: 'Please type a tree/sapling name (e.g. Honge, Neem, Teak, Banyan, Mango) or click a quick-select chip below to auto-fill botanical details.',
+        confirmButtonColor: '#10b981'
+      });
+      return;
+    }
+
+    setAiFilling(true);
+    try {
+      const res = await fetch(`${API_URL}/api/trees/ai-autofill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: targetName })
+      });
+      const result = await res.json();
+      if (res.ok && result.data) {
+        const d = result.data;
+        setSaplingForm(prev => ({
+          ...prev,
+          saplingName: targetName,
+          scientificName: d.scientificName || prev.scientificName,
+          family: d.family || prev.family,
+          category: d.category || prev.category,
+          origin: d.nativeRegion || prev.origin || 'Native',
+          height: d.height || prev.height || '10 – 25 m',
+          lifespan: d.lifespan || prev.lifespan || '80 – 200 years',
+          canopySpread: d.canopySpread || prev.canopySpread || '8 – 15 m',
+          waterRequirement: d.waterRequirement || prev.waterRequirement || 'Medium',
+          canopyCoverage: d.canopyCoverage || prev.canopyCoverage || 25,
+          growthRate: d.growthRate || prev.growthRate || 'Moderate to Fast',
+          soilType: d.soilType || prev.soilType || 'Deep, Well-drained Loamy Soil',
+          benefits: d.benefits || prev.benefits || 'Carbon sequestration, Urban cooling, Biodiversity shelter',
+          description: d.description || prev.description || `Young ${targetName} planted for urban reforestation.`,
+        }));
+
+        Swal.fire({
+          icon: 'success',
+          title: '✨ AI Botanical Auto-Fill Complete!',
+          html: `Loaded taxonomy & environmental profile for <b>${targetName}</b> (<i>${d.scientificName || ''}</i>).`,
+          timer: 2500,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+      } else {
+        throw new Error(result.msg || 'Unable to fetch botanical data');
+      }
+    } catch (err) {
+      console.warn('AI Auto-Fill fallback triggered:', err.message);
+      const fallbackMap = {
+        'honge': { scientificName: 'Pongamia pinnata', family: 'Fabaceae', category: 'Evergreen Shade & Biofuel Tree', waterRequirement: 'Low', canopyCoverage: 30, growthRate: 'Fast', soilType: 'Sandy Loam / Coastal Soil', benefits: 'Nitrogen-fixing, high carbon offset, biofuel seeds' },
+        'neem': { scientificName: 'Azadirachta indica', family: 'Meliaceae', category: 'Medicinal Evergreen Tree', waterRequirement: 'Low', canopyCoverage: 35, growthRate: 'Moderate', soilType: 'Well-drained sandy/clay soil', benefits: 'Air purification, natural bio-pesticide, high diurnal oxygen' },
+        'teak': { scientificName: 'Tectona grandis', family: 'Lamiaceae', category: 'Deciduous Timber Tree', waterRequirement: 'Medium', canopyCoverage: 40, growthRate: 'Moderate', soilType: 'Alluvial well-drained loamy soil', benefits: 'High commercial timber value, extensive canopy cooling' },
+        'banyan': { scientificName: 'Ficus benghalensis', family: 'Moraceae', category: 'Massive Sacred Fig Tree', waterRequirement: 'Medium', canopyCoverage: 80, growthRate: 'Fast', soilType: 'Versatile / Sandy clay', benefits: 'Massive canopy shade, bird nesting sanctuary, soil erosion control' },
+        'mango': { scientificName: 'Mangifera indica', family: 'Anacardiaceae', category: 'Tropical Evergreen Fruit Tree', waterRequirement: 'Medium', canopyCoverage: 45, growthRate: 'Moderate', soilType: 'Deep alluvial loamy soil', benefits: 'Edible fruit supply, high carbon absorption, pollinator support' },
+        'gulmohar': { scientificName: 'Delonix regia', family: 'Fabaceae', category: 'Ornamental Flowering Canopy', waterRequirement: 'Low', canopyCoverage: 50, growthRate: 'Fast', soilType: 'Well-drained soil', benefits: 'Urban cooling, scenic floral aesthetics, heat island reduction' },
+        'peepal': { scientificName: 'Ficus religiosa', family: 'Moraceae', category: 'Sacred Fig Canopy Tree', waterRequirement: 'Low', canopyCoverage: 60, growthRate: 'Moderate', soilType: 'Deep well-draining soil', benefits: '24-hr oxygen release, cultural value, high shade index' },
+        'jackfruit': { scientificName: 'Artocarpus heterophyllus', family: 'Moraceae', category: 'Tropical Evergreen Fruit Tree', waterRequirement: 'Medium', canopyCoverage: 40, growthRate: 'Moderate', soilType: 'Deep porous soil', benefits: 'Nutritious fruit crop, high carbon storage, dense canopy' },
+        'mahogany': { scientificName: 'Swietenia mahagoni', family: 'Meliaceae', category: 'Hardwood Shade Tree', waterRequirement: 'Medium', canopyCoverage: 45, growthRate: 'Moderate to Fast', soilType: 'Rich loamy soil', benefits: 'High carbon capture, soil stabilization, timber value' },
+        'sandalwood': { scientificName: 'Santalum album', family: 'Santalaceae', category: 'Aromatic Hemiparasitic Tree', waterRequirement: 'Low', canopyCoverage: 20, growthRate: 'Slow', soilType: 'Red sandy loam', benefits: 'Precious aromatic heartwood, regional cultural heritage' }
+      };
+      const key = targetName.toLowerCase();
+      const matchedKey = Object.keys(fallbackMap).find(k => key.includes(k) || k.includes(key));
+      if (matchedKey) {
+        const d = fallbackMap[matchedKey];
+        setSaplingForm(prev => ({
+          ...prev,
+          saplingName: targetName,
+          scientificName: d.scientificName,
+          family: d.family,
+          category: d.category,
+          waterRequirement: d.waterRequirement,
+          canopyCoverage: d.canopyCoverage,
+          growthRate: d.growthRate,
+          soilType: d.soilType,
+          benefits: d.benefits,
+          description: `Young ${targetName} sapling planted for urban forestry restoration.`
+        }));
+        Swal.fire({
+          icon: 'success',
+          title: '✨ Auto-Filled from Botanical Catalog',
+          html: `Loaded taxonomy for <b>${targetName}</b> (<i>${d.scientificName}</i>)`,
+          timer: 2000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+      } else {
+        Swal.fire('Notice', 'AI could not find exact taxonomy. You can edit the botanical fields manually.', 'info');
+      }
+    } finally {
+      setAiFilling(false);
+    }
+  };
+
+  const handleAiScanFromPhoto = async (photoUrlToScan) => {
+    const url = photoUrlToScan || saplingImagePreview;
+    if (!url) {
+      Swal.fire('No Photo', 'Please upload or take a sapling photo first.', 'info');
+      return;
+    }
+    setAiScanningPhoto(true);
+    try {
+      Swal.fire({
+        title: 'CanopyLens AI Vision Scanning...',
+        text: 'Analyzing leaves, bark, and foliage morphology...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+      const res = await fetch(`${API_URL}/api/trees/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: url,
+          lat: selectedTask?.beforeGps?.lat || 13.3409,
+          lng: selectedTask?.beforeGps?.lng || 74.7421
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.identification?.commonName) {
+        const identified = data.identification.commonName;
+        Swal.close();
+        handleAiAutoFill(identified);
+      } else {
+        Swal.fire('AI Scan', 'Could not conclusively classify sapling from photo. Please type name and use AI Auto-Fill.', 'info');
+      }
+    } catch (e) {
+      console.error('Scan photo error:', e);
+      Swal.fire('AI Scan Error', 'Photo identification failed. Try AI Auto-Fill by name.', 'warning');
+    } finally {
+      setAiScanningPhoto(false);
+    }
+  };
 
   const handleReplantSaplingImageChange = async (e) => {
     const file = e.target.files?.[0];
@@ -2385,13 +2526,17 @@ export default function TreeCutterTaskPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       {/* Leaves & Foliage Weight */}
                       <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        🍃 Green Leaves & Foliage (kg)
+                        🍃 Green Leaves & Foliage (Ton)
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
-                          value={selectedTask?.biomassLeavesKg ?? (selectedTask?.biomass?.leavesWeightKg ?? '')}
-                          onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassLeavesKg: e.target.value })}
-                          placeholder="e.g. 150 kg"
+                          value={selectedTask?.biomassLeavesTon ?? (selectedTask?.biomassLeavesKg ? (Number(selectedTask.biomassLeavesKg) / 1000).toFixed(2) : (selectedTask?.biomass?.leavesWeightKg ? (Number(selectedTask.biomass.leavesWeightKg) / 1000).toFixed(2) : ''))}
+                          onChange={e => updateTask(selectedTask?.id || selectedTask?._id, {
+                            biomassLeavesTon: e.target.value,
+                            biomassLeavesKg: e.target.value ? Math.round(Number(e.target.value) * 1000) : ''
+                          })}
+                          placeholder="e.g. 0.15 Ton"
                           style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
                         />
                         <span style={{ fontSize: '0.7rem', color: '#10b981' }}>→ Routed for Organic Compost</span>
@@ -2399,13 +2544,17 @@ export default function TreeCutterTaskPage() {
 
                       {/* Branches & Twigs Weight */}
                       <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        🌿 Branches & Twigs (kg)
+                        🌿 Branches & Twigs (Ton)
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
-                          value={selectedTask?.biomassBranchesKg ?? (selectedTask?.biomass?.branchesWeightKg ?? '')}
-                          onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassBranchesKg: e.target.value })}
-                          placeholder="e.g. 200 kg"
+                          value={selectedTask?.biomassBranchesTon ?? (selectedTask?.biomassBranchesKg ? (Number(selectedTask.biomassBranchesKg) / 1000).toFixed(2) : (selectedTask?.biomass?.branchesWeightKg ? (Number(selectedTask.biomass.branchesWeightKg) / 1000).toFixed(2) : ''))}
+                          onChange={e => updateTask(selectedTask?.id || selectedTask?._id, {
+                            biomassBranchesTon: e.target.value,
+                            biomassBranchesKg: e.target.value ? Math.round(Number(e.target.value) * 1000) : ''
+                          })}
+                          placeholder="e.g. 0.20 Ton"
                           style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
                         />
                         <span style={{ fontSize: '0.7rem', color: '#60a5fa' }}>→ Routed for Wood Chipping & Mulch</span>
@@ -2442,25 +2591,33 @@ export default function TreeCutterTaskPage() {
                         </label>
 
                         <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                          Total Log Weight (kg)
+                          Total Log Weight (Ton)
                           <input
                             type="number"
+                            step="0.01"
                             min="0"
-                            value={selectedTask?.biomassLogsKg ?? (selectedTask?.biomass?.logsWeightKg ?? '')}
-                            onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassLogsKg: e.target.value })}
-                            placeholder="e.g. 650 kg"
+                            value={selectedTask?.biomassLogsTon ?? (selectedTask?.biomassLogsKg ? (Number(selectedTask.biomassLogsKg) / 1000).toFixed(2) : (selectedTask?.biomass?.logsWeightKg ? (Number(selectedTask.biomass.logsWeightKg) / 1000).toFixed(2) : ''))}
+                            onChange={e => updateTask(selectedTask?.id || selectedTask?._id, {
+                              biomassLogsTon: e.target.value,
+                              biomassLogsKg: e.target.value ? Math.round(Number(e.target.value) * 1000) : ''
+                            })}
+                            placeholder="e.g. 0.65 Ton"
                             style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
                           />
                         </label>
 
                         <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                          Avg Diameter (cm)
+                          Avg Diameter (feet)
                           <input
                             type="number"
+                            step="0.1"
                             min="0"
-                            value={selectedTask?.biomassDiameterCm ?? ''}
-                            onChange={e => updateTask(selectedTask?.id || selectedTask?._id, { biomassDiameterCm: e.target.value })}
-                            placeholder="e.g. 45 cm"
+                            value={selectedTask?.biomassDiameterFt ?? (selectedTask?.biomassDiameterCm ? (Number(selectedTask.biomassDiameterCm) / 30.48).toFixed(1) : '')}
+                            onChange={e => updateTask(selectedTask?.id || selectedTask?._id, {
+                              biomassDiameterFt: e.target.value,
+                              biomassDiameterCm: e.target.value ? Math.round(Number(e.target.value) * 30.48) : ''
+                            })}
+                            placeholder="e.g. 1.5 ft"
                             style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}
                           />
                         </label>
@@ -2729,8 +2886,115 @@ export default function TreeCutterTaskPage() {
                     </div>
                   </div>
                 ) : (
-                  /* ── REPLANTATION WORKSPACE FORM ── */
+                  /* ── REPLANTATION WORKSPACE FORM WITH AI AUTO-FILL ── */
                   <form onSubmit={handleCompleteReplantation} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                    {/* AI Auto-Fill Assistant Header & Quick-Select Chips */}
+                    <div style={{
+                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(99, 102, 241, 0.10))',
+                      border: '1px solid rgba(16, 185, 129, 0.35)',
+                      borderRadius: '14px',
+                      padding: '16px 18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: '36px', height: '36px', borderRadius: '10px',
+                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+                            boxShadow: '0 2px 10px rgba(16,185,129,0.3)'
+                          }}>
+                            <Sparkles size={20} />
+                          </div>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 800, color: 'var(--title)' }}>
+                              CanopyGuard AI Auto-Fill Assistant
+                            </h4>
+                            <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                              Type any tree name or tap a native species chip below to auto-populate botanical taxonomy & ecological metrics
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAiAutoFill()}
+                          disabled={aiFilling}
+                          style={{
+                            padding: '8px 16px',
+                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.84rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: aiFilling ? 'not-allowed' : 'pointer',
+                            boxShadow: '0 2px 8px rgba(16,185,129,0.25)',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          {aiFilling ? (
+                            <>
+                              <RefreshCw size={15} className="spin" /> Generating Taxonomy...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={15} /> Run AI Auto-Fill ✨
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Native Regional Species Quick-Select Chips */}
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                          Quick-Select Recommended Species:
+                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {[
+                            { name: 'Honge', label: '🌱 Honge (Indian Beech)' },
+                            { name: 'Neem', label: '🌿 Neem' },
+                            { name: 'Teak', label: '🪵 Teak' },
+                            { name: 'Gulmohar', label: '🌺 Gulmohar' },
+                            { name: 'Banyan', label: '🌳 Banyan' },
+                            { name: 'Peepal', label: '🍃 Peepal' },
+                            { name: 'Mango', label: '🥭 Mango' },
+                            { name: 'Jackfruit', label: '🍈 Jackfruit' },
+                            { name: 'Mahogany', label: '🌲 Mahogany' },
+                            { name: 'Sandalwood', label: '🪵 Sandalwood' }
+                          ].map(item => (
+                            <button
+                              key={item.name}
+                              type="button"
+                              onClick={() => {
+                                setSaplingForm(prev => ({ ...prev, saplingName: item.name }));
+                                handleAiAutoFill(item.name);
+                              }}
+                              disabled={aiFilling}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '999px',
+                                border: '1px solid rgba(16,185,129,0.3)',
+                                background: saplingForm.saplingName.toLowerCase().includes(item.name.toLowerCase()) ? '#10b981' : 'var(--bg-surface)',
+                                color: saplingForm.saplingName.toLowerCase().includes(item.name.toLowerCase()) ? '#ffffff' : 'var(--text-primary)',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Metadata Input Grid */}
                     <div style={{
@@ -2743,9 +3007,30 @@ export default function TreeCutterTaskPage() {
                       border: '1px solid var(--border)'
                     }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                          Sapling Common Name *
-                        </label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                            Sapling Common Name *
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleAiAutoFill()}
+                            disabled={aiFilling || !saplingForm.saplingName}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#10b981',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              padding: 0
+                            }}
+                          >
+                            <Sparkles size={12} /> Auto-fill
+                          </button>
+                        </div>
                         <input
                           type="text"
                           required
@@ -2756,7 +3041,7 @@ export default function TreeCutterTaskPage() {
                             background: 'var(--bg-page)', border: '1px solid var(--border)',
                             color: 'var(--text-primary)', fontSize: '0.88rem'
                           }}
-                          placeholder="e.g. Indian Beech Sapling"
+                          placeholder="e.g. Indian Beech / Neem"
                         />
                       </div>
 
@@ -2841,7 +3126,58 @@ export default function TreeCutterTaskPage() {
                           max="100"
                           value={saplingForm.canopyCoverage}
                           onChange={e => setSaplingForm({ ...saplingForm, canopyCoverage: e.target.value })}
-                          placeholder="e.g. 15"
+                          placeholder="e.g. 25"
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Growth Rate
+                        </label>
+                        <input
+                          type="text"
+                          value={saplingForm.growthRate}
+                          onChange={e => setSaplingForm({ ...saplingForm, growthRate: e.target.value })}
+                          placeholder="e.g. Moderate to Fast"
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Optimal Soil Type
+                        </label>
+                        <input
+                          type="text"
+                          value={saplingForm.soilType}
+                          onChange={e => setSaplingForm({ ...saplingForm, soilType: e.target.value })}
+                          placeholder="e.g. Deep Well-drained Loamy Soil"
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '8px',
+                            background: 'var(--bg-page)', border: '1px solid var(--border)',
+                            color: 'var(--text-primary)', fontSize: '0.88rem'
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                          Ecological Benefits & Canopy Role
+                        </label>
+                        <input
+                          type="text"
+                          value={saplingForm.benefits}
+                          onChange={e => setSaplingForm({ ...saplingForm, benefits: e.target.value })}
+                          placeholder="e.g. Nitrogen-fixing, carbon sequestration, urban cooling"
                           style={{
                             width: '100%', padding: '10px 12px', borderRadius: '8px',
                             background: 'var(--bg-page)', border: '1px solid var(--border)',
@@ -2853,9 +3189,33 @@ export default function TreeCutterTaskPage() {
 
                     {/* Photo Upload & Cloudinary Section */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                        📷 Sapling Planting Photo Proof (Cloudinary Cloud Storage & Geo-Tag)
-                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                          📷 Sapling Planting Photo Proof (Cloudinary Cloud Storage & Geo-Tag)
+                        </label>
+                        {saplingImagePreview && (
+                          <button
+                            type="button"
+                            onClick={() => handleAiScanFromPhoto()}
+                            disabled={aiScanningPhoto || aiFilling}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              background: 'rgba(99, 102, 241, 0.15)',
+                              border: '1px solid rgba(99, 102, 241, 0.4)',
+                              color: '#818cf8',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px'
+                            }}
+                          >
+                            <Sparkles size={13} /> {aiScanningPhoto ? 'Scanning Photo...' : 'Scan & Auto-Fill from Photo'}
+                          </button>
+                        )}
+                      </div>
 
                       {saplingImagePreview ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2866,18 +3226,29 @@ export default function TreeCutterTaskPage() {
                             altText="Sapling proof photo preview"
                             proofLabel={uploadingSaplingImage ? "Uploading to Cloudinary..." : "Sapling Photo Verified"}
                           />
-                          <label style={{ alignSelf: 'flex-start', cursor: 'pointer' }}>
-                            <span className="btn-change-proof">
-                              <Camera size={14} /> Change / Re-take Sapling Photo
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              style={{ display: 'none' }}
-                              onChange={handleReplantSaplingImageChange}
-                              disabled={replanting || uploadingSaplingImage}
-                            />
-                          </label>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <label style={{ cursor: 'pointer' }}>
+                              <span className="btn-change-proof">
+                                <Camera size={14} /> Change / Re-take Sapling Photo
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={handleReplantSaplingImageChange}
+                                disabled={replanting || uploadingSaplingImage}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleAiScanFromPhoto()}
+                              disabled={aiScanningPhoto || aiFilling}
+                              className="btn-change-proof"
+                              style={{ background: 'rgba(16,185,129,0.15)', borderColor: '#10b981', color: '#10b981' }}
+                            >
+                              <Sparkles size={14} /> {aiScanningPhoto ? 'Scanning...' : 'Identify via AI Vision'}
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <label className="cutter-upload-zone" style={{ border: '2px dashed #10b981', background: 'rgba(16,185,129,0.06)', cursor: 'pointer' }}>

@@ -3350,6 +3350,85 @@ export function TaskPage() {
                       }
                     }}>
                       <fieldset disabled={!isTaskAssignedToMe} style={{ border: 'none', padding: 0, margin: 0, width: '100%' }}>
+                        <div style={{
+                          marginBottom: '16px', padding: '12px 14px', borderRadius: '10px',
+                          background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(99,102,241,0.08))',
+                          border: '1px solid rgba(16,185,129,0.3)',
+                          display: 'flex', flexDirection: 'column', gap: '8px'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Sparkles size={16} color="#10b981" /> AI Auto-Fill Sapling Taxonomy
+                            </span>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                const form = e.target.closest('form');
+                                const nameInput = form?.querySelector('input[name="saplingName"]');
+                                const treeName = nameInput?.value?.trim();
+                                if (!treeName) {
+                                  Swal.fire('Enter Tree Name', 'Please type a sapling name first (e.g. Honge, Neem, Teak, Mango).', 'info');
+                                  return;
+                                }
+                                Swal.fire({ title: 'AI Generating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                                try {
+                                  const res = await fetch(`${API_URL}/api/trees/ai-autofill`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ name: treeName })
+                                  });
+                                  const data = await res.json();
+                                  if (res.ok && data.data) {
+                                    const d = data.data;
+                                    if (form.querySelector('input[name="scientificName"]')) form.querySelector('input[name="scientificName"]').value = d.scientificName || '';
+                                    if (form.querySelector('input[name="family"]')) form.querySelector('input[name="family"]').value = d.family || '';
+                                    if (form.querySelector('input[name="category"]')) form.querySelector('input[name="category"]').value = d.category || '';
+                                    if (form.querySelector('select[name="waterRequirement"]')) form.querySelector('select[name="waterRequirement"]').value = d.waterRequirement || 'Medium';
+                                    if (form.querySelector('input[name="canopyCoverage"]')) form.querySelector('input[name="canopyCoverage"]').value = d.canopyCoverage || '25';
+                                    if (form.querySelector('input[name="growthRate"]')) form.querySelector('input[name="growthRate"]').value = d.growthRate || '';
+                                    if (form.querySelector('input[name="soilType"]')) form.querySelector('input[name="soilType"]').value = d.soilType || '';
+                                    if (form.querySelector('input[name="height"]')) form.querySelector('input[name="height"]').value = d.height || '';
+                                    if (form.querySelector('input[name="lifespan"]')) form.querySelector('input[name="lifespan"]').value = d.lifespan || '';
+                                    if (form.querySelector('textarea[name="description"]')) form.querySelector('textarea[name="description"]').value = d.description || '';
+                                    Swal.fire({ icon: 'success', title: '✨ AI Auto-Filled!', text: `Loaded taxonomy for ${treeName}`, timer: 1800, showConfirmButton: false, toast: true, position: 'top-end' });
+                                  }
+                                } catch (err) {
+                                  Swal.fire('Notice', 'AI lookup finished. You can adjust fields manually.', 'info');
+                                }
+                              }}
+                              style={{
+                                padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                background: '#10b981', color: '#fff', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '6px'
+                              }}
+                            >
+                              <Sparkles size={14} /> Run AI Auto-Fill ✨
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {['Honge', 'Neem', 'Teak', 'Gulmohar', 'Banyan', 'Mango'].map(sp => (
+                              <button
+                                key={sp}
+                                type="button"
+                                onClick={async (e) => {
+                                  const form = e.target.closest('form');
+                                  if (form?.querySelector('input[name="saplingName"]')) {
+                                    form.querySelector('input[name="saplingName"]').value = sp;
+                                  }
+                                  const btn = form?.querySelector('button[type="button"]');
+                                  btn?.click();
+                                }}
+                                style={{
+                                  padding: '3px 8px', borderRadius: '999px', border: '1px solid #86efac',
+                                  background: '#fff', color: '#166534', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer'
+                                }}
+                              >
+                                🌱 {sp}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                           <div className="form-group">
                             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: '#166534' }}>Sapling Common Name *</label>

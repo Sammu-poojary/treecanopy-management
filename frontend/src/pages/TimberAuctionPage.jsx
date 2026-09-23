@@ -826,7 +826,7 @@ export default function TimberAuctionPage() {
                 </div>
                 <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: '14px', padding: '16px 20px', boxShadow: t.cardShadow }}>
                   <div style={{ fontSize: '12px', color: t.textMuted, fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Salvaged Biomass Volume</div>
-                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#d97706' }}>{(totalWeight || 0).toLocaleString('en-IN')} <span style={{ fontSize: '13px', color: t.textMuted, fontWeight: 500 }}>kg in depot</span></div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#d97706' }}>{((totalWeight || 0) / 1000).toFixed(2)} <span style={{ fontSize: '13px', color: t.textMuted, fontWeight: 500 }}>Ton in depot</span></div>
                 </div>
               </div>
             </div>
@@ -1086,11 +1086,11 @@ export default function TimberAuctionPage() {
                           </div>
                           <div>
                             <div style={{ fontSize: '11px', color: t.textMuted, textTransform: 'uppercase' }}>Total Weight</div>
-                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#d97706' }}>{weightKg} kg</div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#d97706' }}>{(weightKg > 10 ? (weightKg / 1000).toFixed(2) : weightKg)} Ton</div>
                           </div>
                           <div>
                             <div style={{ fontSize: '11px', color: t.textMuted, textTransform: 'uppercase' }}>Avg Diameter</div>
-                            <div style={{ fontSize: '14px', fontWeight: 700, color: t.textPrimary }}>{diameterCm} cm</div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: t.textPrimary }}>{(diameterCm > 10 ? (diameterCm / 30.48).toFixed(1) : diameterCm)} ft</div>
                           </div>
                           <div>
                             <div style={{ fontSize: '11px', color: t.textMuted, textTransform: 'uppercase' }}>Approx Length</div>
@@ -1374,7 +1374,7 @@ export default function TimberAuctionPage() {
                             <span style={{ fontSize: '20px', fontWeight: 900, color: '#10b981' }}>₹{currentBid.toLocaleString('en-IN')}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: t.textSecondary }}>
-                            <span>Total Volume: <strong>{getLotWeight(lot)} kg</strong></span>
+                            <span>Total Volume: <strong>{(getLotWeight(lot) > 10 ? (getLotWeight(lot) / 1000).toFixed(2) : getLotWeight(lot))} Ton</strong></span>
                             <span>Logs: <strong>{lot.logCount || 1} logs</strong></span>
                           </div>
                           <div style={{ marginTop: '8px', fontSize: '12px', color: t.textMuted }}>
@@ -1797,7 +1797,7 @@ export default function TimberAuctionPage() {
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: t.textMuted, paddingTop: '4px' }}>
                       <span>Min Increment: +₹{selectedLot.bidStepIncrementInr || 500}</span>
-                      <span>Est Weight: {getLotWeight(selectedLot)} kg</span>
+                      <span>Est Weight: {(getLotWeight(selectedLot) > 10 ? (getLotWeight(selectedLot) / 1000).toFixed(2) : getLotWeight(selectedLot))} Ton</span>
                     </div>
                   </div>
                 );
@@ -1962,7 +1962,7 @@ export default function TimberAuctionPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span style={{ color: t.textSecondary }}>Volume & Quantity:</span>
-                  <strong style={{ color: t.textPrimary }}>{viewingCertificate.logCount || 1} Logs • {getLotWeight(viewingCertificate)} kg</strong>
+                  <strong style={{ color: t.textPrimary }}>{viewingCertificate.logCount || 1} Logs • {(getLotWeight(viewingCertificate) > 10 ? (getLotWeight(viewingCertificate) / 1000).toFixed(2) : getLotWeight(viewingCertificate))} Ton</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span style={{ color: t.textSecondary }}>Final Hammer Settlement:</span>

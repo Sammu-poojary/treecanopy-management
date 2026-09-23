@@ -439,8 +439,8 @@ export default function ProcessingConsolePage() {
         <div style="text-align: left; font-size: 13px; color: #475569;">
           <p><strong>Cutter:</strong> ${intake.cutterName || 'Field Cutter'}</p>
           <p><strong>Vehicle:</strong> ${intake.vehicleNumber || 'KA-20-TR-4821'} (${intake.vehicleType || 'Tipper'})</p>
-          <p><strong>Leaves:</strong> ${intake.biomass?.leavesWeightKg || intake.foliageWeightKg || 0} kg | <strong>Branches:</strong> ${intake.biomass?.branchesWeightKg || intake.branchWeightKg || 0} kg</p>
-          <p><strong>Timber:</strong> ${intake.biomass?.logsCount || 0} logs (${intake.biomass?.treeSpecies || 'Mixed'}) ~ ${intake.biomass?.logsWeightKg || 0} kg</p>
+          <p><strong>Leaves:</strong> ${((intake.biomass?.leavesWeightKg || intake.foliageWeightKg || 0) / 1000).toFixed(2)} Ton | <strong>Branches:</strong> ${((intake.biomass?.branchesWeightKg || intake.branchWeightKg || 0) / 1000).toFixed(2)} Ton</p>
+          <p><strong>Timber:</strong> ${intake.biomass?.logsCount || 0} logs (${intake.biomass?.treeSpecies || 'Mixed'}) ~ ${((intake.biomass?.logsWeightKg || 0) / 1000).toFixed(2)} Ton</p>
         </div>
       `,
       input: 'text',
@@ -1036,7 +1036,7 @@ export default function ProcessingConsolePage() {
                   <Leaf size={16} color="#10b981" />
                 </div>
                 <div style={{ fontSize: '22px', fontWeight: 800, color: isDark ? '#10b981' : '#059669', marginTop: '4px' }}>
-                  {totalLeavesKg.toLocaleString('en-IN')} <span style={{ fontSize: '12px', color: t.textMuted }}>kg</span>
+                  {(totalLeavesKg / 1000).toFixed(2)} <span style={{ fontSize: '12px', color: t.textMuted }}>Ton</span>
                 </div>
                 <div style={{ fontSize: '11px', color: isDark ? '#34d399' : '#047857', marginTop: '2px' }}>→ Routed for Organic Compost</div>
               </div>
@@ -1047,7 +1047,7 @@ export default function ProcessingConsolePage() {
                   <Layers size={16} color="#60a5fa" />
                 </div>
                 <div style={{ fontSize: '22px', fontWeight: 800, color: isDark ? '#60a5fa' : '#2563eb', marginTop: '4px' }}>
-                  {totalBranchesKg.toLocaleString('en-IN')} <span style={{ fontSize: '12px', color: t.textMuted }}>kg</span>
+                  {(totalBranchesKg / 1000).toFixed(2)} <span style={{ fontSize: '12px', color: t.textMuted }}>Ton</span>
                 </div>
                 <div style={{ fontSize: '11px', color: isDark ? '#93c5fd' : '#1d4ed8', marginTop: '2px' }}>→ Routed for Wood Mulch</div>
               </div>
@@ -1058,7 +1058,7 @@ export default function ProcessingConsolePage() {
                   <Gavel size={16} color="#f59e0b" />
                 </div>
                 <div style={{ fontSize: '22px', fontWeight: 800, color: isDark ? '#f59e0b' : '#d97706', marginTop: '4px' }}>
-                  {totalTimberLogsCount} <span style={{ fontSize: '12px', color: t.textMuted }}>logs</span> ({totalTimberKg.toLocaleString('en-IN')} kg)
+                  {totalTimberLogsCount} <span style={{ fontSize: '12px', color: t.textMuted }}>logs</span> ({(totalTimberKg / 1000).toFixed(2)} Ton)
                 </div>
                 <div style={{ fontSize: '11px', color: isDark ? '#fbbf24' : '#b45309', marginTop: '2px' }}>→ For Municipal Auction</div>
               </div>
@@ -1358,7 +1358,7 @@ export default function ProcessingConsolePage() {
                               🍃 Green Leaves & Foliage
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 800, color: isDark ? '#10b981' : '#059669', marginTop: '2px' }}>
-                              {leavesKg} kg
+                              {(leavesKg / 1000).toFixed(2)} Ton
                             </div>
                             <div style={{ fontSize: '11px', color: t.textMuted }}>Destination: Organic Compost</div>
                           </div>
@@ -1369,7 +1369,7 @@ export default function ProcessingConsolePage() {
                               🌿 Branches & Twigs
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 800, color: isDark ? '#60a5fa' : '#2563eb', marginTop: '2px' }}>
-                              {branchesKg} kg
+                              {(branchesKg / 1000).toFixed(2)} Ton
                             </div>
                             <div style={{ fontSize: '11px', color: t.textMuted }}>Destination: Wood Chipping / Mulch</div>
                           </div>
@@ -1380,10 +1380,10 @@ export default function ProcessingConsolePage() {
                               🪵 Heavy Timber Logs
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 800, color: isDark ? '#f59e0b' : '#d97706', marginTop: '2px' }}>
-                              {logCount > 0 ? `${logCount} logs (${logsKg} kg)` : 'None'}
+                              {logCount > 0 ? `${logCount} logs (${(logsKg / 1000).toFixed(2)} Ton)` : 'None'}
                             </div>
                             <div style={{ fontSize: '11px', color: isDark ? '#fbbf24' : '#b45309', fontWeight: 600 }}>
-                              Species: <strong style={{ color: t.textPrimary }}>{species}</strong> {avgDiameter ? `• Ø${avgDiameter}cm` : ''}
+                              Species: <strong style={{ color: t.textPrimary }}>{species}</strong> {avgDiameter ? `• Ø${(avgDiameter / 30.48).toFixed(1)} ft` : ''}
                             </div>
                           </div>
 
@@ -1623,7 +1623,7 @@ export default function ProcessingConsolePage() {
                                 </div>
                                 <div>
                                   <div style={{ fontSize: '10.5px', color: '#94a3b8', marginBottom: '2px' }}>Total Biomass</div>
-                                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#10b981' }}>{routing.compostWeightKg || (leavesKg + branchesKg)} kg</div>
+                                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#10b981' }}>{((routing.compostWeightKg || (leavesKg + branchesKg)) / 1000).toFixed(2)} Ton</div>
                                 </div>
                               </div>
 
@@ -1664,7 +1664,7 @@ export default function ProcessingConsolePage() {
                                 </span>
                               </div>
                               <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>
-                                {linkedTimberLot?.treeSpecies || routing.timberSpecies || species} • {linkedTimberLot?.logCount || routing.timberLogsCount || logCount} logs ({linkedTimberLot?.totalWeightKg || routing.timberWeightKg || logsKg} kg) at {linkedTimberLot?.storageYard || routing.timberLocation || item.disposalYard}
+                                {linkedTimberLot?.treeSpecies || routing.timberSpecies || species} • {linkedTimberLot?.logCount || routing.timberLogsCount || logCount} logs ({((linkedTimberLot?.totalWeightKg || routing.timberWeightKg || logsKg) / 1000).toFixed(2)} Ton) at {linkedTimberLot?.storageYard || routing.timberLocation || item.disposalYard}
                               </div>
                             </div>
                             <Link
@@ -1881,11 +1881,11 @@ export default function ProcessingConsolePage() {
                           </div>
                           <div>
                             <div style={{ fontSize: '10.5px', color: t.textSecondary }}>Weight</div>
-                            <div style={{ fontSize: '13px', fontWeight: 700, color: isDark ? '#f59e0b' : '#d97706' }}>{lotWeight} kg</div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: isDark ? '#f59e0b' : '#d97706' }}>{(lotWeight > 10 ? (lotWeight / 1000).toFixed(2) : lotWeight)} Ton</div>
                           </div>
                           <div>
                             <div style={{ fontSize: '10.5px', color: t.textSecondary }}>Avg Diameter</div>
-                            <div style={{ fontSize: '13px', fontWeight: 700, color: t.textPrimary }}>Ø {avgDiameter} cm</div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: t.textPrimary }}>Ø {(avgDiameter > 10 ? (avgDiameter / 30.48).toFixed(1) : avgDiameter)} ft</div>
                           </div>
                         </div>
 
@@ -2561,24 +2561,26 @@ export default function ProcessingConsolePage() {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Leaves Weight (kg)</label>
+                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Leaves Weight (Ton)</label>
                     <input
                       type="number"
-                      value={newBatchForm.foliageWeightKg}
+                      step="0.01"
+                      value={newBatchForm.foliageWeightKg ? (newBatchForm.foliageWeightKg / 1000).toFixed(2) : ''}
                       onChange={(e) => {
-                        const fol = Number(e.target.value);
+                        const fol = Math.round(Number(e.target.value) * 1000);
                         setNewBatchForm({ ...newBatchForm, foliageWeightKg: fol, initialWeightKg: fol + (newBatchForm.woodchipsWeightKg || 0) });
                       }}
                       style={{ width: '100%', padding: '9px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Branches / Woodchips (kg)</label>
+                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Branches / Woodchips (Ton)</label>
                     <input
                       type="number"
-                      value={newBatchForm.woodchipsWeightKg}
+                      step="0.01"
+                      value={newBatchForm.woodchipsWeightKg ? (newBatchForm.woodchipsWeightKg / 1000).toFixed(2) : ''}
                       onChange={(e) => {
-                        const wc = Number(e.target.value);
+                        const wc = Math.round(Number(e.target.value) * 1000);
                         setNewBatchForm({ ...newBatchForm, woodchipsWeightKg: wc, initialWeightKg: (newBatchForm.foliageWeightKg || 0) + wc });
                       }}
                       style={{ width: '100%', padding: '9px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
@@ -2747,23 +2749,25 @@ export default function ProcessingConsolePage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Weight (kg)</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Weight (Ton)</label>
                     <input
                       type="number"
-                      value={lotForm.totalWeightKg || lotForm.estimatedWeightKg || ''}
+                      step="0.01"
+                      value={lotForm.totalWeightKg ? (lotForm.totalWeightKg / 1000).toFixed(2) : (lotForm.estimatedWeightKg ? (lotForm.estimatedWeightKg / 1000).toFixed(2) : '')}
                       onChange={(e) => {
-                        const val = Number(e.target.value);
+                        const val = Math.round(Number(e.target.value) * 1000);
                         setLotForm({ ...lotForm, totalWeightKg: val, estimatedWeightKg: val });
                       }}
                       style={{ width: '100%', padding: '9px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Avg Dia (cm)</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: t.textSecondary, marginBottom: '4px' }}>Avg Dia (feet)</label>
                     <input
                       type="number"
-                      value={lotForm.averageDiameterCm || ''}
-                      onChange={(e) => setLotForm({ ...lotForm, averageDiameterCm: Number(e.target.value) })}
+                      step="0.1"
+                      value={lotForm.averageDiameterCm ? (lotForm.averageDiameterCm / 30.48).toFixed(1) : ''}
+                      onChange={(e) => setLotForm({ ...lotForm, averageDiameterCm: Math.round(Number(e.target.value) * 30.48) })}
                       style={{ width: '100%', padding: '9px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     />
                   </div>
