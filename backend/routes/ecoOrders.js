@@ -5,6 +5,7 @@ const Razorpay = require('razorpay');
 const EcoOrder = require('../models/EcoOrder');
 const EcoProduct = require('../models/EcoProduct');
 const EcoPointsTransaction = require('../models/EcoPointsTransaction');
+const { calculateUserNetBalance } = require('../services/pointsService');
 const {
   sendOrderPlacedEmail,
   sendOrderAssignedEmail,
@@ -232,19 +233,46 @@ const createCheckoutHandler = async (req, res) => {
       });
     }
 
-    const deliveryFee = fulfillmentType === 'Home Delivery' ? 50 : 0;
-    let finalAmountInr = subtotalInr + deliveryFee;
-    let pointsUsed = 0;
+    const isDelivery = fulfillmentType === 'Home Delivery';
+    const deliveryFee = isDelivery && subtotalInr > 0 ? 99 : 0;
 
-    // Check Eco-Points redemption
-    if (paymentMethod === 'Eco-Points Full Redemption' || ecoPointsToUse > 0) {
-      pointsUsed = paymentMethod === 'Eco-Points Full Redemption' ? totalPointsRequired : Number(ecoPointsToUse);
-      if (paymentMethod === 'Eco-Points Full Redemption') {
-        finalAmountInr = deliveryFee; // Only pay delivery if any
-      } else {
-        const discountInr = Math.min(pointsUsed * 2, finalAmountInr); // 1 point = ₹2 discount
-        finalAmountInr = Math.max(0, finalAmountInr - discountInr);
+    // Eco-Points calculation: 1 pt = ₹2 discount, up to 100% of subtotal
+    const maxPointsForSubtotal = Math.ceil(subtotalInr / 2);
+    let requestedPoints = Number(ecoPointsToUse || 0);
+
+    if (paymentMethod === 'Eco-Points Full Redemption') {
+      requestedPoints = maxPointsForSubtotal;
+    }
+
+    // Verify user's actual available balance
+    let availableBal = Infinity;
+    if (userId && userId !== 'GUEST_USER' && userId !== 'citizen') {
+      try {
+        const balInfo = await calculateUserNetBalance(userId, userEmail);
+        availableBal = balInfo.netBalance;
+      } catch (balErr) {
+        console.warn('Balance lookup notice:', balErr.message);
       }
+    }
+
+    const pointsUsed = Math.max(0, Math.min(requestedPoints, maxPointsForSubtotal, isFinite(availableBal) ? availableBal : requestedPoints));
+    const pointsDiscountInr = Math.min(pointsUsed * 2, subtotalInr);
+    const finalAmountInr = Math.max(0, subtotalInr + deliveryFee - pointsDiscountInr);
+
+    let effectivePaymentMethod;
+    let effectivePaymentStatus;
+    let isCod = false;
+
+    if (finalAmountInr === 0) {
+      effectivePaymentMethod = 'Eco-Points Full Redemption';
+      effectivePaymentStatus = 'Paid';
+    } else if (paymentMethod === 'Cash on Delivery' || paymentMethod === 'COD') {
+      effectivePaymentMethod = 'Cash on Delivery';
+      effectivePaymentStatus = 'Pending';
+      isCod = true;
+    } else {
+      effectivePaymentMethod = 'Razorpay Online';
+      effectivePaymentStatus = 'Pending';
     }
 
     const count = await EcoOrder.countDocuments();
@@ -259,8 +287,7 @@ const createCheckoutHandler = async (req, res) => {
     };
 
     // 1. If COD or 100% Eco-Points or Free
-    if (finalAmountInr === 0 || paymentMethod === 'Eco-Points Full Redemption' || paymentMethod === 'Cash on Delivery') {
-      const isCod = paymentMethod === 'Cash on Delivery';
+    if (finalAmountInr === 0 || isCod) {
       const order = new EcoOrder({
         orderNumber,
         userId: userId || 'citizen',
@@ -268,10 +295,13 @@ const createCheckoutHandler = async (req, res) => {
         userEmail: (userEmail || '').toLowerCase(),
         userPhone: userPhone || '',
         items: orderItems,
+        subtotalInr,
+        deliveryFee,
+        pointsDiscountInr,
         totalAmountInr: finalAmountInr,
         totalEcoPointsUsed: pointsUsed,
-        paymentMethod: paymentMethod || (finalAmountInr === 0 ? 'Eco-Points Full Redemption' : 'Cash on Delivery'),
-        paymentStatus: isCod ? 'Pending' : 'Paid',
+        paymentMethod: effectivePaymentMethod,
+        paymentStatus: effectivePaymentStatus,
         fulfillmentType: fulfillmentType || 'Home Delivery',
         deliveryAddress: deliveryAddress || {},
         deliveryCoordinates: deliveryCoords,
@@ -287,7 +317,9 @@ const createCheckoutHandler = async (req, res) => {
         statusTimeline: [{
           status: 'Order Placed',
           timestamp: new Date(),
-          note: isCod ? 'Order placed with Cash on Delivery' : 'Order placed and paid with Eco-Points',
+          note: isCod
+            ? `Order placed with Cash on Delivery (₹${finalAmountInr} payable at delivery)`
+            : 'Order fully paid via Eco-Points redemption',
           updatedBy: userName || 'Citizen'
         }]
       });
@@ -301,19 +333,33 @@ const createCheckoutHandler = async (req, res) => {
 
       // Log Eco-Points transaction if used
       if (pointsUsed > 0) {
-        await new EcoPointsTransaction({
-          userId: (userId || '').toString(),
-          userEmail: (userEmail || '').toLowerCase(),
-          type: 'REDEEM',
-          points: -pointsUsed,
-          description: `Eco-Store Purchase (${orderNumber})`
-        }).save();
+        let balAfter = 0;
+        try {
+          const balInfo = await calculateUserNetBalance(userId, userEmail);
+          balAfter = Math.max(0, balInfo.netBalance - pointsUsed);
+        } catch (err) {
+          balAfter = Math.max(0, (isFinite(availableBal) ? availableBal : pointsUsed) - pointsUsed);
+        }
+
+        try {
+          await new EcoPointsTransaction({
+            userId: (userId || '').toString(),
+            userEmail: (userEmail || '').toLowerCase(),
+            type: 'REDEEM',
+            points: -pointsUsed,
+            description: `Eco-Store Purchase (${orderNumber} - ₹${pointsDiscountInr} discount)`,
+            referenceId: order._id.toString(),
+            balanceAfter: balAfter
+          }).save();
+        } catch (txErr) {
+          console.error('EcoPointsTransaction save error in COD/points order:', txErr);
+        }
       }
 
       // Send Order Placed Email
       sendOrderPlacedEmail(order).catch(e => console.error('Email error:', e.message));
 
-      return res.json({ success: true, isFreeOrPointsOnly: true, isCod, order });
+      return res.json({ success: true, isFreeOrPointsOnly: finalAmountInr === 0, isCod, order });
     }
 
     // 2. Razorpay Online Order Creation
@@ -349,10 +395,13 @@ const createCheckoutHandler = async (req, res) => {
       userEmail: (userEmail || '').toLowerCase(),
       userPhone: userPhone || '',
       items: orderItems,
+      subtotalInr,
+      deliveryFee,
+      pointsDiscountInr,
       totalAmountInr: finalAmountInr,
       totalEcoPointsUsed: pointsUsed,
-      paymentMethod: 'Razorpay Online',
-      paymentStatus: 'Pending',
+      paymentMethod: effectivePaymentMethod,
+      paymentStatus: effectivePaymentStatus,
       razorpayOrderId: razorpayOrderId || `order_demo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       fulfillmentType: fulfillmentType || 'Home Delivery',
       deliveryAddress: deliveryAddress || {},
@@ -368,7 +417,7 @@ const createCheckoutHandler = async (req, res) => {
       statusTimeline: [{
         status: 'Order Placed',
         timestamp: new Date(),
-        note: 'Checkout initiated via Razorpay Online',
+        note: `Checkout initiated via Razorpay Online for ₹${finalAmountInr}`,
         updatedBy: userName || 'Citizen'
       }]
     });
@@ -439,13 +488,35 @@ router.post('/verify-payment', async (req, res) => {
 
     // Deduct Eco-Points if used for partial payment
     if (order.totalEcoPointsUsed > 0) {
-      await new EcoPointsTransaction({
+      const existingTx = await EcoPointsTransaction.findOne({
         userId: (order.userId || '').toString(),
-        userEmail: (order.userEmail || '').toLowerCase(),
-        type: 'REDEEM',
-        points: -order.totalEcoPointsUsed,
-        description: `Eco-Store Purchase (${order.orderNumber})`
-      }).save();
+        referenceId: order._id.toString(),
+        type: 'REDEEM'
+      });
+
+      if (!existingTx) {
+        let balAfter = 0;
+        try {
+          const balInfo = await calculateUserNetBalance(order.userId, order.userEmail);
+          balAfter = Math.max(0, balInfo.netBalance - order.totalEcoPointsUsed);
+        } catch (err) {
+          balAfter = 0;
+        }
+
+        try {
+          await new EcoPointsTransaction({
+            userId: (order.userId || '').toString(),
+            userEmail: (order.userEmail || '').toLowerCase(),
+            type: 'REDEEM',
+            points: -order.totalEcoPointsUsed,
+            description: `Eco-Store Purchase (${order.orderNumber} - ₹${order.pointsDiscountInr || order.totalEcoPointsUsed * 2} discount)`,
+            referenceId: order._id.toString(),
+            balanceAfter: balAfter
+          }).save();
+        } catch (txErr) {
+          console.error('EcoPointsTransaction save error in verify-payment:', txErr);
+        }
+      }
     }
 
     // Send Order Placed & Confirmed Email

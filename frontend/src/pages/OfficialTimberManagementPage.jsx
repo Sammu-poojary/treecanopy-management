@@ -217,7 +217,13 @@ export default function OfficialTimberManagementPage() {
       }
       if (buyersRes.ok) {
         const buyersData = await buyersRes.json();
-        setBuyers(Array.isArray(buyersData) ? buyersData : []);
+        const validBuyers = (Array.isArray(buyersData) ? buyersData : []).filter(b => {
+          const role = (b.role || '').toLowerCase();
+          const isExcludedRole = role.includes('delivery') || role.includes('cutter') || role.includes('official') || role.includes('admin') || role.includes('citizen');
+          if (isExcludedRole) return false;
+          return role.includes('timber') || !role;
+        });
+        setBuyers(validBuyers);
       }
     } catch (err) {
       console.error('Error fetching timber lots & intakes:', err);

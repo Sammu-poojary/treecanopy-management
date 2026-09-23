@@ -21,6 +21,9 @@ const ecoOrderSchema = new mongoose.Schema({
   userPhone: { type: String, default: '' },
   
   items: [orderItemSchema],
+  subtotalInr: { type: Number, default: 0 },
+  deliveryFee: { type: Number, default: 0 },
+  pointsDiscountInr: { type: Number, default: 0 },
   totalAmountInr: { type: Number, default: 0 },
   totalEcoPointsUsed: { type: Number, default: 0 },
   paymentMethod: {

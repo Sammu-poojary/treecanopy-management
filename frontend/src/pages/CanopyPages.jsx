@@ -8651,7 +8651,7 @@ export function AdminConsolePage() {
   }, [showOfficialModal]);
 
   const handleAcceptUser = async (dbId, userName) => {
-    if (!window.confirm(`Are you sure you want to verify and accept tree cutter ${userName}?`)) return;
+    if (!window.confirm(`Are you sure you want to verify and accept tree cutter ${userName}? An approval confirmation email will be sent immediately.`)) return;
     if (dbId) {
       try {
         const response = await fetch(`${API_URL}/api/auth/users/${dbId}/status`, {
@@ -8661,7 +8661,7 @@ export function AdminConsolePage() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.msg || 'Failed to verify user');
-        alert(`Successfully verified tree cutter ${userName}!`);
+        alert(`Successfully verified tree cutter ${userName}! Approval email has been dispatched.`);
         fetchUsers();
       } catch (err) {
         alert(err.message);
@@ -8670,17 +8670,21 @@ export function AdminConsolePage() {
   };
 
   const handleRejectUser = async (dbId, userName) => {
-    if (!window.confirm(`Are you sure you want to reject tree cutter ${userName}? This will restrict their access.`)) return;
+    const reason = window.prompt(
+      `Enter rejection reason for tree cutter ${userName} (this will be sent in their notification email):`,
+      'Credentials and documentation could not be verified by the municipal authority.'
+    );
+    if (reason === null) return; // User cancelled
     if (dbId) {
       try {
         const response = await fetch(`${API_URL}/api/auth/users/${dbId}/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'Rejected' }),
+          body: JSON.stringify({ status: 'Rejected', reason }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.msg || 'Failed to reject user');
-        alert(`Successfully rejected tree cutter ${userName}!`);
+        alert(`Successfully rejected tree cutter ${userName}! Rejection notification email has been dispatched.`);
         fetchUsers();
       } catch (err) {
         alert(err.message);
@@ -8968,6 +8972,8 @@ export function AdminConsolePage() {
                   <LogIn size={16} /> Login to Dashboard
                 </button>
 
+                {/* Continue with Google button not required for Admin - commented out */}
+                {/* 
                 <div style={{ display: 'flex', alignItems: 'center', margin: '1.25rem 0', gap: '0.75rem' }}>
                   <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
                   <span style={{ color: '#6b7280', fontSize: '0.75rem', fontWeight: '500' }}>OR</span>
@@ -9001,6 +9007,7 @@ export function AdminConsolePage() {
                     shape="pill"
                   />
                 </div>
+                */}
               </form>
             </div>
 

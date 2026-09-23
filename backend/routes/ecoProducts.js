@@ -132,10 +132,23 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Helper to normalize weight to kg for delivery calculations
+function computeWeightKg(val, unit) {
+  const num = Number(val);
+  if (isNaN(num) || num <= 0) return 0;
+  const u = (unit || 'kg').toLowerCase().trim();
+  if (u === 'g' || u === 'grm' || u === 'gm') return num / 1000;
+  if (u === 'mg') return num / 1000000;
+  if (u === 'ton' || u === 'tonne') return num * 1000;
+  if (u === 'ml') return num / 1000;
+  if (u === 'l' || u === 'ltr') return num;
+  return num; // default kg / pcs
+}
+
 // ── POST /api/eco-products (Add product by Processing Manager / Admin)
 router.post('/', async (req, res) => {
   try {
-    const { name, category, description, unitSize, weightKg, priceInr, priceEcoPoints, stockQuantity, imageBase64, npkRatio, usageInstructions, benefits } = req.body;
+    const { name, category, description, unitSize, weightKg, weightValue, weightUnit, priceInr, priceEcoPoints, stockQuantity, imageBase64, npkRatio, usageInstructions, benefits } = req.body;
     let imageUrl = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&auto=format&fit=crop&q=80';
 
     if (imageBase64 && imageBase64.startsWith('data:image')) {
@@ -153,13 +166,19 @@ router.post('/', async (req, res) => {
     const count = await EcoProduct.countDocuments();
     const sku = `ECO-${category ? category.slice(0, 3).toUpperCase() : 'PRD'}-${String(count + 1).padStart(3, '0')}`;
 
+    const wVal = Number(weightValue !== undefined && weightValue !== '' ? weightValue : (weightKg || 5));
+    const wUnit = weightUnit || 'kg';
+    const computedKg = computeWeightKg(wVal, wUnit);
+
     const product = new EcoProduct({
       name,
       sku,
       category: category || 'Organic Compost',
       description: description || 'Municipal recycled tree biomass organic product.',
-      unitSize: unitSize || '5 kg Bag',
-      weightKg: Number(weightKg || 5),
+      unitSize: unitSize || `${wVal} ${wUnit}`,
+      weightKg: computedKg,
+      weightValue: wVal,
+      weightUnit: wUnit,
       priceInr: Number(priceInr || 99),
       priceEcoPoints: Number(priceEcoPoints || 40),
       stockQuantity: Number(stockQuantity || 50),
@@ -180,6 +199,15 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const updates = { ...req.body };
+
+    if (updates.weightValue !== undefined || updates.weightUnit !== undefined) {
+      const wVal = Number(updates.weightValue !== undefined ? updates.weightValue : updates.weightKg);
+      const wUnit = updates.weightUnit || 'kg';
+      updates.weightKg = computeWeightKg(wVal, wUnit);
+      updates.weightValue = wVal;
+      updates.weightUnit = wUnit;
+    }
+
     // Handle image upload if a base64 string is provided
     if (updates.imageBase64 && updates.imageBase64.startsWith('data:image')) {
       try {
@@ -208,6 +236,20 @@ router.delete('/:id', async (req, res) => {
     res.json({ success: true, message: 'Product deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+const { generateProductDetails } = require('../services/aiProductService');
+
+// ── POST /api/eco-products/ai-autofill (AI Auto-Fill Product Details)
+router.post('/ai-autofill', async (req, res) => {
+  try {
+    const { name, category, unitSize, weightValue, weightUnit } = req.body;
+    const generated = await generateProductDetails({ name, category, unitSize, weightValue, weightUnit });
+    res.json({ success: true, ...generated });
+  } catch (err) {
+    console.error('[AI Auto-Fill Route Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to generate product details' });
   }
 });
 

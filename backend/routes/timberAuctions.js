@@ -78,10 +78,7 @@ router.get('/', async (req, res) => {
 router.get('/buyers', async (req, res) => {
   try {
     const buyers = await User.find({
-      $or: [
-        { role: { $in: ['Timber Buyer', 'Timber Merchant'] } },
-        { businessName: { $exists: true, $ne: '', $ne: null } }
-      ]
+      role: { $in: ['Timber Buyer', 'Timber Merchant'] }
     }).select('-password').sort({ createdAt: -1 });
 
     // Attach bid counts & won lots stats to each buyer
@@ -98,8 +95,9 @@ router.get('/buyers', async (req, res) => {
         return {
           id: b._id,
           name: b.name,
+          role: b.role,
           companyName: b.businessName || b.company || b.name,
-          businessType: b.businessType || 'Sawmill / Lumber Mill',
+          businessType: b.businessType || (b.role === 'Timber Merchant' ? 'Sawmill / Lumber Mill' : 'Timber Wholesaler / Trader'),
           email: b.email,
           phone: b.phone,
           gstin: b.gstin || 'Unspecified',

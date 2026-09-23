@@ -55,6 +55,44 @@ export default function DeliveryDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('ACTIVE'); // 'ACTIVE', 'COMPLETED', 'ALL'
 
+  // Theme state & sync with Topbar / system
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  useEffect(() => {
+    const syncTheme = () => {
+      setIsDark(localStorage.getItem('theme') === 'dark');
+    };
+    window.addEventListener('themeChange', syncTheme);
+    window.addEventListener('storage', syncTheme);
+    return () => {
+      window.removeEventListener('themeChange', syncTheme);
+      window.removeEventListener('storage', syncTheme);
+    };
+  }, []);
+
+  const t = {
+    bgPage: isDark ? '#090d16' : '#f8fafc',
+    bgBanner: isDark
+      ? 'linear-gradient(180deg, rgba(2, 132, 199, 0.2) 0%, rgba(9, 13, 22, 0.95) 100%)'
+      : 'linear-gradient(180deg, rgba(2, 132, 199, 0.12) 0%, rgba(241, 245, 249, 0.95) 100%)',
+    bannerBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    bgCard: isDark ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
+    bgCardSubtle: isDark ? 'rgba(30, 41, 59, 0.6)' : '#f1f5f9',
+    bgInput: isDark ? '#1e293b' : '#ffffff',
+    border: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    borderStrong: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1',
+    textPrimary: isDark ? '#f8fafc' : '#0f172a',
+    textSecondary: isDark ? '#94a3b8' : '#475569',
+    textMuted: isDark ? '#64748b' : '#94a3b8',
+    addressBoxBg: isDark ? 'rgba(0, 0, 0, 0.3)' : '#f8fafc',
+    addressBoxBorder: isDark ? 'rgba(255, 255, 255, 0.05)' : '#e2e8f0',
+    modalBg: isDark ? '#0f172a' : '#ffffff',
+    modalBorder: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e2e8f0',
+    cardShadow: isDark ? '0 10px 25px rgba(0,0,0,0.25)' : '0 4px 16px rgba(0,0,0,0.06)',
+    tabInactiveBg: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9',
+    tabInactiveText: isDark ? '#94a3b8' : '#64748b',
+    tabInactiveBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0'
+  };
+
   // Logged-in delivery partner profile (dynamically read from localStorage)
   const [partner, setPartner] = useState(() => {
     try {
@@ -602,18 +640,18 @@ export default function DeliveryDashboardPage() {
     };
   }, [activeNavOrder]);
 
-  const filteredTasks = tasks.filter(t => {
-    const isCompleted = t.currentDeliveryStatus === 'Delivered' || t.orderStatus === 'Delivered / Collected';
+  const filteredTasks = tasks.filter(task => {
+    const isCompleted = task.currentDeliveryStatus === 'Delivered' || task.orderStatus === 'Delivered / Collected';
     if (activeFilter === 'ACTIVE') return !isCompleted;
     if (activeFilter === 'COMPLETED') return isCompleted;
     return true;
   });
 
   // Calculate total COD cash currently held in hand by this delivery partner
-  const cashInHand = tasks.filter(t =>
-    (t.paymentMethod === 'Cash on Delivery' || t.paymentMethod === 'COD') &&
-    t.cashCollectionStatus === 'Collected'
-  ).reduce((sum, t) => sum + (Number(t.cashCollected) || Number(t.totalAmountInr) || 0), 0);
+  const cashInHand = tasks.filter(task =>
+    (task.paymentMethod === 'Cash on Delivery' || task.paymentMethod === 'COD') &&
+    task.cashCollectionStatus === 'Collected'
+  ).reduce((sum, task) => sum + (Number(task.cashCollected) || Number(task.totalAmountInr) || 0), 0);
 
   const getPaymentBadge = (order) => {
     const isCod = order.paymentMethod === 'Cash on Delivery' || order.paymentMethod === 'COD';
@@ -624,9 +662,9 @@ export default function DeliveryDashboardPage() {
 
     if (isPoints) {
       return {
-        bg: 'rgba(168, 85, 247, 0.15)',
-        border: 'rgba(168, 85, 247, 0.3)',
-        color: '#c084fc',
+        bg: isDark ? 'rgba(168, 85, 247, 0.15)' : '#faf5ff',
+        border: isDark ? 'rgba(168, 85, 247, 0.3)' : '#e9d5ff',
+        color: isDark ? '#c084fc' : '#7e22ce',
         label: '🪙 Paid via Eco-Points',
         sub: 'Points Redeemed • ₹0 Due'
       };
@@ -635,26 +673,26 @@ export default function DeliveryDashboardPage() {
     if (isCod) {
       if (isDeposited || (isPaid && !isCollected)) {
         return {
-          bg: 'rgba(16, 185, 129, 0.15)',
-          border: 'rgba(16, 185, 129, 0.3)',
-          color: '#34d399',
+          bg: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+          border: isDark ? 'rgba(16, 185, 129, 0.3)' : '#a7f3d0',
+          color: isDark ? '#34d399' : '#047857',
           label: `✅ COD Settled to Treasury (₹${order.cashCollected || order.totalAmountInr})`,
           sub: 'Cash turned in & verified by office'
         };
       }
       if (isCollected) {
         return {
-          bg: 'rgba(245, 158, 11, 0.18)',
-          border: 'rgba(245, 158, 11, 0.4)',
-          color: '#fbbf24',
+          bg: isDark ? 'rgba(245, 158, 11, 0.18)' : '#fffbeb',
+          border: isDark ? 'rgba(245, 158, 11, 0.4)' : '#fde68a',
+          color: isDark ? '#fbbf24' : '#b45309',
           label: `📦 Cash with You: ₹${order.cashCollected || order.totalAmountInr}`,
           sub: 'Deposit to biomass yard office'
         };
       }
       return {
-        bg: 'rgba(239, 68, 68, 0.15)',
-        border: 'rgba(239, 68, 68, 0.35)',
-        color: '#f87171',
+        bg: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
+        border: isDark ? 'rgba(239, 68, 68, 0.35)' : '#fecaca',
+        color: isDark ? '#f87171' : '#b91c1c',
         label: `💵 Collect ₹${order.totalAmountInr} COD Cash`,
         sub: '⚠️ Collect exact cash before OTP handover'
       };
@@ -663,9 +701,9 @@ export default function DeliveryDashboardPage() {
     // Razorpay Online
     if (isPaid) {
       return {
-        bg: 'rgba(16, 185, 129, 0.15)',
-        border: 'rgba(16, 185, 129, 0.3)',
-        color: '#34d399',
+        bg: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+        border: isDark ? 'rgba(16, 185, 129, 0.3)' : '#a7f3d0',
+        color: isDark ? '#34d399' : '#047857',
         label: `✅ Paid Online (₹${order.totalAmountInr})`,
         sub: 'Pre-paid digitally via Razorpay'
       };
@@ -673,9 +711,9 @@ export default function DeliveryDashboardPage() {
 
     if (order.paymentStatus === 'Failed') {
       return {
-        bg: 'rgba(239, 68, 68, 0.2)',
-        border: 'rgba(239, 68, 68, 0.4)',
-        color: '#f87171',
+        bg: isDark ? 'rgba(239, 68, 68, 0.2)' : '#fef2f2',
+        border: isDark ? 'rgba(239, 68, 68, 0.4)' : '#fecaca',
+        color: isDark ? '#f87171' : '#b91c1c',
         label: `❌ Online Payment Failed (₹${order.totalAmountInr})`,
         sub: 'Citizen payment attempt failed'
       };
@@ -683,23 +721,24 @@ export default function DeliveryDashboardPage() {
 
     // Pending / Unpaid Online
     return {
-      bg: 'rgba(245, 158, 11, 0.15)',
-      border: 'rgba(245, 158, 11, 0.35)',
-      color: '#fbbf24',
+      bg: isDark ? 'rgba(245, 158, 11, 0.15)' : '#fffbeb',
+      border: isDark ? 'rgba(245, 158, 11, 0.35)' : '#fde68a',
+      color: isDark ? '#fbbf24' : '#b45309',
       label: `⚠️ Unpaid Online: Pending (₹${order.totalAmountInr})`,
       sub: 'Online checkout pending / not completed'
     };
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#090d16', color: '#f8fafc', fontFamily: 'Inter, sans-serif' }}>
-      <Topbar role="Delivery Partner" />
+    <div style={{ minHeight: '100vh', background: t.bgPage, color: t.textPrimary, fontFamily: 'Inter, sans-serif', transition: 'background-color 0.25s ease, color 0.25s ease' }}>
+      <Topbar title="Delivery Partner Portal" role="Delivery Partner" />
 
       {/* Driver Status Banner */}
       <div style={{
-        background: 'linear-gradient(180deg, rgba(2, 132, 199, 0.2) 0%, rgba(9, 13, 22, 0.95) 100%)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        padding: '24px 20px 20px'
+        background: t.bgBanner,
+        borderBottom: `1px solid ${t.bannerBorder}`,
+        padding: '24px 20px 20px',
+        transition: 'background 0.25s ease, border-color 0.25s ease'
       }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
@@ -718,38 +757,38 @@ export default function DeliveryDashboardPage() {
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>
+                  <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: t.textPrimary }}>
                     {partner.name}
                   </h1>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: isDark ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7', color: isDark ? '#34d399' : '#047857' }}>
                     🟢 Shift Active
                   </span>
                 </div>
-                <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
-                  🛵 {partner.vehicleType} • <b style={{ color: '#f8fafc' }}>{partner.vehicleNumber}</b> • {partner.deliveryZone}
+                <div style={{ fontSize: '13px', color: t.textSecondary, marginTop: '2px' }}>
+                  🛵 {partner.vehicleType} • <b style={{ color: t.textPrimary }}>{partner.vehicleNumber}</b> • {partner.deliveryZone}
                 </div>
               </div>
             </div>
 
             {/* Attendance & Shift Card */}
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'rgba(30, 41, 59, 0.6)', padding: '8px 14px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: t.bgCardSubtle, padding: '8px 14px', borderRadius: '12px', border: `1px solid ${t.border}`, boxShadow: t.cardShadow }}>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Shift Clock-in</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#38bdf8' }}>{clockInTime} (Morning)</div>
+                <div style={{ fontSize: '11px', color: t.textSecondary, textTransform: 'uppercase', fontWeight: 600 }}>Shift Clock-in</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: isDark ? '#38bdf8' : '#0284c7' }}>{clockInTime} (Morning)</div>
               </div>
 
               {/* Cash in Hand Indicator for COD Handover */}
               <div style={{
                 textAlign: 'right',
-                background: cashInHand > 0 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.1)',
-                border: cashInHand > 0 ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(16, 185, 129, 0.25)',
+                background: cashInHand > 0 ? (isDark ? 'rgba(245, 158, 11, 0.15)' : '#fffbeb') : (isDark ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5'),
+                border: cashInHand > 0 ? (isDark ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid #fde68a') : (isDark ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid #a7f3d0'),
                 padding: '6px 14px',
                 borderRadius: '10px'
               }}>
-                <div style={{ fontSize: '10px', color: cashInHand > 0 ? '#fbbf24' : '#34d399', textTransform: 'uppercase', fontWeight: 700 }}>
+                <div style={{ fontSize: '10px', color: cashInHand > 0 ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#34d399' : '#059669'), textTransform: 'uppercase', fontWeight: 700 }}>
                   💵 Cash in Hand
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 800, color: cashInHand > 0 ? '#f59e0b' : '#10b981' }}>
+                <div style={{ fontSize: '15px', fontWeight: 800, color: cashInHand > 0 ? (isDark ? '#f59e0b' : '#d97706') : (isDark ? '#10b981' : '#059669') }}>
                   ₹{cashInHand}
                 </div>
                 <button
@@ -757,7 +796,7 @@ export default function DeliveryDashboardPage() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#38bdf8',
+                    color: isDark ? '#38bdf8' : '#0284c7',
                     fontSize: '11px',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -776,14 +815,15 @@ export default function DeliveryDashboardPage() {
               <button
                 onClick={() => setShowLeaveModal(true)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#f8fafc',
+                  background: isDark ? 'rgba(255, 255, 255, 0.08)' : '#ffffff',
+                  border: `1px solid ${t.borderStrong}`,
+                  color: t.textPrimary,
                   padding: '6px 12px',
                   borderRadius: '8px',
                   fontSize: '12px',
                   fontWeight: 600,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
                 }}
               >
                 Apply Leave
@@ -793,9 +833,9 @@ export default function DeliveryDashboardPage() {
                 onClick={fetchTasks}
                 title="Refresh Delivery Tasks"
                 style={{
-                  background: 'rgba(2, 132, 199, 0.2)',
-                  border: '1px solid rgba(2, 132, 199, 0.4)',
-                  color: '#38bdf8',
+                  background: isDark ? 'rgba(2, 132, 199, 0.2)' : '#e0f2fe',
+                  border: `1px solid ${isDark ? 'rgba(2, 132, 199, 0.4)' : '#bae6fd'}`,
+                  color: isDark ? '#38bdf8' : '#0284c7',
                   padding: '6px 10px',
                   borderRadius: '8px',
                   cursor: 'pointer'
@@ -808,9 +848,9 @@ export default function DeliveryDashboardPage() {
                 onClick={handleLogout}
                 title="Log Out of Delivery Portal"
                 style={{
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid rgba(239, 68, 68, 0.35)',
-                  color: '#f87171',
+                  background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
+                  border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.35)' : '#fecaca'}`,
+                  color: isDark ? '#f87171' : '#dc2626',
                   padding: '6px 14px',
                   borderRadius: '8px',
                   fontSize: '12px',
@@ -842,12 +882,13 @@ export default function DeliveryDashboardPage() {
                 fontSize: '13px',
                 fontWeight: 700,
                 cursor: 'pointer',
-                border: activeFilter === 'ACTIVE' ? '1px solid #0284c7' : '1px solid rgba(255, 255, 255, 0.1)',
-                background: activeFilter === 'ACTIVE' ? 'rgba(2, 132, 199, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                color: activeFilter === 'ACTIVE' ? '#38bdf8' : '#94a3b8'
+                border: activeFilter === 'ACTIVE' ? '1px solid #0284c7' : `1px solid ${t.tabInactiveBorder}`,
+                background: activeFilter === 'ACTIVE' ? (isDark ? 'rgba(2, 132, 199, 0.2)' : '#e0f2fe') : t.tabInactiveBg,
+                color: activeFilter === 'ACTIVE' ? (isDark ? '#38bdf8' : '#0284c7') : t.tabInactiveText,
+                boxShadow: !isDark && activeFilter === 'ACTIVE' ? '0 1px 3px rgba(2, 132, 199, 0.15)' : 'none'
               }}
             >
-              🚴 Active Orders ({tasks.filter(t => t.currentDeliveryStatus !== 'Delivered' && t.orderStatus !== 'Delivered / Collected').length})
+              🚴 Active Orders ({tasks.filter(task => task.currentDeliveryStatus !== 'Delivered' && task.orderStatus !== 'Delivered / Collected').length})
             </button>
 
             <button
@@ -858,28 +899,29 @@ export default function DeliveryDashboardPage() {
                 fontSize: '13px',
                 fontWeight: 700,
                 cursor: 'pointer',
-                border: activeFilter === 'COMPLETED' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.1)',
-                background: activeFilter === 'COMPLETED' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                color: activeFilter === 'COMPLETED' ? '#34d399' : '#94a3b8'
+                border: activeFilter === 'COMPLETED' ? '1px solid #10b981' : `1px solid ${t.tabInactiveBorder}`,
+                background: activeFilter === 'COMPLETED' ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7') : t.tabInactiveBg,
+                color: activeFilter === 'COMPLETED' ? (isDark ? '#34d399' : '#059669') : t.tabInactiveText,
+                boxShadow: !isDark && activeFilter === 'COMPLETED' ? '0 1px 3px rgba(16, 185, 129, 0.15)' : 'none'
               }}
             >
-              ✅ Completed Today ({tasks.filter(t => t.currentDeliveryStatus === 'Delivered' || t.orderStatus === 'Delivered / Collected').length})
+              ✅ Completed Today ({tasks.filter(task => task.currentDeliveryStatus === 'Delivered' || task.orderStatus === 'Delivered / Collected').length})
             </button>
           </div>
 
-          <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+          <span style={{ fontSize: '13px', color: t.textMuted, fontWeight: 600 }}>
             {filteredTasks.length} deliveries in queue
           </span>
         </div>
 
         {/* Tasks List */}
         {filteredTasks.length === 0 ? (
-          <div style={{ background: 'rgba(15, 23, 42, 0.4)', borderRadius: '16px', padding: '56px 20px', textAlign: 'center', border: '1px dashed rgba(255, 255, 255, 0.1)' }}>
-            <Package size={44} color="#64748b" style={{ margin: '0 auto 14px' }} />
-            <h3 style={{ color: '#f8fafc', margin: '0 0 6px 0', fontSize: '18px' }}>
+          <div style={{ background: isDark ? 'rgba(15, 23, 42, 0.4)' : '#ffffff', borderRadius: '16px', padding: '56px 20px', textAlign: 'center', border: isDark ? '1px dashed rgba(255, 255, 255, 0.1)' : '1px dashed #cbd5e1', boxShadow: t.cardShadow }}>
+            <Package size={44} color={t.textMuted} style={{ margin: '0 auto 14px' }} />
+            <h3 style={{ color: t.textPrimary, margin: '0 0 6px 0', fontSize: '18px' }}>
               {activeFilter === 'ACTIVE' ? 'No Active Delivery Tasks' : 'No Completed Tasks Yet'}
             </h3>
-            <p style={{ color: '#94a3b8', fontSize: '14px', margin: 0 }}>
+            <p style={{ color: t.textMuted, fontSize: '14px', margin: 0 }}>
               {activeFilter === 'ACTIVE' ? 'You have cleared all assigned compost deliveries. Great work!' : 'Completed orders will appear here once verified.'}
             </p>
           </div>
@@ -895,17 +937,22 @@ export default function DeliveryDashboardPage() {
                 <div
                   key={order._id}
                   style={{
-                    background: 'rgba(15, 23, 42, 0.85)',
-                    border: isDelivered ? '1px solid rgba(16, 185, 129, 0.3)' : isOutForDelivery ? '1px solid rgba(2, 132, 199, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                    background: t.bgCard,
+                    border: isDelivered
+                      ? (isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #86efac')
+                      : isOutForDelivery
+                      ? (isDark ? '1px solid rgba(2, 132, 199, 0.4)' : '1px solid #7dd3fc')
+                      : `1px solid ${t.border}`,
                     borderRadius: '16px',
                     padding: '20px',
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+                    boxShadow: t.cardShadow,
+                    transition: 'box-shadow 0.2s ease, border-color 0.2s ease'
                   }}
                 >
                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '17px', fontWeight: 800, color: '#f8fafc' }}>
+                        <span style={{ fontSize: '17px', fontWeight: 800, color: t.textPrimary }}>
                           {order.orderNumber}
                         </span>
                         <span style={{
@@ -913,14 +960,27 @@ export default function DeliveryDashboardPage() {
                           fontWeight: 700,
                           padding: '2px 8px',
                           borderRadius: '6px',
-                          background: isDelivered ? 'rgba(16, 185, 129, 0.15)' : isOutForDelivery ? 'rgba(2, 132, 199, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                          color: isDelivered ? '#34d399' : isOutForDelivery ? '#38bdf8' : '#fbbf24'
+                          background: isDelivered
+                            ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#dcfce7')
+                            : isOutForDelivery
+                            ? (isDark ? 'rgba(2, 132, 199, 0.2)' : '#e0f2fe')
+                            : (isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7'),
+                          color: isDelivered
+                            ? (isDark ? '#34d399' : '#059669')
+                            : isOutForDelivery
+                            ? (isDark ? '#38bdf8' : '#0284c7')
+                            : (isDark ? '#fbbf24' : '#b45309'),
+                          border: isDelivered
+                            ? (isDark ? 'none' : '1px solid #bbf7d0')
+                            : isOutForDelivery
+                            ? (isDark ? 'none' : '1px solid #bae6fd')
+                            : (isDark ? 'none' : '1px solid #fde68a')
                         }}>
                           {order.currentDeliveryStatus || order.orderStatus}
                         </span>
                       </div>
 
-                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#38bdf8', marginTop: '4px' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: isDark ? '#38bdf8' : '#0284c7', marginTop: '4px' }}>
                         {order.userName}
                       </div>
                     </div>
@@ -936,11 +996,11 @@ export default function DeliveryDashboardPage() {
                           borderRadius: '10px',
                           textAlign: 'right'
                         }}>
-                          <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Payment Status</div>
+                          <div style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Payment Status</div>
                           <div style={{ fontSize: '13px', fontWeight: 800, color: badge.color, marginTop: '1px' }}>
                             {badge.label}
                           </div>
-                          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>
+                          <div style={{ fontSize: '10px', color: isDark ? '#94a3b8' : '#64748b', marginTop: '1px' }}>
                             {badge.sub}
                           </div>
                         </div>
@@ -949,17 +1009,17 @@ export default function DeliveryDashboardPage() {
                   </div>
 
                   {/* Address Box */}
-                  <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '12px 14px', borderRadius: '12px', marginBottom: '14px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                    <div style={{ fontSize: '13px', color: '#f8fafc', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <MapPin size={16} color="#38bdf8" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ background: t.addressBoxBg, padding: '12px 14px', borderRadius: '12px', marginBottom: '14px', border: `1px solid ${t.addressBoxBorder}` }}>
+                    <div style={{ fontSize: '13px', color: t.textPrimary, display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <MapPin size={16} color={isDark ? '#38bdf8' : '#0284c7'} style={{ flexShrink: 0, marginTop: '2px' }} />
                       <div>
                         <b>{order.deliveryAddress?.street || 'Delivery Address'}</b>, {order.deliveryAddress?.city || 'Udupi'} - {order.deliveryAddress?.postalCode || '576101'}
                         {order.deliveryAddress?.landmark && (
-                          <div style={{ fontSize: '12px', color: '#fbbf24', marginTop: '2px' }}>
+                          <div style={{ fontSize: '12px', color: isDark ? '#fbbf24' : '#b45309', marginTop: '2px', fontWeight: 600 }}>
                             Landmark: {order.deliveryAddress.landmark}
                           </div>
                         )}
-                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                        <div style={{ fontSize: '12px', color: t.textMuted, marginTop: '2px' }}>
                           Preferred Slot: {order.deliveryAddress?.preferredSlot || 'Morning 9 AM - 1 PM'}
                         </div>
                       </div>
@@ -967,8 +1027,8 @@ export default function DeliveryDashboardPage() {
                   </div>
 
                   {/* Items List */}
-                  <div style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px' }}>
-                    <span style={{ fontWeight: 700, color: '#f8fafc' }}>Products to Handover: </span>
+                  <div style={{ fontSize: '13px', color: t.textMuted, marginBottom: '16px' }}>
+                    <span style={{ fontWeight: 700, color: t.textPrimary }}>Products to Handover: </span>
                     {(order.items || []).map(i => `${i.productName} (${i.unitSize}) x${i.quantity}`).join(', ')}
                   </div>
 
@@ -979,9 +1039,9 @@ export default function DeliveryDashboardPage() {
                       <button
                         onClick={() => setActiveNavOrder(order)}
                         style={{
-                          background: 'rgba(2, 132, 199, 0.2)',
-                          border: '1px solid rgba(2, 132, 199, 0.4)',
-                          color: '#38bdf8',
+                          background: isDark ? 'rgba(2, 132, 199, 0.2)' : '#e0f2fe',
+                          border: `1px solid ${isDark ? 'rgba(2, 132, 199, 0.4)' : '#bae6fd'}`,
+                          color: isDark ? '#38bdf8' : '#0284c7',
                           padding: '10px 16px',
                           borderRadius: '10px',
                           fontSize: '13px',
@@ -1000,9 +1060,9 @@ export default function DeliveryDashboardPage() {
                         <a
                           href={`tel:${order.userPhone}`}
                           style={{
-                            background: 'rgba(255, 255, 255, 0.06)',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                            color: '#f8fafc',
+                            background: isDark ? 'rgba(255, 255, 255, 0.06)' : '#ffffff',
+                            border: `1px solid ${t.borderStrong}`,
+                            color: t.textPrimary,
                             padding: '10px 14px',
                             borderRadius: '10px',
                             fontSize: '13px',
@@ -1010,10 +1070,11 @@ export default function DeliveryDashboardPage() {
                             textDecoration: 'none',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px'
+                            gap: '6px',
+                            boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
                           }}
                         >
-                          <Phone size={14} color="#10b981" /> Call Citizen
+                          <Phone size={14} color={isDark ? '#10b981' : '#059669'} /> Call Citizen
                         </a>
                       )}
 
@@ -1086,11 +1147,11 @@ export default function DeliveryDashboardPage() {
                       )}
                     </div>
                   ) : (
-                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: '13px', color: '#34d399', fontWeight: 600 }}>
+                    <div style={{ background: isDark ? 'rgba(16, 185, 129, 0.1)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.2)' : '#bbf7d0'}`, padding: '10px 14px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '13px', color: isDark ? '#34d399' : '#15803d', fontWeight: 600 }}>
                         ✅ Delivered on {order.deliveredAt ? new Date(order.deliveredAt).toLocaleTimeString('en-IN') : 'Today'}
                       </div>
-                      <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
+                      <span style={{ fontSize: '12px', color: isDark ? '#10b981' : '#166534', fontWeight: 600 }}>
                         OTP Verified Handover
                       </span>
                     </div>
@@ -1104,34 +1165,34 @@ export default function DeliveryDashboardPage() {
 
       {/* MODAL: Leaflet Route Navigation */}
       {activeNavOrder && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '16px', width: '100%', maxWidth: '720px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+          <div style={{ background: t.modalBg, border: `1px solid ${t.modalBorder}`, borderRadius: '16px', width: '100%', maxWidth: '720px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: t.textPrimary }}>
                   🗺️ Live Delivery Navigation Route
                 </h3>
-                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: t.textMuted, marginTop: '2px' }}>
                   Destination: {activeNavOrder.userName} • {activeNavOrder.deliveryAddress?.street}
                 </div>
               </div>
-              <button onClick={() => setActiveNavOrder(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={22} /></button>
+              <button onClick={() => setActiveNavOrder(null)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer' }}><X size={22} /></button>
             </div>
 
             {/* Route Stats Bar */}
-            <div style={{ background: 'rgba(2, 132, 199, 0.15)', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: isDark ? 'rgba(2, 132, 199, 0.15)' : '#f0f9ff', padding: '12px 24px', borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', gap: '20px' }}>
                 <div>
-                  <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Distance</span>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#38bdf8' }}>{mapDistanceKm} km</div>
+                  <span style={{ fontSize: '11px', color: t.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>Distance</span>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: isDark ? '#38bdf8' : '#0284c7' }}>{mapDistanceKm} km</div>
                 </div>
                 <div>
-                  <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Estimated ETA</span>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#34d399' }}>~{mapEtaMinutes} Mins</div>
+                  <span style={{ fontSize: '11px', color: t.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>Estimated ETA</span>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: isDark ? '#34d399' : '#059669' }}>~{mapEtaMinutes} Mins</div>
                 </div>
                 <div>
-                  <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Origin</span>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>Ajjarkadu Yard</div>
+                  <span style={{ fontSize: '11px', color: t.textMuted, textTransform: 'uppercase', fontWeight: 600 }}>Origin</span>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: t.textPrimary }}>Ajjarkadu Yard</div>
                 </div>
               </div>
 
@@ -1157,13 +1218,13 @@ export default function DeliveryDashboardPage() {
             </div>
 
             {/* Leaflet Map Canvas */}
-            <div ref={mapContainerRef} style={{ height: '360px', width: '100%', background: '#1e293b' }} />
+            <div ref={mapContainerRef} style={{ height: '360px', width: '100%', background: isDark ? '#1e293b' : '#e2e8f0' }} />
 
-            <div style={{ padding: '14px 24px', background: '#0b1120', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
+            <div style={{ padding: '14px 24px', background: isDark ? '#0b1120' : '#f8fafc', borderTop: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', color: t.textMuted }}>
                 Green line indicates EV delivery corridor via Udupi-Manipal Main Road
               </span>
-              <button onClick={() => setActiveNavOrder(null)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#f8fafc', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>Close Map</button>
+              <button onClick={() => setActiveNavOrder(null)} style={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0', border: 'none', color: t.textPrimary, padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Close Map</button>
             </div>
           </div>
         </div>
@@ -1171,38 +1232,38 @@ export default function DeliveryDashboardPage() {
 
       {/* MODAL: Complete Handover (Payment Selector: COD vs Razorpay QR + OTP) */}
       {handoverOrder && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px', overflowY: 'auto' }}>
-          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '18px', width: '100%', maxWidth: '520px', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px', overflowY: 'auto' }}>
+          <div style={{ background: t.modalBg, border: `1px solid ${t.modalBorder}`, borderRadius: '18px', width: '100%', maxWidth: '520px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Package size={18} color="#fff" />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: t.textPrimary }}>
                     Doorstep Delivery & Handover
                   </h3>
-                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Order: {handoverOrder.orderNumber}</div>
+                  <div style={{ fontSize: '12px', color: t.textMuted }}>Order: {handoverOrder.orderNumber}</div>
                 </div>
               </div>
-              <button onClick={() => setHandoverOrder(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={20} /></button>
+              <button onClick={() => setHandoverOrder(null)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
             {/* Customer Details Pill */}
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', padding: '10px 14px', borderRadius: '10px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc', border: `1px solid ${t.border}`, padding: '10px 14px', borderRadius: '10px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>{handoverOrder.userName}</div>
-                <div style={{ fontSize: '12px', color: '#38bdf8' }}>📞 {handoverOrder.userPhone || 'No phone'}</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: t.textPrimary }}>{handoverOrder.userName}</div>
+                <div style={{ fontSize: '12px', color: isDark ? '#38bdf8' : '#0284c7' }}>📞 {handoverOrder.userPhone || 'No phone'}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Total Amount</div>
-                <div style={{ fontSize: '17px', fontWeight: 900, color: '#10b981' }}>₹{handoverOrder.totalAmountInr}</div>
+                <div style={{ fontSize: '11px', color: t.textMuted, textTransform: 'uppercase' }}>Total Amount</div>
+                <div style={{ fontSize: '17px', fontWeight: 900, color: isDark ? '#10b981' : '#059669' }}>₹{handoverOrder.totalAmountInr}</div>
               </div>
             </div>
 
             {/* PAYMENT METHOD SELECTOR TABS */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', marginBottom: '8px' }}>
                 Select Doorstep Payment Mode:
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1212,9 +1273,9 @@ export default function DeliveryDashboardPage() {
                   style={{
                     padding: '10px 12px',
                     borderRadius: '10px',
-                    border: handoverPaymentMode === 'COD' ? '2px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
-                    background: handoverPaymentMode === 'COD' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.03)',
-                    color: handoverPaymentMode === 'COD' ? '#fbbf24' : '#94a3b8',
+                    border: handoverPaymentMode === 'COD' ? '2px solid #f59e0b' : `1px solid ${t.borderStrong}`,
+                    background: handoverPaymentMode === 'COD' ? (isDark ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7') : (isDark ? 'rgba(255,255,255,0.03)' : '#ffffff'),
+                    color: handoverPaymentMode === 'COD' ? (isDark ? '#fbbf24' : '#b45309') : t.textMuted,
                     fontWeight: 700,
                     fontSize: '13px',
                     cursor: 'pointer',
@@ -1238,9 +1299,9 @@ export default function DeliveryDashboardPage() {
                   style={{
                     padding: '10px 12px',
                     borderRadius: '10px',
-                    border: handoverPaymentMode === 'RAZORPAY' ? '2px solid #0284c7' : '1px solid rgba(255,255,255,0.1)',
-                    background: handoverPaymentMode === 'RAZORPAY' ? 'rgba(2, 132, 199, 0.2)' : 'rgba(255,255,255,0.03)',
-                    color: handoverPaymentMode === 'RAZORPAY' ? '#38bdf8' : '#94a3b8',
+                    border: handoverPaymentMode === 'RAZORPAY' ? '2px solid #0284c7' : `1px solid ${t.borderStrong}`,
+                    background: handoverPaymentMode === 'RAZORPAY' ? (isDark ? 'rgba(2, 132, 199, 0.2)' : '#e0f2fe') : (isDark ? 'rgba(255,255,255,0.03)' : '#ffffff'),
+                    color: handoverPaymentMode === 'RAZORPAY' ? (isDark ? '#38bdf8' : '#0284c7') : t.textMuted,
                     fontWeight: 700,
                     fontSize: '13px',
                     cursor: 'pointer',
@@ -1257,17 +1318,17 @@ export default function DeliveryDashboardPage() {
 
             {/* TAB CONTENT: CASH ON DELIVERY */}
             {handoverPaymentMode === 'COD' && (
-              <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '14px', borderRadius: '12px', marginBottom: '18px' }}>
+              <div style={{ background: isDark ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb', border: isDark ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid #fde68a', padding: '14px', borderRadius: '12px', marginBottom: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#fbbf24' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: isDark ? '#fbbf24' : '#b45309' }}>
                     💵 Physical Cash Collection
                   </span>
-                  <span style={{ fontSize: '11px', color: '#fde68a' }}>Order Total: ₹{handoverOrder.totalAmountInr}</span>
+                  <span style={{ fontSize: '11px', color: isDark ? '#fde68a' : '#92400e', fontWeight: 600 }}>Order Total: ₹{handoverOrder.totalAmountInr}</span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <div style={{ position: 'relative', flex: 1 }}>
-                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#94a3b8' }}>₹</span>
+                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: t.textMuted }}>₹</span>
                     <input
                       type="number"
                       value={cashCollectedInput}
@@ -1275,9 +1336,9 @@ export default function DeliveryDashboardPage() {
                       placeholder={String(handoverOrder.totalAmountInr)}
                       style={{
                         width: '100%',
-                        background: '#1e293b',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        color: '#f8fafc',
+                        background: t.bgInput,
+                        border: `1px solid ${t.borderStrong}`,
+                        color: t.textPrimary,
                         padding: '10px 12px 10px 28px',
                         borderRadius: '8px',
                         fontSize: '16px',
@@ -1290,9 +1351,9 @@ export default function DeliveryDashboardPage() {
                     type="button"
                     onClick={() => setCashCollectedInput(handoverOrder.totalAmountInr)}
                     style={{
-                      background: 'rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      color: '#f8fafc',
+                      background: isDark ? 'rgba(255,255,255,0.08)' : '#ffffff',
+                      border: `1px solid ${t.borderStrong}`,
+                      color: t.textPrimary,
                       padding: '10px 14px',
                       borderRadius: '8px',
                       fontSize: '12px',
@@ -1305,7 +1366,7 @@ export default function DeliveryDashboardPage() {
                   </button>
                 </div>
 
-                <div style={{ fontSize: '11px', color: '#fde68a', marginTop: '8px', lineHeight: 1.4 }}>
+                <div style={{ fontSize: '11px', color: isDark ? '#fde68a' : '#92400e', marginTop: '8px', lineHeight: 1.4 }}>
                   ⚠️ You must collect <b>₹{cashCollectedInput || handoverOrder.totalAmountInr}</b> in physical cash. This amount will be added to your shift custody and must be remitted at the Municipal Office.
                 </div>
               </div>
@@ -1313,41 +1374,41 @@ export default function DeliveryDashboardPage() {
 
             {/* TAB CONTENT: RAZORPAY / DYNAMIC UPI QR */}
             {handoverPaymentMode === 'RAZORPAY' && (
-              <div style={{ background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.25)', padding: '16px', borderRadius: '12px', marginBottom: '18px' }}>
+              <div style={{ background: isDark ? 'rgba(2, 132, 199, 0.08)' : '#f0f9ff', border: isDark ? '1px solid rgba(2, 132, 199, 0.25)' : '1px solid #bae6fd', padding: '16px', borderRadius: '12px', marginBottom: '18px' }}>
                 {doorstepPaymentStatus === 'SUCCESS' ? (
                   <div style={{ textAlign: 'center', padding: '12px 6px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', border: '2px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
-                      <CheckCircle2 size={28} color="#34d399" />
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: isDark ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7', border: '2px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                      <CheckCircle2 size={28} color={isDark ? '#34d399' : '#059669'} />
                     </div>
-                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#34d399' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: isDark ? '#34d399' : '#059669' }}>
                       Digital Payment Verified! 🎉
                     </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: t.textMuted, marginTop: '4px' }}>
                       Payment of <b>₹{handoverOrder.totalAmountInr}</b> confirmed via Razorpay Online
                     </div>
                     {doorstepTxnId && (
-                      <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '4px', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: '11px', color: isDark ? '#38bdf8' : '#0284c7', marginTop: '4px', fontFamily: 'monospace' }}>
                         Txn ID: {doorstepTxnId}
                       </div>
                     )}
-                    <div style={{ fontSize: '11px', color: '#10b981', marginTop: '6px', fontWeight: 600 }}>
+                    <div style={{ fontSize: '11px', color: isDark ? '#10b981' : '#059669', marginTop: '6px', fontWeight: 600 }}>
                       ✓ Cash Collection Liability: ₹0 (Online Bank Settled)
                     </div>
                   </div>
                 ) : (
                   <div>
                     <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: isDark ? '#38bdf8' : '#0284c7', textTransform: 'uppercase' }}>
                         Scan & Pay ₹{handoverOrder.totalAmountInr} via UPI
                       </div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', color: t.textMuted, marginTop: '2px' }}>
                         Customer can scan using GPay, PhonePe, Paytm, or BHIM
                       </div>
                     </div>
 
                     {/* QR Code Container */}
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                      <div style={{ background: '#ffffff', padding: '10px', borderRadius: '14px', boxShadow: '0 8px 20px rgba(0,0,0,0.3)', textAlign: 'center' }}>
+                      <div style={{ background: '#ffffff', padding: '10px', borderRadius: '14px', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', textAlign: 'center', border: `1px solid ${t.border}` }}>
                         <img
                           src={doorstepQrUrl}
                           alt="Dynamic UPI QR"
@@ -1388,9 +1449,9 @@ export default function DeliveryDashboardPage() {
                           type="button"
                           onClick={() => setShowProofScanner(!showProofScanner)}
                           style={{
-                            background: 'rgba(255, 255, 255, 0.06)',
-                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                            color: '#f8fafc',
+                            background: isDark ? 'rgba(255, 255, 255, 0.06)' : '#ffffff',
+                            border: `1px solid ${t.borderStrong}`,
+                            color: t.textPrimary,
                             padding: '8px 12px',
                             borderRadius: '8px',
                             fontSize: '12px',
@@ -1402,7 +1463,7 @@ export default function DeliveryDashboardPage() {
                             gap: '6px'
                           }}
                         >
-                          <Camera size={14} color="#38bdf8" /> {showProofScanner ? 'Close Scanner' : 'Scan Proof / UTR'}
+                          <Camera size={14} color={isDark ? '#38bdf8' : '#0284c7'} /> {showProofScanner ? 'Close Scanner' : 'Scan Proof / UTR'}
                         </button>
 
                         <button
@@ -1410,9 +1471,9 @@ export default function DeliveryDashboardPage() {
                           onClick={handleSimulateRazorpaySuccess}
                           title="Instant test verification for demo mode"
                           style={{
-                            background: 'rgba(16, 185, 129, 0.12)',
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                            color: '#34d399',
+                            background: isDark ? 'rgba(16, 185, 129, 0.12)' : '#dcfce7',
+                            border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.3)' : '#86efac'}`,
+                            color: isDark ? '#34d399' : '#059669',
                             padding: '8px 12px',
                             borderRadius: '8px',
                             fontSize: '12px',
@@ -1430,13 +1491,13 @@ export default function DeliveryDashboardPage() {
 
                       {/* Payment Proof / Camera Scanner Panel */}
                       {showProofScanner && (
-                        <div style={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', padding: '12px', marginTop: '6px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc', marginBottom: '6px' }}>
+                        <div style={{ background: isDark ? 'rgba(15, 23, 42, 0.9)' : '#f8fafc', border: `1px solid ${t.borderStrong}`, borderRadius: '10px', padding: '12px', marginTop: '6px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: t.textPrimary, marginBottom: '6px' }}>
                             Verify Customer UPI Transaction Screen / UTR
                           </div>
 
                           <div style={{ marginBottom: '8px' }}>
-                            <label style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginBottom: '3px' }}>
+                            <label style={{ display: 'block', fontSize: '11px', color: t.textMuted, marginBottom: '3px' }}>
                               Snap / Upload Customer UPI Success Screen:
                             </label>
                             <input
@@ -1451,10 +1512,10 @@ export default function DeliveryDashboardPage() {
                                   reader.readAsDataURL(file);
                                 }
                               }}
-                              style={{ fontSize: '11px', color: '#94a3b8' }}
+                              style={{ fontSize: '11px', color: t.textMuted }}
                             />
                             {scannedProofImg && (
-                              <div style={{ marginTop: '6px', fontSize: '11px', color: '#34d399' }}>
+                              <div style={{ marginTop: '6px', fontSize: '11px', color: isDark ? '#34d399' : '#059669', fontWeight: 600 }}>
                                 ✓ Photo captured ready for verification
                               </div>
                             )}
@@ -1468,9 +1529,9 @@ export default function DeliveryDashboardPage() {
                               onChange={(e) => setProofTxnInput(e.target.value)}
                               style={{
                                 flex: 1,
-                                background: '#1e293b',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                color: '#fff',
+                                background: t.bgInput,
+                                border: `1px solid ${t.borderStrong}`,
+                                color: t.textPrimary,
                                 padding: '8px 10px',
                                 borderRadius: '6px',
                                 fontSize: '12px'
@@ -1504,7 +1565,7 @@ export default function DeliveryDashboardPage() {
             {/* OTP VERIFICATION FORM */}
             <form onSubmit={handleSubmitHandover}>
               <div style={{ marginBottom: '18px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#f8fafc', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: t.textPrimary, marginBottom: '6px' }}>
                   Enter 4-Digit Citizen Delivery OTP:
                 </label>
                 <input
@@ -1516,9 +1577,9 @@ export default function DeliveryDashboardPage() {
                   onChange={(e) => setEnteredOtp(e.target.value)}
                   style={{
                     width: '100%',
-                    background: '#1e293b',
+                    background: t.bgInput,
                     border: '2px solid #0284c7',
-                    color: '#fff',
+                    color: t.textPrimary,
                     padding: '12px',
                     borderRadius: '10px',
                     fontSize: '24px',
@@ -1528,7 +1589,7 @@ export default function DeliveryDashboardPage() {
                     boxSizing: 'border-box'
                   }}
                 />
-                <small style={{ color: '#94a3b8', fontSize: '11px', display: 'block', marginTop: '4px' }}>
+                <small style={{ color: t.textMuted, fontSize: '11px', display: 'block', marginTop: '4px' }}>
                   Ask citizen for the delivery code sent to their email / SMS.
                 </small>
               </div>
@@ -1539,8 +1600,8 @@ export default function DeliveryDashboardPage() {
                   onClick={() => setHandoverOrder(null)}
                   style={{
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: '#94a3b8',
+                    border: `1px solid ${t.borderStrong}`,
+                    color: t.textMuted,
                     padding: '10px 16px',
                     borderRadius: '10px',
                     fontSize: '13px',
@@ -1578,29 +1639,29 @@ export default function DeliveryDashboardPage() {
 
       {/* MODAL: Driver Day-Wise Cash Remittance History */}
       {showRemittanceModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '18px', width: '100%', maxWidth: '640px', padding: '24px', maxHeight: '85vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+          <div style={{ background: t.modalBg, border: `1px solid ${t.modalBorder}`, borderRadius: '18px', width: '100%', maxWidth: '640px', padding: '24px', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.2)', border: '1px solid rgba(245, 158, 11, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Receipt size={20} color="#fbbf24" />
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7', border: `1px solid ${isDark ? 'rgba(245, 158, 11, 0.4)' : '#fde68a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Receipt size={20} color={isDark ? '#fbbf24' : '#b45309'} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: t.textPrimary }}>
                     My Day-Wise COD Remittance Log
                   </h3>
-                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  <div style={{ fontSize: '12px', color: t.textMuted }}>
                     Delivery Executive: {partner.name}
                   </div>
                 </div>
               </div>
-              <button onClick={() => setShowRemittanceModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={20} /></button>
+              <button onClick={() => setShowRemittanceModal(false)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
             {/* Current Custody Banner */}
             <div style={{
-              background: cashInHand > 0 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.1)',
-              border: cashInHand > 0 ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(16, 185, 129, 0.25)',
+              background: cashInHand > 0 ? (isDark ? 'rgba(245, 158, 11, 0.12)' : '#fffbeb') : (isDark ? 'rgba(16, 185, 129, 0.1)' : '#f0fdf4'),
+              border: cashInHand > 0 ? (isDark ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid #fde68a') : (isDark ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid #bbf7d0'),
               padding: '14px 16px',
               borderRadius: '12px',
               marginBottom: '18px',
@@ -1609,12 +1670,12 @@ export default function DeliveryDashboardPage() {
               alignItems: 'center'
             }}>
               <div>
-                <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Total In-Hand Cash Liability</div>
-                <div style={{ fontSize: '22px', fontWeight: 900, color: cashInHand > 0 ? '#f59e0b' : '#34d399', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: t.textMuted, textTransform: 'uppercase', fontWeight: 700 }}>Total In-Hand Cash Liability</div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: cashInHand > 0 ? (isDark ? '#f59e0b' : '#b45309') : (isDark ? '#34d399' : '#059669'), marginTop: '2px' }}>
                   ₹{cashInHand}
                 </div>
               </div>
-              <div style={{ textAlign: 'right', fontSize: '12px', color: '#cbd5e1', maxWidth: '240px' }}>
+              <div style={{ textAlign: 'right', fontSize: '12px', color: t.textSecondary, maxWidth: '240px' }}>
                 {cashInHand > 0
                   ? '⚠️ Hand over this cash to Ajjarkadu Biomass Office counter to clear your liability.'
                   : '✅ All collected COD cash has been submitted and verified into the Municipal Treasury.'}
@@ -1622,14 +1683,14 @@ export default function DeliveryDashboardPage() {
             </div>
 
             {loadingLedger ? (
-              <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
+              <div style={{ textAlign: 'center', padding: '30px', color: t.textMuted }}>
                 <RefreshCw size={24} className="spin" style={{ margin: '0 auto 8px' }} />
                 <div>Loading day-wise remittance history...</div>
               </div>
             ) : driverLedger.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+              <div style={{ textAlign: 'center', padding: '36px', color: t.textMuted }}>
                 <Package size={36} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-                <div style={{ color: '#94a3b8', fontWeight: 600 }}>No COD deliveries recorded yet</div>
+                <div style={{ color: t.textMuted, fontWeight: 600 }}>No COD deliveries recorded yet</div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1637,16 +1698,16 @@ export default function DeliveryDashboardPage() {
                   <div
                     key={idx}
                     style={{
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      background: t.bgCardSubtle,
+                      border: `1px solid ${t.border}`,
                       borderRadius: '12px',
                       padding: '14px 16px'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Calendar size={14} color="#38bdf8" />
-                        <span style={{ fontSize: '14px', fontWeight: 800, color: '#f8fafc' }}>
+                        <Calendar size={14} color={isDark ? '#38bdf8' : '#0284c7'} />
+                        <span style={{ fontSize: '14px', fontWeight: 800, color: t.textPrimary }}>
                           {new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
@@ -1655,26 +1716,26 @@ export default function DeliveryDashboardPage() {
                         borderRadius: '6px',
                         fontSize: '11px',
                         fontWeight: 700,
-                        background: record.pendingAmount === 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.18)',
-                        color: record.pendingAmount === 0 ? '#34d399' : '#fbbf24',
-                        border: record.pendingAmount === 0 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.35)'
+                        background: record.pendingAmount === 0 ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#dcfce7') : (isDark ? 'rgba(245, 158, 11, 0.18)' : '#fef3c7'),
+                        color: record.pendingAmount === 0 ? (isDark ? '#34d399' : '#059669') : (isDark ? '#fbbf24' : '#b45309'),
+                        border: record.pendingAmount === 0 ? (isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #bbf7d0') : (isDark ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid #fde68a')
                       }}>
                         {record.pendingAmount === 0 ? '✓ Submitted to Treasury' : `⚠️ ₹${record.pendingAmount} Pending Submission`}
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                      <div style={{ color: '#94a3b8' }}>
+                      <div style={{ color: t.textMuted }}>
                         {record.orderCount} COD {record.orderCount === 1 ? 'Order' : 'Orders'} ({record.orderNumbers.join(', ')})
                       </div>
-                      <div style={{ fontWeight: 800, color: '#f8fafc' }}>
-                        Total Collected: <span style={{ color: '#10b981' }}>₹{record.totalCashCollected}</span>
+                      <div style={{ fontWeight: 800, color: t.textPrimary }}>
+                        Total Collected: <span style={{ color: isDark ? '#10b981' : '#059669' }}>₹{record.totalCashCollected}</span>
                       </div>
                     </div>
 
                     {record.settledBy && (
-                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
-                        Verified & Cleared by: <b style={{ color: '#94a3b8' }}>{record.settledBy}</b>
+                      <div style={{ fontSize: '11px', color: t.textMuted, marginTop: '6px' }}>
+                        Verified & Cleared by: <b style={{ color: t.textSecondary }}>{record.settledBy}</b>
                       </div>
                     )}
                   </div>
@@ -1687,9 +1748,9 @@ export default function DeliveryDashboardPage() {
                 type="button"
                 onClick={() => setShowRemittanceModal(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: '#f8fafc',
+                  background: isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9',
+                  border: `1px solid ${t.borderStrong}`,
+                  color: t.textPrimary,
                   padding: '10px 18px',
                   borderRadius: '10px',
                   fontWeight: 600,
@@ -1706,11 +1767,11 @@ export default function DeliveryDashboardPage() {
 
       {/* MODAL: Apply for Leave */}
       {showLeaveModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-          <div style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '24px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+          <div style={{ background: t.modalBg, border: `1px solid ${t.modalBorder}`, borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Apply for Delivery Shift Leave</h3>
-              <button onClick={() => setShowLeaveModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={20} /></button>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: t.textPrimary }}>Apply for Delivery Shift Leave</h3>
+              <button onClick={() => setShowLeaveModal(false)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
             <form onSubmit={(e) => {
@@ -1724,22 +1785,22 @@ export default function DeliveryDashboardPage() {
               setShowLeaveModal(false);
             }}>
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>Leave Date</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: t.textMuted, marginBottom: '4px' }}>Leave Date</label>
                 <input
                   type="date"
                   required
                   value={leaveForm.date}
                   onChange={(e) => setLeaveForm({ ...leaveForm, date: e.target.value })}
-                  style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: t.bgInput, border: `1px solid ${t.borderStrong}`, color: t.textPrimary, padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
                 />
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>Leave Type</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: t.textMuted, marginBottom: '4px' }}>Leave Type</label>
                 <select
                   value={leaveForm.leaveType}
                   onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
-                  style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: t.bgInput, border: `1px solid ${t.borderStrong}`, color: t.textPrimary, padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
                 >
                   <option value="Casual Leave">Casual Leave</option>
                   <option value="Sick Leave">Sick Leave</option>
@@ -1748,19 +1809,19 @@ export default function DeliveryDashboardPage() {
               </div>
 
               <div style={{ marginBottom: '18px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>Reason</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: t.textMuted, marginBottom: '4px' }}>Reason</label>
                 <textarea
                   rows={3}
                   required
                   placeholder="Reason for leave request..."
                   value={leaveForm.reason}
                   onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                  style={{ width: '100%', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: t.bgInput, border: `1px solid ${t.borderStrong}`, color: t.textPrimary, padding: '9px 12px', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
                 />
               </div>
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setShowLeaveModal(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#94a3b8', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={() => setShowLeaveModal(false)} style={{ background: 'transparent', border: `1px solid ${t.borderStrong}`, color: t.textMuted, padding: '10px 16px', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" style={{ background: '#0284c7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
                   Submit Leave Request
                 </button>

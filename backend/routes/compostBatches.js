@@ -179,10 +179,11 @@ router.patch('/:id/advance-stage', async (req, res) => {
 router.post('/:id/package-to-store', async (req, res) => {
   try {
     const {
-      packages, // Array: [{ weightKg: 25, quantity: 4, priceInr: 399, priceEcoPoints: 160, name: '' }, ...]
+      packages, // Array: [{ weightKg: 25, quantity: 4, priceInr: 399, priceEcoPoints: 160, name: '', image: '' }, ...]
       packaged5KgBags, packaged10KgBags, packaged25KgBags, bulkMulchKg,
       pricePer5Kg, pricePer10Kg, pricePer25Kg, pricePerKgMulch,
-      qualityGrade, packagingNotes, markAsCompleted
+      qualityGrade, packagingNotes, markAsCompleted,
+      image, customImage, mulchImage
     } = req.body;
 
     const batch = await CompostBatch.findById(req.params.id);
@@ -190,6 +191,7 @@ router.post('/:id/package-to-store', async (req, res) => {
 
     const facility = batch.facilityName || 'Ajjarkadu Municipal Biomass Processing Center';
     const batchNum = batch.batchNumber;
+    const compostImage = image || customImage;
 
     let itemsToProcess = [];
 
@@ -203,7 +205,8 @@ router.post('/:id/package-to-store', async (req, res) => {
           priceInr: Number(p.priceInr || (Number(p.weightKg) * 16)),
           priceEcoPoints: Number(p.priceEcoPoints || Math.round((p.priceInr || p.weightKg * 16) * 0.4)),
           name: p.name || `CanopyGuard Organic Compost (${p.weightKg} kg ${p.weightKg >= 25 ? 'Sack' : 'Bag'})`,
-          unitSize: `${p.weightKg} kg ${p.weightKg >= 25 ? 'Sack' : 'Bag'}`
+          unitSize: `${p.weightKg} kg ${p.weightKg >= 25 ? 'Sack' : 'Bag'}`,
+          image: p.image || compostImage
         }));
     } else {
       // 2. Legacy fallback fields
@@ -211,9 +214,9 @@ router.post('/:id/package-to-store', async (req, res) => {
       const num10 = Number(packaged10KgBags || 0);
       const num25 = Number(packaged25KgBags || 0);
 
-      if (num5 > 0) itemsToProcess.push({ weightKg: 5, quantity: num5, priceInr: Number(pricePer5Kg || 99), priceEcoPoints: 40, name: 'CanopyGuard Organic Compost (5 kg)', unitSize: '5 kg Bag' });
-      if (num10 > 0) itemsToProcess.push({ weightKg: 10, quantity: num10, priceInr: Number(pricePer10Kg || 179), priceEcoPoints: 75, name: 'CanopyGuard Organic Compost (10 kg)', unitSize: '10 kg Bag' });
-      if (num25 > 0) itemsToProcess.push({ weightKg: 25, quantity: num25, priceInr: Number(pricePer25Kg || 399), priceEcoPoints: 170, name: 'CanopyGuard Organic Compost (25 kg Bulk)', unitSize: '25 kg Sack' });
+      if (num5 > 0) itemsToProcess.push({ weightKg: 5, quantity: num5, priceInr: Number(pricePer5Kg || 99), priceEcoPoints: 40, name: 'CanopyGuard Organic Compost (5 kg)', unitSize: '5 kg Bag', image: compostImage });
+      if (num10 > 0) itemsToProcess.push({ weightKg: 10, quantity: num10, priceInr: Number(pricePer10Kg || 179), priceEcoPoints: 75, name: 'CanopyGuard Organic Compost (10 kg)', unitSize: '10 kg Bag', image: compostImage });
+      if (num25 > 0) itemsToProcess.push({ weightKg: 25, quantity: num25, priceInr: Number(pricePer25Kg || 399), priceEcoPoints: 170, name: 'CanopyGuard Organic Compost (25 kg Bulk)', unitSize: '25 kg Sack', image: compostImage });
     }
 
     const mulch = Number(bulkMulchKg || 0);
@@ -232,28 +235,37 @@ router.post('/:id/package-to-store', async (req, res) => {
       else if (item.weightKg === 10) batch.packaged10KgBags = (batch.packaged10KgBags || 0) + item.quantity;
       else if (item.weightKg === 25) batch.packaged25KgBags = (batch.packaged25KgBags || 0) + item.quantity;
 
+      const setFields = {
+        name: item.name,
+        description: `100% certified organic compost from municipal canopy tree biomass. Enriched with Trichoderma & beneficial soil microbes. Packed at ${facility}.`,
+        category: 'Organic Compost',
+        unitSize: item.unitSize,
+        weightKg: item.weightKg,
+        priceInr: item.priceInr,
+        priceEcoPoints: item.priceEcoPoints,
+        isAvailable: true,
+        sourceFacility: facility,
+        linkedBatchNumber: batchNum
+      };
+      if (item.image) {
+        setFields.image = item.image;
+      }
+
+      const setOnInsertFields = {
+        npkRatio: '2.4 : 1.2 : 1.8',
+        usageInstructions: 'Mix 1 part organic compost with 3 parts soil for potted plants or apply 2 inches around garden root zones.',
+        benefits: ['100% Organic Municipal Recycled', 'Rich in Humic Acid and Beneficial Microbes', 'Enhances Soil Moisture & Nutrient Retention']
+      };
+      if (!setFields.image) {
+        setOnInsertFields.image = 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&auto=format&fit=crop&q=80';
+      }
+
       await EcoProduct.findOneAndUpdate(
         { sku },
         {
           $inc: { stockQuantity: item.quantity },
-          $set: {
-            name: item.name,
-            description: `100% certified organic compost from municipal canopy tree biomass. Enriched with Trichoderma & beneficial soil microbes. Packed at ${facility}.`,
-            category: 'Organic Compost',
-            unitSize: item.unitSize,
-            weightKg: item.weightKg,
-            priceInr: item.priceInr,
-            priceEcoPoints: item.priceEcoPoints,
-            isAvailable: true,
-            sourceFacility: facility,
-            linkedBatchNumber: batchNum
-          },
-          $setOnInsert: {
-            image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&auto=format&fit=crop&q=80',
-            npkRatio: '2.4 : 1.2 : 1.8',
-            usageInstructions: 'Mix 1 part organic compost with 3 parts soil for potted plants or apply 2 inches around garden root zones.',
-            benefits: ['100% Organic Municipal Recycled', 'Rich in Humic Acid and Beneficial Microbes', 'Enhances Soil Moisture & Nutrient Retention']
-          }
+          $set: setFields,
+          $setOnInsert: setOnInsertFields
         },
         { upsert: true, new: true }
       );
@@ -262,25 +274,33 @@ router.post('/:id/package-to-store', async (req, res) => {
     // Process Bulk Mulch if any
     if (mulch > 0) {
       batch.bulkMulchYieldKg = (batch.bulkMulchYieldKg || 0) + mulch;
+      const mulchSetFields = {
+        name: 'CanopyGuard Bio-Mulch & Woodchips (per kg)',
+        description: 'Chipped branch bio-mulch from urban tree clearances. Ideal for garden paths & moisture retention.',
+        category: 'Bio-Mulch & Woodchips',
+        unitSize: 'Per kg',
+        weightKg: 1,
+        priceInr: Number(pricePerKgMulch || 15),
+        priceEcoPoints: 6,
+        isAvailable: true,
+        sourceFacility: facility,
+        linkedBatchNumber: batchNum
+      };
+      if (mulchImage) {
+        mulchSetFields.image = mulchImage;
+      }
+
+      const mulchSetOnInsert = {};
+      if (!mulchSetFields.image) {
+        mulchSetOnInsert.image = 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=600&auto=format&fit=crop&q=80';
+      }
+
       await EcoProduct.findOneAndUpdate(
         { sku: 'CMP-MULCH-BULK' },
         {
           $inc: { stockQuantity: mulch },
-          $set: {
-            name: 'CanopyGuard Bio-Mulch & Woodchips (per kg)',
-            description: 'Chipped branch bio-mulch from urban tree clearances. Ideal for garden paths & moisture retention.',
-            category: 'Bio-Mulch & Woodchips',
-            unitSize: 'Per kg',
-            weightKg: 1,
-            priceInr: Number(pricePerKgMulch || 15),
-            priceEcoPoints: 6,
-            isAvailable: true,
-            sourceFacility: facility,
-            linkedBatchNumber: batchNum
-          },
-          $setOnInsert: {
-            image: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=600&auto=format&fit=crop&q=80'
-          }
+          $set: mulchSetFields,
+          $setOnInsert: mulchSetOnInsert
         },
         { upsert: true, new: true }
       );

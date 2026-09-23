@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Sparkles, Loader2 } from 'lucide-react';
 import { Topbar, Sidebar } from './CanopyPages';
 import Swal from 'sweetalert2';
 
@@ -24,12 +24,46 @@ const toBase64 = file => new Promise((res, rej) => {
   r.readAsDataURL(file);
 });
 
+// ─── Compost Packaging Image Presets ──────────────────────────────────────────
+const COMPOST_IMAGE_PRESETS = [
+  {
+    label: 'Standard Bag',
+    url: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&auto=format&fit=crop&q=80',
+    title: 'Eco Compost Bag'
+  },
+  {
+    label: 'Black Gold',
+    url: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?w=600&auto=format&fit=crop&q=80',
+    title: 'Enriched Compost'
+  },
+  {
+    label: 'Canopy Organic',
+    url: 'https://images.unsplash.com/photo-1592417817098-8f3d6910985b?w=600&auto=format&fit=crop&q=80',
+    title: 'Municipal Soil Blend'
+  },
+  {
+    label: 'Bio-Mulch',
+    url: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=600&auto=format&fit=crop&q=80',
+    title: 'Woodchips & Mulch'
+  }
+];
+
+// ─── Weight Metrics Options ──────────────────────────────────────────────────
+const WEIGHT_METRICS = [
+  { value: 'kg', label: 'kg (Kilograms)' },
+  { value: 'g', label: 'g / grm (Grams)' },
+  { value: 'mg', label: 'mg (Milligrams)' },
+  { value: 'ton', label: 'ton (Metric Tonnes)' },
+  { value: 'L', label: 'L (Litres)' },
+  { value: 'ml', label: 'ml (Millilitres)' },
+  { value: 'pcs', label: 'pcs / pkts (Pieces / Packets)' }
+];
+
 // ─── Empty product form ──────────────────────────────────────────────────────
 const emptyForm = () => ({
   name: '', category: 'Organic Compost', description: '',
-  unitSize: '5 kg Bag', weightKg: 5,
+  unitSize: '5 kg Bag', weightValue: 5, weightUnit: 'kg', weightKg: 5,
   priceInr: 99, priceEcoPoints: 40, stockQuantity: 50,
-  npkRatio: '2.4 : 1.2 : 1.8',
   usageInstructions: 'Mix 1 part compost with 3 parts soil.',
   benefits: '100% Organic\nEnhances Soil Moisture\nRich in Microbes',
   imageBase64: null, imagePreview: null
@@ -116,6 +150,19 @@ export default function EcoStoreManagementPage() {
   const [pkgNotes, setPkgNotes] = useState('');
   const [markCompleted, setMarkCompleted] = useState(true);
   const [packaging, setPackaging] = useState(false);
+  const [pkgImage, setPkgImage] = useState('https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&auto=format&fit=crop&q=80');
+  const pkgImgRef = useRef();
+
+  const handlePkgImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const b64 = await toBase64(file);
+      setPkgImage(b64);
+    } catch(err) {
+      console.error('Failed to convert image', err);
+    }
+  };
 
   // ── fetch data ──
   const load = async () => {
@@ -141,17 +188,99 @@ export default function EcoStoreManagementPage() {
     setForm(f => ({ ...f, imageBase64: b64, imagePreview: b64 }));
   };
 
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // ── AI Auto-Fill Product Details ──
+  const handleAiAutofill = async () => {
+    if (!form.name.trim() && !form.category) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Enter Product Name',
+        text: 'Please type a product name (e.g. "Desi Okra Seeds", "Organic Neem Cake", "Bio-Char") or choose a category so AI can craft tailored details.',
+        confirmButtonColor: '#10b981',
+        background: isDark ? '#0f172a' : '#ffffff',
+        color: isDark ? '#f8fafc' : '#0f172a'
+      });
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const res = await fetch(`${API}/api/eco-products/ai-autofill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          category: form.category,
+          unitSize: form.unitSize,
+          weightValue: form.weightValue,
+          weightUnit: form.weightUnit
+        })
+      });
+
+      if (!res.ok) throw new Error('AI autofill generation failed');
+      const data = await res.json();
+
+      setForm(prev => ({
+        ...prev,
+        description: data.description || prev.description,
+        usageInstructions: data.usageInstructions || prev.usageInstructions,
+        benefits: Array.isArray(data.benefits) ? data.benefits.join('\n') : (data.benefits || prev.benefits),
+        unitSize: prev.unitSize && prev.unitSize !== '5 kg Bag' ? prev.unitSize : (data.suggestedUnitSize || prev.unitSize),
+        weightValue: prev.weightValue && prev.weightValue !== 5 ? prev.weightValue : (data.suggestedWeightValue ?? prev.weightValue),
+        weightUnit: prev.weightUnit && prev.weightUnit !== 'kg' ? prev.weightUnit : (data.suggestedWeightUnit || prev.weightUnit),
+        priceInr: prev.priceInr && prev.priceInr !== 99 ? prev.priceInr : (data.suggestedPriceInr ?? prev.priceInr),
+        priceEcoPoints: prev.priceEcoPoints && prev.priceEcoPoints !== 40 ? prev.priceEcoPoints : (data.suggestedEcoPoints ?? prev.priceEcoPoints),
+      }));
+
+      Swal.fire({
+        icon: 'success',
+        title: '✨ AI Auto-Filled!',
+        text: 'Description, application instructions, key benefits, and weight metrics populated.',
+        timer: 2000,
+        showConfirmButton: false,
+        background: isDark ? '#0f172a' : '#ffffff',
+        color: isDark ? '#f8fafc' : '#0f172a'
+      });
+    } catch (err) {
+      console.error('AI Auto-Fill error:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Generation Failed',
+        text: err.message || 'Could not auto-fill product details. Please try again.',
+        confirmButtonColor: '#10b981',
+        background: isDark ? '#0f172a' : '#ffffff',
+        color: isDark ? '#f8fafc' : '#0f172a'
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // ── save product (add or edit) ──
   const saveProduct = async () => {
     if (!form.name.trim()) { Swal.fire('Required', 'Product name is required', 'warning'); return; }
     setSaving(true);
     try {
       const isEdit = modal && typeof modal === 'object' && modal._id;
+      const wVal = Number(form.weightValue !== undefined ? form.weightValue : form.weightKg) || 0;
+      const wUnit = form.weightUnit || 'kg';
+      let computedKg = wVal;
+      const u = wUnit.toLowerCase();
+      if (u === 'g' || u === 'grm' || u === 'gm') computedKg = wVal / 1000;
+      else if (u === 'mg') computedKg = wVal / 1000000;
+      else if (u === 'ton' || u === 'tonne') computedKg = wVal * 1000;
+      else if (u === 'ml') computedKg = wVal / 1000;
+      else if (u === 'l' || u === 'ltr') computedKg = wVal;
+
       const payload = {
         name: form.name, category: form.category, description: form.description,
-        unitSize: form.unitSize, weightKg: Number(form.weightKg),
+        unitSize: form.unitSize,
+        weightValue: wVal,
+        weightUnit: wUnit,
+        weightKg: computedKg,
         priceInr: Number(form.priceInr), priceEcoPoints: Number(form.priceEcoPoints),
-        stockQuantity: Number(form.stockQuantity), npkRatio: form.npkRatio,
+        stockQuantity: Number(form.stockQuantity),
         usageInstructions: form.usageInstructions,
         benefits: form.benefits.split('\n').map(s => s.trim()).filter(Boolean),
       };
@@ -220,6 +349,7 @@ export default function EcoStoreManagementPage() {
     setPkgGrade(b.qualityCertificationGrade || 'Grade A Premium Organic');
     setPkgNotes('');
     setMarkCompleted(true);
+    setPkgImage('https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&auto=format&fit=crop&q=80');
     setPkgBatch(b);
   };
 
@@ -275,13 +405,15 @@ export default function EcoStoreManagementPage() {
           quantity: Number(r.quantity),
           priceInr: Number(r.priceInr),
           priceEcoPoints: Number(r.priceEcoPoints),
-          name: `CanopyGuard Organic Compost (${r.weightKg} kg ${r.weightKg >= 25 ? 'Sack' : 'Bag'})`
+          name: `CanopyGuard Organic Compost (${r.weightKg} kg ${r.weightKg >= 25 ? 'Sack' : 'Bag'})`,
+          image: pkgImage
         })),
         bulkMulchKg: Number(mulchKg || 0),
         pricePerKgMulch: Number(pricePerKgMulch || 15),
         qualityGrade: pkgGrade,
         packagingNotes: pkgNotes,
-        markAsCompleted: markCompleted
+        markAsCompleted: markCompleted,
+        image: pkgImage
       };
 
       const res = await fetch(`${API}/api/compost-batches/${pkgBatch._id}/package-to-store`, {
@@ -294,6 +426,7 @@ export default function EcoStoreManagementPage() {
 
       setPkgBatch(null);
       await load();
+      setTab('inventory'); // Seamlessly switches directly to store inventory view!
 
       // Clear breakdown message
       const summaryText = packetRows
@@ -309,7 +442,7 @@ export default function EcoStoreManagementPage() {
           ${summaryText}
           ${mulchKg > 0 ? `<br/>• <b>${mulchKg} kg</b> Loose Bio-Mulch` : ''}
           <br/><br/>
-          <span style="color:#10b981">✓ Existing product stock was updated with zero duplicates.</span>
+          <span style="color:#10b981">✓ Products updated with custom packaging photo live in Eco Store!</span>
         </div>`,
         confirmButtonColor: '#10b981',
         background: '#0f172a',
@@ -325,9 +458,12 @@ export default function EcoStoreManagementPage() {
   const openEdit = (p) => {
     setForm({
       name: p.name, category: p.category, description: p.description || '',
-      unitSize: p.unitSize, weightKg: p.weightKg,
+      unitSize: p.unitSize,
+      weightValue: p.weightValue !== undefined ? p.weightValue : (p.weightKg || 5),
+      weightUnit: p.weightUnit || 'kg',
+      weightKg: p.weightKg || 5,
       priceInr: p.priceInr, priceEcoPoints: p.priceEcoPoints, stockQuantity: p.stockQuantity,
-      npkRatio: p.npkRatio || '', usageInstructions: p.usageInstructions || '',
+      usageInstructions: p.usageInstructions || '',
       benefits: Array.isArray(p.benefits) ? p.benefits.join('\n') : (p.benefits || ''),
       imageBase64: null, imagePreview: p.image || null
     });
@@ -461,7 +597,7 @@ export default function EcoStoreManagementPage() {
                         {/* Product details */}
                         <div style={{ padding:'14px 16px' }}>
                           <div style={{ fontSize:15, fontWeight:700, color: t.textPrimary, marginBottom:2 }}>{p.name}</div>
-                          <div style={{ fontSize:11.5, color: t.textMuted, marginBottom:10 }}>{p.unitSize} {p.weightKg ? `(${p.weightKg} kg)` : ''} · SKU: <span style={{ color: t.textSecondary, fontFamily:'monospace', fontWeight:600 }}>{p.sku}</span></div>
+                          <div style={{ fontSize:11.5, color: t.textMuted, marginBottom:10 }}>{p.unitSize} {p.weightValue ? `(${p.weightValue} ${p.weightUnit || 'kg'})` : (p.weightKg ? `(${p.weightKg} kg)` : '')} · SKU: <span style={{ color: t.textSecondary, fontFamily:'monospace', fontWeight:600 }}>{p.sku}</span></div>
                           <div style={{ fontSize:12, color: t.textSecondary, marginBottom:12, lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{p.description}</div>
 
                           {/* Pricing & Stock row */}
@@ -665,8 +801,46 @@ export default function EcoStoreManagementPage() {
             {/* Basic details */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
               <div style={{ gridColumn:'1/-1' }}>
-                <label style={S.label}>Product Name *</label>
-                <input style={S.input} placeholder="e.g. CanopyGuard Organic Compost 5kg" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                  <label style={{ ...S.label, margin:0 }}>Product Name *</label>
+                  <button
+                    type="button"
+                    onClick={handleAiAutofill}
+                    disabled={aiLoading}
+                    title="Auto-fill description, usage guide, benefits, and metrics using AI"
+                    style={{
+                      background: aiLoading ? (isDark ? '#334155' : '#cbd5e1') : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      border: 'none',
+                      color: '#ffffff',
+                      padding: '4px 12px',
+                      borderRadius: 6,
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      cursor: aiLoading ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {aiLoading ? (
+                      <>
+                        <Loader2 size={13} className="spin" /> Generating with AI...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={13} /> ✨ AI Auto-Fill Details
+                      </>
+                    )}
+                  </button>
+                </div>
+                <input
+                  style={S.input}
+                  placeholder="e.g. Desi Okra Seeds, Organic Neem Cake, Bio-Char..."
+                  value={form.name}
+                  onChange={e=>setForm(f=>({...f,name:e.target.value}))}
+                />
               </div>
               <div>
                 <label style={S.label}>Category</label>
@@ -676,36 +850,89 @@ export default function EcoStoreManagementPage() {
               </div>
               <div>
                 <label style={S.label}>Unit Size</label>
-                <input style={S.input} placeholder="5 kg Bag" value={form.unitSize} onChange={e=>setForm(f=>({...f,unitSize:e.target.value}))}/>
+                <input style={S.input} placeholder="e.g. 500 g Pack, 5 kg Bag" value={form.unitSize} onChange={e=>setForm(f=>({...f,unitSize:e.target.value}))}/>
               </div>
             </div>
 
             <div style={{ marginBottom:12 }}>
-              <label style={S.label}>Description</label>
-              <textarea style={S.textarea} rows={3} placeholder="Describe product details..." value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                <label style={{ ...S.label, margin:0 }}>Description</label>
+                <button
+                  type="button"
+                  onClick={handleAiAutofill}
+                  disabled={aiLoading}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: isDark ? '#34d399' : '#059669',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3
+                  }}
+                >
+                  <Sparkles size={11} /> AI Re-Generate
+                </button>
+              </div>
+              <textarea style={S.textarea} rows={3} placeholder="Describe product details, organic composition, and benefits..." value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/>
             </div>
 
             {/* Pricing & Stock */}
-            <div style={{ ...S.panel, marginBottom:12 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#10b981', marginBottom:12 }}>💰 Pricing & Stock</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:10 }}>
-                {[
-                  {label:'Price (₹)', key:'priceInr', type:'number'},
-                  {label:'Eco-Points', key:'priceEcoPoints', type:'number'},
-                  {label:'Stock Qty', key:'stockQuantity', type:'number'},
-                  {label:'Weight (kg)', key:'weightKg', type:'number'},
-                ].map(f=>(
-                  <div key={f.key}>
-                    <label style={S.label}>{f.label}</label>
-                    <input type={f.type} style={S.input} value={form[f.key]} onChange={e=>setForm(fd=>({...fd,[f.key]:Number(e.target.value)}))}/>
-                  </div>
-                ))}
+            <div style={{ ...S.panel, marginBottom:14 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#10b981', marginBottom:12 }}>💰 Pricing, Stock & Weight Metrics</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginBottom:12 }}>
+                <div>
+                  <label style={S.label}>Price (₹) *</label>
+                  <input type="number" min="0" style={S.input} value={form.priceInr} onChange={e=>setForm(fd=>({...fd, priceInr:Number(e.target.value)}))}/>
+                </div>
+                <div>
+                  <label style={S.label}>Eco-Points</label>
+                  <input type="number" min="0" style={S.input} value={form.priceEcoPoints} onChange={e=>setForm(fd=>({...fd, priceEcoPoints:Number(e.target.value)}))}/>
+                </div>
+                <div>
+                  <label style={S.label}>Stock Qty *</label>
+                  <input type="number" min="0" style={S.input} value={form.stockQuantity} onChange={e=>setForm(fd=>({...fd, stockQuantity:Number(e.target.value)}))}/>
+                </div>
               </div>
-            </div>
 
-            <div style={{ marginBottom:12 }}>
-              <label style={S.label}>NPK Ratio</label>
-              <input style={S.input} placeholder="e.g. 2.4 : 1.2 : 1.8" value={form.npkRatio} onChange={e=>setForm(f=>({...f,npkRatio:e.target.value}))}/>
+              {/* Weight Metric Selection (kg, grm, mg, ton, L, ml, pcs) */}
+              <div style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: `1px solid ${t.border}`, borderRadius: 10, padding: 12 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  <div>
+                    <label style={S.label}>Weight / Measure Value *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="e.g. 5, 250, 500, 1"
+                      style={S.input}
+                      value={form.weightValue !== undefined ? form.weightValue : form.weightKg}
+                      onChange={e => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setForm(fd => ({ ...fd, weightValue: val, weightKg: Number(val) }));
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={S.label}>Weight Metric / Unit *</label>
+                    <select
+                      style={S.input}
+                      value={form.weightUnit || 'kg'}
+                      onChange={e => setForm(fd => ({ ...fd, weightUnit: e.target.value }))}
+                    >
+                      {WEIGHT_METRICS.map(m => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: t.textMuted, marginTop: 7, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                  <span>Metric selected: <b style={{ color: '#10b981' }}>{form.weightValue || 0} {form.weightUnit || 'kg'}</b></span>
+                  <span style={{ color: t.textSecondary }}>(Supports kg, g/grm, mg, ton, L, ml, pcs)</span>
+                </div>
+              </div>
             </div>
             <div style={{ marginBottom:12 }}>
               <label style={S.label}>Usage Instructions</label>
@@ -931,6 +1158,105 @@ export default function EcoStoreManagementPage() {
                     onChange={e => setPricePerKgMulch(Math.max(1, Number(e.target.value)))}
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Store Product Image & Packaging Photo */}
+            <div style={{ ...S.panel, marginBottom:16 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                <div style={{ fontSize:13, fontWeight:800, color: t.textPrimary, display:'flex', alignItems:'center', gap:6 }}>
+                  📸 Product Image for Citizen Store
+                </div>
+                <div style={{ fontSize:11, color: t.textMuted }}>
+                  Attaches directly to store product card
+                </div>
+              </div>
+
+              <div style={{ display:'flex', gap:14, alignItems:'center', flexWrap:'wrap' }}>
+                {/* Image preview thumbnail */}
+                <div style={{ width:84, height:84, borderRadius:12, overflow:'hidden', border:`2px solid ${isDark ? '#10b981' : '#059669'}`, background: t.bgCardSubtle, position:'relative', flexShrink:0, boxShadow:'0 4px 12px rgba(0,0,0,0.2)' }}>
+                  <img
+                    src={pkgImage}
+                    alt="Packaging Preview"
+                    style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                    onError={e => { e.target.src='https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600&auto=format&fit=crop&q=80'; }}
+                  />
+                  <div style={{ position:'absolute', bottom:0, insetInline:0, background:'rgba(0,0,0,0.65)', color:'#fff', fontSize:9, textAlign:'center', padding:'2px 0', fontWeight:700 }}>
+                    STORE IMG
+                  </div>
+                </div>
+
+                {/* Upload & Preset controls */}
+                <div style={{ flex:1, minWidth:200 }}>
+                  <input
+                    ref={pkgImgRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display:'none' }}
+                    onChange={handlePkgImageUpload}
+                  />
+
+                  <div style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => pkgImgRef.current?.click()}
+                      style={{ ...S.btn('linear-gradient(135deg, #10b981, #059669)'), padding:'7px 14px', fontSize:12 }}
+                    >
+                      📷 Upload Custom Photo
+                    </button>
+                    {pkgImage && pkgImage.startsWith('data:') && (
+                      <button
+                        type="button"
+                        onClick={() => setPkgImage(COMPOST_IMAGE_PRESETS[0].url)}
+                        style={{ ...S.btn('rgba(239,68,68,0.15)', '#ef4444'), padding:'7px 12px', fontSize:11 }}
+                      >
+                        Reset to Default
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Preset quick buttons */}
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+                    <span style={{ fontSize:10.5, color: t.textMuted, fontWeight:700 }}>Presets:</span>
+                    {COMPOST_IMAGE_PRESETS.map(preset => {
+                      const isSel = pkgImage === preset.url;
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => setPkgImage(preset.url)}
+                          style={{
+                            padding:'3px 9px',
+                            borderRadius:6,
+                            fontSize:11,
+                            fontWeight:700,
+                            cursor:'pointer',
+                            border: isSel ? '1px solid #10b981' : `1px solid ${t.border}`,
+                            background: isSel ? (isDark ? 'rgba(16,185,129,0.2)' : '#d1fae5') : t.bgCardSubtle2,
+                            color: isSel ? (isDark ? '#34d399' : '#047857') : t.textSecondary
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional URL input */}
+              <div style={{ marginTop:10 }}>
+                <input
+                  type="text"
+                  placeholder="Or paste external image URL (https://...)"
+                  value={pkgImage.startsWith('data:') ? 'Custom uploaded image (Base64)' : pkgImage}
+                  onChange={e => {
+                    if (!e.target.value.startsWith('Custom uploaded')) {
+                      setPkgImage(e.target.value);
+                    }
+                  }}
+                  style={{ ...S.input, fontSize:11.5, padding:'6px 10px' }}
+                />
               </div>
             </div>
 

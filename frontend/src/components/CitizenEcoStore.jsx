@@ -101,8 +101,10 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
           priceInInr: Number(p.priceInr ?? p.priceInInr ?? 0),
           priceInPoints: Number(p.priceEcoPoints ?? p.priceInPoints ?? 0),
           stock: Number(p.stockQuantity ?? p.stock ?? 0),
-          unitSize: p.unitSize || (p.weightKg ? `${p.weightKg} kg Bag` : ''),
+          unitSize: p.unitSize || (p.weightValue ? `${p.weightValue} ${p.weightUnit || 'kg'}` : (p.weightKg ? `${p.weightKg} kg Bag` : '')),
           weightKg: p.weightKg || null,
+          weightValue: p.weightValue || null,
+          weightUnit: p.weightUnit || 'kg',
           description: p.description || '',
           usageInstructions: p.usageInstructions || '',
           benefits: Array.isArray(p.benefits) ? p.benefits.filter(Boolean) : (typeof p.benefits === 'string' && p.benefits.trim() ? [p.benefits.trim()] : [])
@@ -199,10 +201,17 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
   const availableEcoPoints = Number(userEcoPoints) || 0;
   const cartSubtotal = cart.reduce((sum, item) => sum + ((item.priceInInr || item.priceInr || 99) * item.quantity), 0);
   const deliveryFee = deliveryMethod === 'delivery' && cartSubtotal > 0 ? 99 : 0;
-  // 1 Eco Point = ₹2 discount, up to 50% of subtotal or max points available
-  const maxRedeemablePoints = Math.min(availableEcoPoints, Math.floor(cartSubtotal / 2));
+  // 1 Eco Point = ₹2 discount, can redeem points to discount up to 100% of subtotal
+  const maxRedeemablePoints = Math.min(availableEcoPoints, Math.ceil(cartSubtotal / 2));
   const pointsDiscountInr = Math.min(pointsToRedeem * 2, cartSubtotal);
   const finalTotalInr = Math.max(0, cartSubtotal + deliveryFee - pointsDiscountInr);
+
+  // Auto-clamp points to redeem if cart items or subtotal changes
+  useEffect(() => {
+    if (pointsToRedeem > maxRedeemablePoints) {
+      setPointsToRedeem(maxRedeemablePoints);
+    }
+  }, [maxRedeemablePoints, pointsToRedeem]);
 
   // Category Filtering
   const categories = [
@@ -321,7 +330,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
     setOrderError('');
 
     try {
-      const isFullPoints = pointsDiscountInr >= cartSubtotal || (paymentMethod === 'points' && finalTotalInr === 0);
+      const isFullPoints = finalTotalInr === 0;
       const selectedPayMethod = isFullPoints ? 'Eco-Points Full Redemption' : paymentMethod === 'cod' ? 'Cash on Delivery' : 'Razorpay Online';
 
       const payload = {
@@ -337,7 +346,11 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
         deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress : undefined,
         pickupYard: deliveryMethod === 'pickup' ? { yardName: pickupYard } : undefined,
         paymentMethod: selectedPayMethod,
-        ecoPointsToUse: pointsToRedeem
+        ecoPointsToUse: pointsToRedeem,
+        subtotalInr: cartSubtotal,
+        deliveryFee: deliveryFee,
+        pointsDiscountInr: pointsDiscountInr,
+        finalTotalInr: finalTotalInr
       };
 
       const res = await fetch(`${API_URL}/api/eco-orders/create-checkout`, {
@@ -820,10 +833,10 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                       </p>
 
                       {/* Optional weight tag if provided */}
-                      {product.weightKg && (
+                      {(product.weightValue || product.weightKg) && (
                         <div style={{ marginBottom: '12px' }}>
                           <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 600 }}>
-                            ⚖️ Weight: {product.weightKg} kg
+                            ⚖️ Weight: {product.weightValue ? `${product.weightValue} ${product.weightUnit || 'kg'}` : `${product.weightKg} kg`}
                           </span>
                         </div>
                       )}
@@ -1024,11 +1037,11 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                           </div>
                         </div>
                       )}
-                      {selectedProductDetails.weightKg && (
+                      {(selectedProductDetails.weightValue || selectedProductDetails.weightKg) && (
                         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '10px 12px' }}>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>NET WEIGHT</div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>NET WEIGHT / MEASURE</div>
                           <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#0f172a', marginTop: '2px' }}>
-                            {selectedProductDetails.weightKg} kg
+                            {selectedProductDetails.weightValue ? `${selectedProductDetails.weightValue} ${selectedProductDetails.weightUnit || 'kg'}` : `${selectedProductDetails.weightKg} kg`}
                           </div>
                         </div>
                       )}
@@ -1283,7 +1296,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                         </div>
                         {(order.totalEcoPointsUsed > 0 || order.pointsRedeemed > 0) && (
                           <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 700 }}>
-                            🪙 {order.totalEcoPointsUsed || order.pointsRedeemed} pts redeemed
+                            🪙 {order.totalEcoPointsUsed || order.pointsRedeemed} pts (-₹{order.pointsDiscountInr || ((order.totalEcoPointsUsed || order.pointsRedeemed) * 2)})
                           </div>
                         )}
                       </div>
@@ -1646,21 +1659,21 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                             type="range"
                             min="0"
                             max={maxRedeemablePoints}
-                            step="5"
+                            step="1"
                             value={pointsToRedeem}
                             onChange={(e) => setPointsToRedeem(Number(e.target.value))}
                             style={{ flex: 1, accentColor: '#d97706', cursor: 'pointer' }}
                           />
-                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#92400e', minWidth: '95px', textAlign: 'right' }}>
-                            {pointsToRedeem} pts (-₹{pointsToRedeem * 2})
+                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#92400e', minWidth: '105px', textAlign: 'right' }}>
+                            {pointsToRedeem} pts (-₹{pointsDiscountInr})
                           </span>
                         </div>
                         {maxRedeemablePoints > 0 && (
                           <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
                             {[
                               { label: 'None', val: 0 },
-                              { label: '25%', val: Math.floor(maxRedeemablePoints * 0.25) },
-                              { label: '50%', val: Math.floor(maxRedeemablePoints * 0.5) },
+                              { label: '25%', val: Math.round(maxRedeemablePoints * 0.25) },
+                              { label: '50%', val: Math.round(maxRedeemablePoints * 0.5) },
                               { label: 'Max Points', val: maxRedeemablePoints }
                             ].map((preset, idx) => (
                               <button
@@ -1779,8 +1792,8 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                     )}
                     {pointsDiscountInr > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d97706', fontWeight: 700 }}>
-                        <span>Eco-Points Discount</span>
-                        <span>-₹{pointsDiscountInr}</span>
+                        <span>🌿 Eco-Points Discount ({pointsToRedeem} pts)</span>
+                        <span>-₹{pointsDiscountInr.toLocaleString()}</span>
                       </div>
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.05rem', color: '#0f172a', borderTop: '1px solid #cbd5e1', paddingTop: '6px', marginTop: '4px' }}>
@@ -1860,6 +1873,33 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                     ) : (
                       <span>✓ Payment Verified via Razorpay Online</span>
                     )}
+                  </div>
+
+                  {/* Billing Breakdown Receipt */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 16px', width: '100%', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left', boxSizing: 'border-box' }}>
+                    <div style={{ fontWeight: 800, color: '#334155', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '2px' }}>
+                      🧾 Billing Summary
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                      <span>Subtotal</span>
+                      <span>₹{(completedOrder.subtotalInr || (completedOrder.totalAmountInr + (completedOrder.pointsDiscountInr || 0) - (completedOrder.deliveryFee || 0))).toLocaleString()}</span>
+                    </div>
+                    {(completedOrder.deliveryFee || 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                        <span>Home Delivery Fee</span>
+                        <span>₹{completedOrder.deliveryFee}</span>
+                      </div>
+                    )}
+                    {completedOrder.totalEcoPointsUsed > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d97706', fontWeight: 700 }}>
+                        <span>🌿 Eco-Points ({completedOrder.totalEcoPointsUsed} pts)</span>
+                        <span>-₹{(completedOrder.pointsDiscountInr || (completedOrder.totalEcoPointsUsed * 2)).toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, color: '#0f172a', borderTop: '1px solid #cbd5e1', paddingTop: '6px', marginTop: '2px', fontSize: '0.92rem' }}>
+                      <span>{completedOrder.paymentMethod === 'Cash on Delivery' ? 'Amount Due on Delivery:' : 'Total Amount Paid:'}</span>
+                      <span style={{ color: '#059669' }}>₹{completedOrder.totalAmountInr?.toLocaleString()}</span>
+                    </div>
                   </div>
 
                   {completedOrder.fulfillmentType === 'Yard Pickup' && completedOrder.pickupYard && (

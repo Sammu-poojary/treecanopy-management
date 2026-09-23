@@ -568,12 +568,199 @@ router.patch('/users/:id/role', async (req, res) => {
   }
 });
 
+// Helper to dispatch Tree Cutter / User approval or rejection email & notification
+async function sendUserStatusEmail(user, status, reason = '') {
+  if (!user || !user.email) {
+    console.warn(`⚠️ [EMAIL NOTICE] User "${user?.name || 'Unknown'}" (${user?._id}) has no email address. Skipping email.`);
+    return;
+  }
+
+  const cleanEmail = user.email.toLowerCase().trim();
+  if (!cleanEmail.includes('@') || (cleanEmail.endsWith('.gov') && !cleanEmail.includes('.'))) {
+    console.warn(`⚠️ [EMAIL NOTICE] User "${user.name}" (${user._id}) has an invalid email address "${user.email}". Skipping email.`);
+    return;
+  }
+
+  // 1. In-App Notification
+  try {
+    const Notification = require('../models/Notification');
+    const isApproval = status === 'Verified';
+    await Notification.create({
+      targetRole: user.role,
+      targetUserId: user._id,
+      type: 'status_updated',
+      title: isApproval ? 'Account Registration Approved' : 'Account Registration Update',
+      message: isApproval
+        ? `Your account registration as ${user.role} has been approved by the Admin. Please log in.`
+        : `Your registration as ${user.role} was not approved. ${reason ? 'Reason: ' + reason : ''}`,
+      relatedId: user._id.toString()
+    });
+    console.log(`🔔 [NOTIFICATION CREATED] In-app notification created for ${user.name} (${user.role}) - Status: ${status}`);
+  } catch (notifErr) {
+    console.error('⚠️ Failed to create in-app notification:', notifErr.message);
+  }
+
+  // 2. Email Notification
+  require('dotenv').config();
+  const emailUser = process.env.EMAIL_USER || 'admin5tcms@gmail.com';
+  const rawEmailPass = process.env.EMAIL_PASS || '';
+  const emailPass = rawEmailPass.replace(/\s+/g, '');
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  const isApproval = status === 'Verified';
+  const subject = isApproval
+    ? '🌳 TreeCanopy Account Approved - Login Required'
+    : '🌳 TreeCanopy Application Status Update';
+
+  const defaultRejectionReason = 'Application credentials and documentation could not be verified by the municipal forest authority at this time.';
+  const displayReason = (reason && reason.trim()) ? reason.trim() : defaultRejectionReason;
+
+  const approvalHtml = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:auto;padding:32px 24px;background:#ffffff;border-radius:14px;border:1px solid #e5e7eb;box-shadow:0 8px 24px rgba(0,0,0,0.06);">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="display:inline-block;background:#dcfce7;padding:12px;border-radius:50%;margin-bottom:8px;">
+          <span style="font-size:28px;">🌳</span>
+        </div>
+        <h2 style="color:#166534;margin:6px 0 2px 0;font-size:22px;font-weight:800;">TreeCanopy System Notice</h2>
+        <p style="color:#6b7280;font-size:13px;margin:0;text-transform:uppercase;letter-spacing:0.5px;">Official Municipal Canopy Protection</p>
+      </div>
+
+      <p style="font-size:15px;color:#1f2937;margin-bottom:12px;">Hi <strong>${user.name}</strong>,</p>
+      <p style="font-size:15px;color:#374151;line-height:1.6;margin-top:0;">
+        Great news! Your account registration as an official <strong>${user.role}</strong> has been reviewed and <strong style="color:#16a34a;">approved</strong> by the Municipal Administrator.
+      </p>
+
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #16a34a;padding:16px 20px;margin:20px 0;border-radius:8px;">
+        <p style="margin:0 0 8px 0;font-weight:700;color:#14532d;font-size:14px;text-transform:uppercase;letter-spacing:0.4px;">Verified Account Profile:</p>
+        <p style="margin:4px 0;color:#166534;font-size:14px;"><strong>Name:</strong> ${user.name}</p>
+        <p style="margin:4px 0;color:#166534;font-size:14px;"><strong>Registered Email:</strong> ${cleanEmail}</p>
+        <p style="margin:4px 0;color:#166534;font-size:14px;"><strong>Assigned Role:</strong> ${user.role}</p>
+        <p style="margin:4px 0;color:#166534;font-size:14px;"><strong>Account Status:</strong> <span style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:bold;">Verified & Active</span></p>
+      </div>
+
+      <p style="font-size:14px;color:#4b5563;line-height:1.6;">
+        You can now log in using your registered credentials to access your field dashboard, view tree hazard complaints, mark attendance, and manage daily operations.
+      </p>
+
+      <div style="text-align:center;margin:28px 0 20px 0;">
+        <a href="${frontendUrl}/login" style="display:inline-block;background:#16a34a;color:#ffffff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;box-shadow:0 4px 10px rgba(22,163,74,0.35);">
+          Log In to Canopy Portal &rarr;
+        </a>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0 16px 0;" />
+      <p style="color:#9ca3af;font-size:12px;text-align:center;margin:0;">
+        This automated approval dispatch was sent directly to <strong>${cleanEmail}</strong>.
+      </p>
+    </div>
+  `;
+
+  const rejectionHtml = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:auto;padding:32px 24px;background:#ffffff;border-radius:14px;border:1px solid #e5e7eb;box-shadow:0 8px 24px rgba(0,0,0,0.06);">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="display:inline-block;background:#fee2e2;padding:12px;border-radius:50%;margin-bottom:8px;">
+          <span style="font-size:28px;">📋</span>
+        </div>
+        <h2 style="color:#991b1b;margin:6px 0 2px 0;font-size:22px;font-weight:800;">TreeCanopy System Notice</h2>
+        <p style="color:#6b7280;font-size:13px;margin:0;text-transform:uppercase;letter-spacing:0.5px;">Official Municipal Canopy Protection</p>
+      </div>
+
+      <p style="font-size:15px;color:#1f2937;margin-bottom:12px;">Dear <strong>${user.name}</strong>,</p>
+      <p style="font-size:15px;color:#374151;line-height:1.6;margin-top:0;">
+        Thank you for submitting your application to join TreeCanopy as an official <strong>${user.role}</strong>.
+      </p>
+      <p style="font-size:15px;color:#374151;line-height:1.6;">
+        After administrative evaluation of your submitted details, we regret to inform you that your registration could <strong style="color:#dc2626;">not be approved</strong> at this time.
+      </p>
+
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;padding:16px 20px;margin:20px 0;border-radius:8px;">
+        <p style="margin:0 0 8px 0;font-weight:700;color:#991b1b;font-size:14px;text-transform:uppercase;letter-spacing:0.4px;">Application Details:</p>
+        <p style="margin:4px 0;color:#7f1d1d;font-size:14px;"><strong>Applicant Name:</strong> ${user.name}</p>
+        <p style="margin:4px 0;color:#7f1d1d;font-size:14px;"><strong>Registered Email:</strong> ${cleanEmail}</p>
+        <p style="margin:4px 0;color:#7f1d1d;font-size:14px;"><strong>Applied Role:</strong> ${user.role}</p>
+        <p style="margin:4px 0;color:#7f1d1d;font-size:14px;"><strong>Decision Status:</strong> <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:bold;">Rejected</span></p>
+        <p style="margin:8px 0 0 0;color:#b91c1c;font-size:14px;line-height:1.5;"><strong>Reason:</strong> ${displayReason}</p>
+      </div>
+
+      <p style="font-size:14px;color:#4b5563;line-height:1.6;">
+        If you believe this is an error or would like to submit updated verification documentation, please reach out to the municipal administration at <a href="mailto:${emailUser}" style="color:#2563eb;font-weight:600;">${emailUser}</a> or register again with accurate credentials.
+      </p>
+
+      <div style="text-align:center;margin:28px 0 20px 0;">
+        <a href="${frontendUrl}/login" style="display:inline-block;background:#475569;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+          Return to Portal
+        </a>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0 16px 0;" />
+      <p style="color:#9ca3af;font-size:12px;text-align:center;margin:0;">
+        This automated notification was sent to <strong>${cleanEmail}</strong> regarding your municipal portal account.
+      </p>
+    </div>
+  `;
+
+  const htmlContent = isApproval ? approvalHtml : rejectionHtml;
+  const textContent = isApproval
+    ? `Hi ${user.name},\n\nCongratulations! Your account registration as a ${user.role} has been approved by the Administrator.\n\nRegistered Email: ${cleanEmail}\nStatus: Verified & Active\n\nYou can log in at: ${frontendUrl}/login\n\nThank you,\nTreeCanopy Support`
+    : `Hi ${user.name},\n\nYour account registration as a ${user.role} was reviewed by the Administrator.\nStatus: Rejected\nReason: ${displayReason}\n\nIf you have questions, please contact ${emailUser}.\n\nThank you,\nTreeCanopy Support`;
+
+  console.log('\n======================================================================');
+  console.log(`📧 [EMAIL DISPATCH INITIATED]`);
+  console.log(`----------------------------------------------------------------------`);
+  console.log(`Type:       Tree Cutter / User ${isApproval ? 'APPROVAL' : 'REJECTION'}`);
+  console.log(`Recipient:  ${user.name} <${cleanEmail}>`);
+  console.log(`User Role:  ${user.role}`);
+  console.log(`Status:     ${status}`);
+  console.log(`Subject:    ${subject}`);
+  if (!isApproval) {
+    console.log(`Reason:     ${displayReason}`);
+  }
+  console.log(`Sender:     "TreeCanopy Support" <${emailUser}>`);
+  console.log(`----------------------------------------------------------------------`);
+
+  if (!emailUser || !emailPass) {
+    console.warn(`⚠️ [EMAIL SKIPPED] EMAIL_USER or EMAIL_PASS not set in environment.`);
+    console.log('======================================================================\n');
+    return;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: emailUser, pass: emailPass },
+    });
+
+    const info = await transporter.sendMail({
+      from: `"TreeCanopy Support" <${emailUser}>`,
+      to: cleanEmail,
+      subject,
+      text: textContent,
+      html: htmlContent,
+    });
+
+    console.log(`✅ [EMAIL SENT SUCCESSFULLY]`);
+    console.log(`Recipient:  ${cleanEmail}`);
+    console.log(`Subject:    ${subject}`);
+    console.log(`Status:     ${status}`);
+    console.log(`MessageId:  ${info.messageId}`);
+    console.log(`Response:   ${info.response}`);
+    console.log('======================================================================\n');
+    return info;
+  } catch (mailErr) {
+    console.error(`❌ [EMAIL DISPATCH ERROR]`);
+    console.error(`Recipient:  ${cleanEmail}`);
+    console.error(`Subject:    ${subject}`);
+    console.error(`Error:      ${mailErr.message}`);
+    console.log('======================================================================\n');
+  }
+}
+
 // @route   PATCH /api/auth/users/:id/status
 // @desc    Change a user's approval status (Admin only)
 // @access  Admin
 router.patch('/users/:id/status', async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, reason, rejectionReason } = req.body;
     const validStatuses = ['Pending', 'Verified', 'Rejected'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ msg: 'Invalid status' });
@@ -587,156 +774,14 @@ router.patch('/users/:id/status', async (req, res) => {
 
     if (!user) return res.status(404).json({ msg: 'User not found' });
 
-    if (status === 'Verified') {
-      // 1. Send in-app notification
-      try {
-        const Notification = require('../models/Notification');
-        await Notification.create({
-          targetRole: user.role,
-          targetUserId: user._id,
-          type: 'status_updated',
-          title: 'Account Registration Approved',
-          message: `Your account registration as ${user.role} has been approved by the Admin. Please log in.`,
-          relatedId: user._id.toString()
-        });
-      } catch (err) {
-        console.error('Failed to create in-app notification:', err.message);
-      }
-
-      // 2. Send email notification to user's personal registered email address
-      require('dotenv').config();
-      const emailUser = process.env.EMAIL_USER;
-      const rawEmailPass = process.env.EMAIL_PASS;
-      const emailPass = rawEmailPass ? rawEmailPass.replace(/\s+/g, '') : '';
-
-      const emailContentHtml = `
-        <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:28px;background:#ffffff;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-          <div style="text-align:center;margin-bottom:20px;">
-            <h2 style="color:#166534;margin:0;font-size:22px;">🌳 TreeCanopy Approval Notice</h2>
-            <p style="color:#6b7280;font-size:14px;margin-top:4px;">Official Municipal Canopy Protection System</p>
-          </div>
-          
-          <p style="font-size:15px;color:#374151;">Hi <strong>${user.name}</strong>,</p>
-          <p style="font-size:15px;color:#374151;line-height:1.5;">Great news! Your account registration as a <strong>${user.role}</strong> has been reviewed and <strong>approved</strong> by the Administrator.</p>
-          
-          <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;">
-            <p style="margin:0;font-weight:600;color:#14532d;font-size:15px;">Account Details:</p>
-            <p style="margin:6px 0 0;color:#15803d;font-size:14px;">Registered Email: <strong>${user.email}</strong></p>
-            <p style="margin:4px 0 0;color:#15803d;font-size:14px;">Role: <strong>${user.role}</strong></p>
-            <p style="margin:4px 0 0;color:#15803d;font-size:14px;">Status: <strong>Verified & Active</strong></p>
-          </div>
-          
-          <p style="font-size:14px;color:#4b5563;line-height:1.5;">You can now log in using your personal registered email (<strong>${user.email}</strong>) and password to view and manage your assigned tasks.</p>
-          
-          <div style="text-align:center;margin-top:24px;margin-bottom:12px;">
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" style="display:inline-block;background:#16a34a;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;box-shadow:0 2px 6px rgba(22,163,74,0.3);">Log In to Portal</a>
-          </div>
-          
-          <hr style="border:none;border-top:1px solid #f3f4f6;margin:24px 0 16px 0;" />
-          <p style="color:#9ca3af;font-size:12px;text-align:center;margin:0;">This automated approval message was sent to ${user.email}.</p>
-        </div>
-      `;
-
-      if (emailUser && emailPass) {
-        try {
-          const transporter = nodemailer.createTransport(
-            process.env.SMTP_HOST
-              ? {
-                host: process.env.SMTP_HOST,
-                port: Number(process.env.SMTP_PORT) || 587,
-                secure: process.env.SMTP_SECURE === 'true',
-                auth: { user: emailUser, pass: emailPass },
-              }
-              : {
-                service: 'gmail',
-                auth: { user: emailUser, pass: emailPass },
-              }
-          );
-
-          const textContent = `Hi ${user.name},\n\nCongratulations! Your account registration as a ${user.role} has been approved by the Administrator.\n\nRegistered Email: ${user.email}\nStatus: Verified & Active\n\nYou can log in to your account at: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/login\n\nThank you,\nTreeCanopy Support`;
-
-          await transporter.sendMail({
-            from: `"TreeCanopy Support" <${emailUser}>`,
-            to: user.email,
-            subject: 'Your TreeCanopy Account Has Been Approved',
-            text: textContent,
-            html: emailContentHtml,
-          });
-          console.log(`[EMAIL SUCCESS] Personal approval email sent directly to: ${user.email}`);
-        } catch (mailErr) {
-          console.error('\n⚠️ [GMAIL SMTP AUTHENTICATION FAILED]');
-          console.error(`Reason: ${mailErr.message}`);
-          console.error('Note: Gmail requires a 16-character App Password (not your regular account password).\n');
-
-          // Fallback to Ethereal so the approval email is still sent & clickable preview URL is generated
-          try {
-            const testAccount = await nodemailer.createTestAccount();
-            const testTransporter = nodemailer.createTransport({
-              host: 'smtp.ethereal.email',
-              port: 587,
-              secure: false,
-              auth: { user: testAccount.user, pass: testAccount.pass },
-            });
-
-            const info = await testTransporter.sendMail({
-              from: `"TreeCanopy Support" <${testAccount.user}>`,
-              to: user.email,
-              subject: '🌳 TreeCanopy Account Approved - Login Required',
-              html: emailContentHtml,
-            });
-
-            const previewUrl = nodemailer.getTestMessageUrl(info);
-            console.log('======================================================');
-            console.log('📬 [FALLBACK TEST EMAIL TRANSMITTED]');
-            console.log(`To Personal Email: ${user.email}`);
-            console.log(`🔗 CLICKABLE WEB INBOX PREVIEW URL: ${previewUrl}`);
-            console.log('======================================================\n');
-          } catch (etherealErr) {
-            console.error('Ethereal fallback failed:', etherealErr.message);
-          }
-        }
-      } else {
-        // Try auto-sending via Ethereal test server so live email preview URL is generated
-        try {
-          const testAccount = await nodemailer.createTestAccount();
-          const testTransporter = nodemailer.createTransport({
-            host: 'smtp.ethereal.email',
-            port: 587,
-            secure: false,
-            auth: {
-              user: testAccount.user,
-              pass: testAccount.pass,
-            },
-          });
-
-          const info = await testTransporter.sendMail({
-            from: `"TreeCanopy Support" <${testAccount.user}>`,
-            to: user.email,
-            subject: '🌳 TreeCanopy Account Approved - Login Required',
-            html: emailContentHtml,
-          });
-
-          const previewUrl = nodemailer.getTestMessageUrl(info);
-          console.log('\n======================================================');
-          console.log('📬 [LIVE TEST EMAIL TRANSMITTED TO RECIPIENT]');
-          console.log(`To Personal Email: ${user.email}`);
-          console.log(`Subject: 🌳 TreeCanopy Account Approved - Login Required`);
-          console.log(`🔗 CLICKABLE WEB INBOX PREVIEW URL: ${previewUrl}`);
-          console.log('======================================================\n');
-        } catch (etherealErr) {
-          console.log('\n======================================================');
-          console.log('--- [DEV MODE: PERSONAL APPROVAL EMAIL NOTIFICATION] ---');
-          console.log(`Recipient Personal Email: ${user.email}`);
-          console.log(`User Name: ${user.name}`);
-          console.log(`Role: ${user.role}`);
-          console.log('Subject: 🌳 TreeCanopy Account Approved - Login Required');
-          console.log('======================================================\n');
-        }
-      }
+    // Send email & in-app notification for approvals or rejections
+    if (status === 'Verified' || status === 'Rejected') {
+      await sendUserStatusEmail(user, status, reason || rejectionReason);
     }
 
     res.json({ msg: `Status updated to ${status}`, user });
   } catch (error) {
+    console.error('Failed to update user status:', error);
     res.status(500).json({ msg: 'Failed to update status', error: error.message });
   }
 });
@@ -829,6 +874,11 @@ router.patch('/users/:id', async (req, res) => {
       user = await User.findOneAndUpdate({ email: req.params.id.toLowerCase().trim() }, updateFields, { returnDocument: 'after' }).select('-password');
     }
     if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    if (status && (status === 'Verified' || status === 'Rejected')) {
+      await sendUserStatusEmail(user, status, req.body.reason || req.body.rejectionReason);
+    }
+
     res.json({ msg: 'User updated successfully', user });
   } catch (error) {
     res.status(500).json({ msg: 'Failed to update user', error: error.message });

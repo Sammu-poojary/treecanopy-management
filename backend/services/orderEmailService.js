@@ -102,15 +102,25 @@ async function sendOrderPlacedEmail(order) {
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="2" style="padding-top: 14px; font-weight: 700; color: #0f172a; font-size: 15px;">Grand Total</td>
-                <td style="padding-top: 14px; text-align: right; font-weight: 800; color: #059669; font-size: 18px;">₹${order.totalAmountInr || 0}</td>
+                <td colspan="2" style="padding-top: 12px; color: #64748b; font-size: 13px;">Subtotal</td>
+                <td style="padding-top: 12px; text-align: right; color: #0f172a; font-size: 13px; font-weight: 600;">₹${order.subtotalInr || (order.totalAmountInr + (order.pointsDiscountInr || 0) - (order.deliveryFee || 0))}</td>
               </tr>
-              ${order.totalEcoPointsUsed > 0 ? `
+              ${(order.deliveryFee || 0) > 0 ? `
                 <tr>
-                  <td colspan="2" style="color: #64748b; font-size: 12px;">Eco-Points Redeemed</td>
-                  <td style="text-align: right; color: #059669; font-size: 12px; font-weight: 700;">-${order.totalEcoPointsUsed} pts</td>
+                  <td colspan="2" style="color: #64748b; font-size: 13px;">Home Delivery Fee</td>
+                  <td style="text-align: right; color: #0f172a; font-size: 13px; font-weight: 600;">₹${order.deliveryFee}</td>
                 </tr>
               ` : ''}
+              ${order.totalEcoPointsUsed > 0 ? `
+                <tr>
+                  <td colspan="2" style="color: #d97706; font-size: 13px; font-weight: 600;">Eco-Points Discount (${order.totalEcoPointsUsed} pts)</td>
+                  <td style="text-align: right; color: #d97706; font-size: 13px; font-weight: 700;">-₹${order.pointsDiscountInr || (order.totalEcoPointsUsed * 2)}</td>
+                </tr>
+              ` : ''}
+              <tr style="border-top: 2px solid #cbd5e1;">
+                <td colspan="2" style="padding-top: 10px; font-weight: 800; color: #0f172a; font-size: 15px;">Final Total to Pay</td>
+                <td style="padding-top: 10px; text-align: right; font-weight: 900; color: #059669; font-size: 18px;">₹${order.totalAmountInr || 0}</td>
+              </tr>
             </tfoot>
           </table>
 

@@ -11,6 +11,8 @@ const ecoProductSchema = new mongoose.Schema({
   description: { type: String, required: true },
   unitSize: { type: String, default: '5 kg Bag' }, // e.g. 5 kg, 10 kg, 25 kg, 1 Sapling
   weightKg: { type: Number, default: 5 },
+  weightValue: { type: Number, default: 5 },
+  weightUnit: { type: String, default: 'kg' },
   
   // Pricing: Currency (INR) and Eco-Points
   priceInr: { type: Number, required: true, default: 99 },

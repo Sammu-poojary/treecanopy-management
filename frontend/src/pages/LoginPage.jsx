@@ -347,8 +347,8 @@ const LoginPage = () => {
           {isSubmitting ? 'Signing In...' : 'Secure Login'}
         </button>
 
-        {/* Google Login - Commented out for Tree Cutter */}
-        {activeTab !== 'Tree Cutter' && (
+        {/* Google Login - Commented out for Tree Cutter, Admin, and Delivery */}
+        {!['Tree Cutter', 'Admin', 'Delivery Partner', 'Delivery'].includes(activeTab) && (
           <>
             <div className="divider">
               <span>OR</span>

@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema(
     },
     businessType: {
       type: String,
-      default: 'Sawmill / Lumber Mill',
+      default: '',
     },
     gstin: {
       type: String,

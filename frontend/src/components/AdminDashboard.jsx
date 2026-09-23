@@ -446,16 +446,34 @@ const AdminDashboard = ({ user, activeTab }) => {
   };
 
   const handleStatusChange = async (userId, newStatus, email) => {
+    let reason = '';
+    if (newStatus === 'Rejected') {
+      const input = prompt(
+        `Enter rejection reason for ${email} (this will be sent in their notification email):`,
+        'Application credentials and documentation could not be verified by the municipal authority.'
+      );
+      if (input === null) return; // User cancelled
+      reason = input;
+    } else if (newStatus === 'Verified') {
+      if (!confirm(`Are you sure you want to approve ${email}? An official approval email will be sent immediately.`)) return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/api/auth/users/${userId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, reason }),
       });
       const data = await res.json();
       if (res.ok) {
         setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: newStatus } : u));
-        showMsg(newStatus === 'Verified' ? `User ${email} approved & email sent successfully!` : `User status updated to ${newStatus}`);
+        showMsg(
+          newStatus === 'Verified'
+            ? `User ${email} approved & approval email dispatched!`
+            : newStatus === 'Rejected'
+            ? `User ${email} rejected & rejection email dispatched!`
+            : `User status updated to ${newStatus}`
+        );
       } else {
         showMsg(data.msg || 'Failed to update status');
       }
@@ -1879,7 +1897,7 @@ const AdminDashboard = ({ user, activeTab }) => {
                         <td><small>{new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</small></td>
                         <td>
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            {status === 'Pending' && (
+                            {status !== 'Verified' && (
                               <button
                                 onClick={() => handleStatusChange(u._id, 'Verified', u.email)}
                                 style={{
@@ -1900,7 +1918,7 @@ const AdminDashboard = ({ user, activeTab }) => {
                                 <Check size={14} /> Approve
                               </button>
                             )}
-                            {status === 'Pending' && (
+                            {status !== 'Rejected' && (
                               <button
                                 onClick={() => handleStatusChange(u._id, 'Rejected', u.email)}
                                 style={{
@@ -1916,20 +1934,18 @@ const AdminDashboard = ({ user, activeTab }) => {
                                   alignItems: 'center',
                                   gap: '4px'
                                 }}
-                                title="Reject Registration"
+                                title="Reject Registration & Send Email"
                               >
                                 <X size={14} /> Reject
                               </button>
                             )}
-                            {status !== 'Pending' && (
-                              <button
-                                className="btn-delete"
-                                onClick={() => handleRemoveUser(u._id, u.email)}
-                                title="Delete User Account"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
+                            <button
+                              className="btn-delete"
+                              onClick={() => handleRemoveUser(u._id, u.email)}
+                              title="Delete User Account"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
                         </td>
                       </tr>
