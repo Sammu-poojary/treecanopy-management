@@ -917,6 +917,25 @@ router.patch('/delivery-partners/:id/toggle-availability', async (req, res) => {
   }
 });
 
+// @route   DELETE /api/auth/users/:id
+// @desc    Delete a user by ID (Admin only)
+// @access  Admin
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ msg: 'User deleted successfully', userId: req.params.id });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ msg: 'Server error deleting user', error: error.message });
+  }
+});
+
 module.exports = router;
+
 
 
