@@ -258,9 +258,20 @@ router.post('/', async (req, res) => {
       intakeShipmentId
     } = req.body;
 
-    const count = await TimberLot.countDocuments();
     const year = new Date().getFullYear();
-    const lotNumber = `TMB-LOT-${year}-${String(count + 101).padStart(3, '0')}`;
+    // Find the highest existing lot number for this year to avoid duplicates
+    const lastLot = await TimberLot.findOne(
+      { lotNumber: { $regex: `^TMB-LOT-${year}-` } },
+      { lotNumber: 1 },
+      { sort: { lotNumber: -1 } }
+    );
+    let nextSeq = 101;
+    if (lastLot) {
+      const parts = lastLot.lotNumber.split('-');
+      const lastSeq = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+    }
+    const lotNumber = `TMB-LOT-${year}-${String(nextSeq).padStart(3, '0')}`;
 
     const start = new Date();
     const end = new Date(Date.now() + (Number(auctionDurationHours) || 72) * 3600 * 1000);

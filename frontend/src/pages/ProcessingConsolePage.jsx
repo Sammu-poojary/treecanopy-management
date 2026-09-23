@@ -659,7 +659,12 @@ export default function ProcessingConsolePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error('Failed to publish timber lot');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData?.error || errData?.message || 'Failed to publish timber lot';
+        console.error('Timber lot publish error:', errData);
+        throw new Error(errMsg);
+      }
       const created = await res.json().catch(() => null);
 
       if (sourceIntakeId) {
@@ -2919,9 +2924,9 @@ export default function ProcessingConsolePage() {
                       style={{ width: '100%', padding: '9px', background: t.bgInput, border: `1px solid ${t.borderStrong}`, borderRadius: '8px', color: t.textPrimary, fontSize: '13px', boxSizing: 'border-box' }}
                     >
                       <option value="Grade A Construction Hardwood">Grade A Construction Hardwood</option>
-                      <option value="Grade B Furniture Grade">Grade B Furniture Grade</option>
-                      <option value="Grade C Industrial & Framing">Grade C Industrial & Framing</option>
-                      <option value="Firewood & Fuelwood Grade">Firewood & Fuelwood Grade</option>
+                      <option value="Grade B Furniture / Framing">Grade B Furniture / Framing</option>
+                      <option value="Grade C Firewood & Slabs">Grade C Firewood & Slabs</option>
+                      <option value="Specialty Craft Wood">Specialty Craft Wood</option>
                     </select>
                   </div>
                   <div>
