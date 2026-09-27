@@ -1,0 +1,37 @@
+2. LITERATURE REVIEW
+
+2.1 Introduction
+A literature review is a critical summary and analysis of existing research, studies, and publications related to a particular topic. It helps to understand what has already been explored, identify gaps in knowledge, and provide a foundation for designing and justifying our own project. By reviewing previous work, a literature review highlights effective methodologies, challenges faced, and solutions proposed by other researchers. It also demonstrates how our project contributes to the existing body of knowledge and addresses unmet needs.
+
+2.2 Result Analysis
+As urban populations expand rapidly, cities are struggling with effective ecological management and illegal deforestation, prompting research into intelligent systems for monitoring and streamlining tree tracking. Several recent studies have explored IoT- and sensor-based architectures for smart forestry management, demonstrating the effectiveness of continuous telemetry and automated operational decision-making. These systems automatically detect illegal logging or optimize planting routes based on real-time data, significantly reducing operational delays and resource wastage.
+
+Similarly, other studies have proposed a scalable IoT-based architecture for sustainable environmental management, integrating cloud-based dashboards with smart sensors to automate monitoring and predictive maintenance. These systems provide continuous surveillance and can proactively prevent tree loss in high-risk areas. Compared to these IoT-heavy approaches, our PWA-based Tree Canopy Management System relies primarily on citizen-initiated reporting and adoption, which is low-cost, scalable, and requires minimal infrastructure. While it does not automatically detect every cut tree, it leverages the city's residents as distributed sensors, ensuring that real-time reporting can occur from any location.
+
+Another area of research focuses on image-based and machine learning approaches for tree detection and classification. Deep learning models capable of detecting and categorizing tree health in urban environments achieve high accuracy using convolutional neural networks. The literature emphasizes that image-based verification, when combined with a human-in-the-loop workflow, provides a practical balance between automation and reliability, a model our PWA could adopt in subsequent phases.
+
+Crowdsourced reporting and citizen engagement form another critical component of effective urban forestry management. Studies highlight the benefits of engaging residents as distributed sensors to detect and report environmental problems in real time. These works emphasize transparency, timely feedback, and clear workflows to ensure trust and sustained participation. Our PWA implements these principles through structured forms, geotagged images, admin-module assignments, field-official verification, and automated email notifications.
+
+2.3 Identified gaps in the Literature
+- Most existing environmental management systems are too costly because they depend on IoT sensors, drones, or satellite imagery. These technologies are not affordable or practical for all municipalities.
+- There are very few citizen-based systems that allow people to easily adopt trees and report issues using their mobile phones. Most studies focus only on automatic detection and ignore public participation.
+- Current systems do not connect citizens and authorities effectively. Many research works focus on data collection but not on the process of verifying, updating, and resolving civic reports.
+- Many smart environmental systems work separately without integration. For example, IoT-based detection and citizen reports are not combined to give a full picture of the problem.
+- There is a lack of image verification in most reporting systems. Citizens may upload images, but there are no automated tools to check or confirm the reports quickly.
+- Predictive analysis and hotspot mapping are rarely used for tree planting. Most systems only report current problems and do not analyze data to find future risk areas.
+- There is little focus on data privacy and user trust. Many studies do not explain how users' personal data and location details will be protected.
+- Offline accessibility is often missing. Many applications need continuous internet access, which can be a problem in low-connectivity areas.
+
+2.4 Existing System
+In the existing scenario, urban forestry management still depends on manual reporting and paper-based processes. Citizens usually inform authorities about illegal felling or request tree adoptions through phone calls, emails, or social media, which often go unnoticed or delayed. There is no proper digital platform to track reports, verify planting, or analyze recurring deforestation zones.
+
+Research studies show that many cities are experimenting with IoT-based systems or sensor technologies to detect environmental issues automatically. However, these systems require high costs and complex setups, making them difficult to implement everywhere. Also, existing systems lack citizen involvement and real-time feedback mechanisms, which are crucial for quick and effective action.
+
+Thus, the current system faces challenges like delayed response, poor coordination, limited automation, and no centralized data for analysis and decision-making.
+
+2.5 Proposed System
+The proposed Tree Canopy Management System aims to overcome these limitations by introducing a Progressive Web Application (PWA) that combines citizen participation with smart digital monitoring. Unlike expensive IoT-based models mentioned in studies, this system focuses on low-cost, scalable citizen-driven reporting.
+
+Citizens can easily adopt trees and report issues by uploading photos, GPS locations, and short descriptions. The system automatically sends email alerts, assigns tasks to officials, and allows status tracking through a centralized dashboard. This PWA also creates a structured database that can be later used for machine learning and GIS integration, as suggested in recent literature. By doing so, it bridges the gap between manual systems and advanced automated models.
+
+Overall, the proposed system provides an affordable, transparent, and participatory solution for urban environmental management, aligning with global smart city and sustainable development goals. It enhances efficiency, accountability, and collaboration between citizens, field officials, and administrators.

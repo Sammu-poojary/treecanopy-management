@@ -1,0 +1,87 @@
+3. SYSTEM ANALYSIS
+
+3.1 Introduction
+Urban deforestation and lack of green cover management have emerged as major civic challenges in metropolitan cities. Despite regular planting drives, numerous trees are lost due to unreported felling, inefficient monitoring, and lack of timely coordination between citizens, field staff, and administrative authorities. The manual process of tracking adoptions and reports often leads to delays, data loss, and poor accountability. Moreover, citizens have limited visibility into the progress or resolution of their reports, resulting in reduced trust in civic systems. Therefore, there is a strong need for a smart, digital, and transparent solution that allows real-time tracking, reporting, and resolution of tree-related issues while enhancing communication between all stakeholders involved.
+
+3.2 Overall Description
+The Tree Canopy Management System is a Progressive Web Application (PWA) developed to support municipalities in managing urban forestry more effectively. The system provides a centralized digital platform for citizens, field officials, and administrators to report, verify, and resolve issues related to tree canopies. The application bridges the gap between the public and staff by ensuring real-time reporting, transparency, and accountability. Citizens can capture images, record location details, and submit reports through an intuitive mobile-friendly interface. Field officials can verify the reports, upload action updates, and update status in real-time, while administrators can monitor performance, assign tasks, and analyze city-wide trends.
+
+3.2.1 Product Perspective
+The proposed application contains easy graphical interfaces for all types of users. It uses robust databases which eliminate the complications for users. This is a responsive web page, meaning it can adjust to any platform seamlessly. The product provides authenticated access to the data which makes the system highly secure.
+It provides:
+- Good and easy user interfaces which make the system user-friendly.
+- Active workspaces for the users with many functions.
+
+3.2.2 Product Features
+- Secure authentication system for Citizens, Field officials, and Admin.
+- Allows users to adopt trees and report issues with image uploads, location coordinates, and short descriptions.
+- Automatically captures latitude and longitude of the tree sites.
+- Centralized control panel to manage reports, adoptions, users, and data.
+- Enables field staff to verify reports, upload proof, and close cases.
+- Automatic email alerts for registration, status updates, and resolution.
+- Hierarchical classification for structured management.
+
+3.2.3 User Characteristics
+- General public who want to adopt trees or report issues using a mobile or desktop browser. They possess basic smartphone or internet usage knowledge.
+- Field Officials responsible for inspecting, verifying, and resolving reports on the ground.
+- Admin who monitors, assigns tasks, and analyzes system reports. They have intermediate to advanced technical skills and data interpretation ability.
+
+3.2.4 General Constraints
+- The main constraint here would be checking the genuineness of the user, which is not always possible. There can be security risks involved.
+- The developed system should run under any platform (UNIX, Linux, Mac, Windows etc.) that contains a web browser supporting modern web standards.
+
+3.2.5 Assumptions and Dependencies
+The system assumes that all users have access to internet-enabled devices equipped with GPS and camera functionality, and that they provide valid contact details for communication and notifications. Its effective operation depends on stable internet connectivity, accurate GPS data, reliable email service integration, and the active participation of both citizens and officials to ensure timely reporting, verification, and resolution of tasks.
+
+3.3 Specific Requirements
+
+3.3.1 External Interface Requirements
+All the interactions of the software with different users, hardware, and other software are specified here. The “Tree Canopy Management System” should be simple and easy to understand as well as to use.
+
+3.3.1.1 User Interface
+- The system provides a user-friendly GUI to the users.
+- Appropriate error messages are generated when a user performs an operation which is invalid.
+
+3.3.1.2 Hardware Interface
+- Processor: 133-MHz Intel Pentium-class processor or higher (Client side) / Multi-core Server (Backend)
+- RAM: 4GB and above
+- Hard Disk: 80GB and above
+
+3.3.1.3 Software Interface
+- Front-End: HTML5, CSS3, JavaScript, React.
+- Back-End: Node.js, Express, MySQL/MongoDB.
+
+3.3.1.4 Communication Interface
+This is a Progressive Web Application and communication is done through the internet and internet protocols (HTTP/HTTPS, REST APIs).
+
+3.4 Functional Requirements
+
+3.4.1 Citizens Module
+This module is designed for citizens who adopt trees, raise reports, and track their resolution status. It enables active participation in improving the green cover of their surroundings.
+- Registration: Allows new users to create an account by providing basic details such as name, mobile number, address, email, and password. This ensures user authentication and secure access to the system.
+- Login: Provides secure access to registered users by verifying their credentials. Once logged in, users can access all features.
+- Profile: Displays user information such as name, contact details, address. Citizens can update their profile whenever necessary.
+- Adopt/Report: Enables citizens to adopt trees or raise reports by uploading photos, adding a short description, and fetching location details (latitude and longitude). This is submitted to the concerned officials.
+- Check Status: Allows users to monitor the progress of their submitted adoptions/reports. The status is updated in real time by field officials or administrators.
+- Details: Provides detailed information about each activity, including submission date, status updates, and resolution details.
+
+3.4.2 Admin Module
+The admin module serves as the central control panel for managing users, field officials, adoptions, reports, and master data such as zones, divisions, and wards. It ensures smooth coordination among all system stakeholders.
+- Login: Provides secure authentication for administrators to access the backend dashboard and management tools.
+- Reports Generation: Allows administrators to generate various analytical and performance reports based on trends, ward-wise data, and official activity. These reports help in tracking efficiency and improving green management strategies.
+- Management: Enables the admin to view, assign, or reassign tasks to field officials. It also helps in assigning officials to specific wards and monitoring their performance based on task resolution.
+- App User Module: Manages all registered users and field officials in the system. It includes options to view user profiles, manage access, and monitor participation.
+- Masters Module: Handles the basic setup and structure of the system's geographic data (Zones, Divisions, Wards).
+
+3.4.3 Field Officials Module
+This module is designed for field officials responsible for verifying and resolving reported tree issues and confirming adoptions.
+- Login: Provides secure login access for field officials to view and manage tasks assigned to them.
+- Profile: Displays the official's personal details, contact information, and address. Officials can update their details if necessary.
+- View Tasks: Lists all adoptions and reports assigned to the official within their ward.
+- Update Status: Allows officials to verify and inspect locations reported by citizens. They can update the status after physical verification, uploading resolved image details and status.
+- History: Maintains a record of all previously handled tasks, allowing officials to review their work history and completed tasks for future reference.
+
+3.5 Performance Requirements
+- The application requires an internet connection for real-time synchronization.
+- Should have a good memory space for caching in PWA mode.
+- Should be error-free with fast load times and highly responsive interfaces.

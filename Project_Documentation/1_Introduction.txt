@@ -1,0 +1,76 @@
+1. INTRODUCTION
+
+1.1 Introduction
+Urbanization has brought about significant development and modernization across cities, but it has also introduced complex challenges in maintaining a clean, sustainable, and livable environment. Among these challenges, the rapid depletion of urban tree canopies and green cover has emerged as one of the most critical issues faced by metropolitan areas. As cities continue to expand rapidly in population and infrastructure, the increasing construction activities, combined with poor ecological planning, have led to the loss of numerous mature trees and green spaces. This loss of tree canopy not only diminishes the aesthetic appeal of the city but also contributes significantly to the urban heat island effect, increased air pollution, and ecological imbalances, posing serious health and environmental risks to urban communities.
+
+The municipal authorities responsible for the city's ecological management have made several efforts to monitor and restore green cover. However, the traditional methods of monitoring and managing urban trees are often inefficient due to delays in reporting, lack of real-time coordination, and insufficient citizen engagement. Many citizens find it difficult to adopt trees, report illegal felling, or track the progress of their planted saplings, leading to reduced accountability and transparency. These limitations highlight the urgent need for a technological solution that bridges the gap between citizens, field officials, and administrators, ensuring timely communication and effective urban forestry management.
+
+In this context, the proposed project, “Tree Canopy Management System,” introduces a Progressive Web Application (PWA) designed to transform the way tree-related data and issues are reported, managed, and resolved. The system leverages the power of digital connectivity, geolocation tracking, and automated communication to create a real-time, interactive, and transparent platform for citizens and authorities alike. The main objective of the system is to empower citizens to actively participate in maintaining green cover by easily adopting trees, reporting issues through photos, location details, and descriptions, while enabling administrators and field officials to handle these tasks efficiently through an integrated backend system.
+
+1.2 Overview of the project
+Maintaining urban green cover is a vital aspect of sustainable city development. With the rapid expansion of modern cities, efficient tree management has become a major priority for municipal authorities. However, the continuous removal of trees continues to disrupt the city's environmental balance. To overcome these issues, modern technology can play a transformative role by enabling digital participation, quick response, and transparent monitoring.
+
+This project introduces a Progressive Web Application (PWA) for the Tree Canopy Management System, designed to support the vision of a clean and green city. The platform provides a single digital interface that connects citizens, field officials, and administrators, ensuring smooth communication and efficient management of urban trees. It allows users to adopt trees instantly, upload images, provide geolocation details, and add brief descriptions of tree health or illegal cutting. Each activity is recorded in real time and tracked throughout its lifecycle, promoting transparency and accountability.
+
+The proposed system is structured into three core modules: Citizens, Admin, and Field Officials. The Citizens module enables citizens to register, log in, and actively participate by uploading photos of trees along with location coordinates. Citizens can also monitor the live status of their adopted trees or reports, receive email notifications for updates, and view the final resolution proof once an issue is addressed.
+
+The Admin module acts as the control center, managing user data, official assignments, and tracking. It provides advanced functionalities like zones, divisions, and wards management, task allocation, and performance monitoring of field officials. The admin also receives instant updates and can generate analytical reports to evaluate the overall progress and efficiency of the tree management process.
+
+The Field Officials module allows authorized staff to log in, access assigned tasks, verify reported issues, upload photos of tree inspections, and update statuses directly from the field. This not only enhances operational efficiency but also helps maintain accountability among on-ground workers.
+
+1.3 Problem Statement
+The growing population and rapid urbanization have led to significant challenges in maintaining green cover and effective urban forestry management. Among these challenges, the unauthorized felling of trees and the lack of proper tracking for newly planted saplings have become serious concerns for both the citizens and the municipal authorities. The loss of trees not only damages the city's image and aesthetics but also creates poor environmental conditions, leading to health hazards and pollution. Despite ongoing manual efforts by civic authorities, the lack of a proper monitoring and reporting system often results in delayed responses, inefficient coordination, and poor accountability.
+
+Currently, citizens have limited means to adopt trees, report illegal cutting, or track the progress of their reports. Many reports go unnoticed due to the absence of a unified digital platform that connects citizens directly with municipal authorities. Moreover, communication gaps between citizens, administrators, and field officials often cause duplication of efforts or unresolved issues. Traditional methods of forestry management, which rely on manual paperwork and physical inspections, are time-consuming, prone to human error, and fail to ensure real-time updates.
+
+There is a clear need for an integrated digital solution that enables timely reporting, transparent tracking, and efficient management of tree canopies. A system that allows citizens to easily capture and submit evidence of tree health or illegal felling, while empowering officials to manage, assign, and verify reports in real time, can significantly improve the city's green cover and operational efficiency.
+
+To address these gaps, the proposed Tree Canopy Management System aims to create a centralized, interactive, and technology-driven platform. It will facilitate seamless communication among citizens, field officials, and administrators by providing features such as online registration, photos and location capture, email notifications, and status tracking.
+
+1.4 Motivation
+The rapid urbanization and population growth have led to a significant decrease in tree canopies. Unfortunately, this has resulted in numerous environmental issues across the city. These issues not only cause pollution and health hazards, but also affect the aesthetic appeal of neighborhoods and lower the overall quality of urban life. Despite various initiatives by local bodies, the timely identification and resolution of tree-related issues remain a major challenge due to the following reasons:
+- Lack of Real-time Reporting Mechanisms
+- Limited Transparency and Tracking
+- Inefficient Communication between Stakeholders
+- Lack of Public Engagement
+
+These challenges motivated the development of a technology-driven solution that not only bridges the communication gap but also empowers citizens, streamlines field operations, and supports administrators with real-time data and actionable insights.
+
+1.5 Significance of the Study
+The proposed Tree Canopy Management System plays a crucial role in addressing one of the most pressing urban challenges faced by metropolitan cities – the loss of tree canopy. With the rapid pace of urbanization, increasing population density, and expanding infrastructure, environmental management has become a major concern. This study highlights the significance of leveraging modern digital technologies to enhance the efficiency, transparency, and accountability of urban forestry management systems while empowering citizens to participate actively in maintaining a green city environment.
+
+The study holds great societal significance as it fosters active citizen engagement in civic problem-solving. By bridging the gap between citizens and local authorities, the system builds trust and encourages collective responsibility towards environmental preservation. From an administrative standpoint, this study provides an innovative solution for optimizing operational workflows. The system replaces traditional manual reporting and record-keeping processes with a fully automated digital platform.
+
+Technologically, this study demonstrates the potential of web-based applications in enhancing smart governance and urban sustainability. The system integrates multiple modern technologies including geolocation services, cloud-based databases, and real-time synchronization to create a responsive and scalable digital infrastructure.
+
+1.6 Objectives
+The primary objective of the Tree Canopy Management System is to design and develop a Progressive Web Application (PWA) that provides an effective digital platform for reporting, monitoring, and managing tree canopies within the city. This project aims to assist municipal authorities in achieving a greener environment by integrating technology with citizen participation and administrative efficiency.
+
+- To empower citizens by offering a simple and user-friendly interface through which they can register, adopt trees, and report issues by uploading photos, location details, and brief descriptions.
+- To enable real-time tracking of reports so that users can monitor the progress and resolution status of their submissions, ensuring transparency and accountability.
+- To provide administrators with a centralized control panel to manage citizen's accounts, officials, zones, divisions, and wards.
+- To improve communication and coordination between all stakeholders – citizens, administrators, and field officials – by providing a unified digital platform.
+
+1.7 Scope of the Project
+The Tree Canopy Management System is designed to provide a comprehensive and technology-driven solution for addressing one of the city's most persistent urban challenges – the loss of tree canopies.
+
+1.7.1 Functional Scope
+The functional scope of the project is centered on three key modules – Citizens Module, Admin Module, and Field Officials Module – each playing an essential role in ensuring seamless communication and task resolution.
+
+The Citizens Module focuses on empowering citizens by providing them access to an easy-to-use interface where they can register, log in, and adopt trees or report issues by submitting relevant details such as photographs, descriptions, and exact geolocation. Once an activity is registered, users receive instant email notifications confirming submission and subsequent updates about the progress.
+
+The Admin Module serves as the core control unit of the system. Administrators can manage registered users and officials, create and maintain records of zones, divisions, and wards, and assign tasks to appropriate field officials based on their jurisdiction. They can track each task's progress, update its status, and ensure timely resolution.
+
+The Field Officials Module is designed to support the operational side. Through this module, field officials can view the list of tasks assigned to them, visit the reported locations, verify the authenticity of the reports, and take appropriate actions.
+
+1.7.2 Technical and Operational Scope
+The technical and operational scope extends across multiple dimensions, combining the power of modern web technologies with practical field operations. From a technical perspective, the system is developed as a PWA to ensure seamless performance across various platforms. The frontend of the application is built using HTML, CSS, JavaScript, and React to provide an interactive, responsive, and visually appealing user interface. The backend is powered by Node.js/Express and integrated with a database which securely stores user data, adoptions, reports, status updates, and administrative records.
+
+1.8 Features
+This application is designed as a comprehensive and technology-driven solution that enhances the efficiency of urban forestry management.
+- Progressive Web Application (PWA): Ensuring that users can access it directly from any device without the need for installation.
+- User Authentication and Secure Access: A secure registration and login mechanism is provided for all users.
+- Smart Reporting and Adoption: Users can adopt trees and report issues conveniently by uploading photographs and automatically capturing their current GPS location.
+- Real-Time Location Integration: The system uses geolocation services to fetch and record the latitude and longitude of reported trees.
+- Automated Email Notifications: The system automatically sends real-time email notifications to users, administrators, and field officials during key stages.
+- Interactive and Responsive Dashboard: Provides a real-time overview of system activities, including the number of adoptions and reports.

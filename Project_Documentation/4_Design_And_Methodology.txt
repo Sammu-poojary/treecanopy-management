@@ -1,0 +1,43 @@
+4. DESIGN AND METHODOLOGY
+
+4.1 System Design
+System design is a primary phase of software development. System design aims to identify the modules that should be in the system. Design is the first step in the development phase of any system product or system. It may be defined as “the process of applying various techniques and principles for the purpose of defining a device, process or a system in sufficient detail to permit its physical realization”. The specification of these modules and how they interact with each other are the desired results. The goal of the design process is to produce a model or representation of the system which can be used later to build that system. It is the plan for the solution of the system. Design includes requirement specification and final solution for satisfying the requirements.
+
+4.1.1 Functional Decompositions
+The Citizens Module is designed to empower citizens to actively participate in maintaining urban green cover by allowing them to adopt trees and track reports. Through this module, citizens can register by providing essential details such as name, mobile number, address, email, and password to ensure secure access and authentication. Once registered, users can log in to their accounts to access various features, including viewing and updating their profiles. The system enables citizens to raise reports by uploading photos, adding descriptions, and automatically capturing location details like latitude and longitude, which are then directed to the concerned officials for resolution.
+
+The Admin Module serves as the central management system, overseeing users, field officials, reports, and geographic data such as zones, divisions, and wards. It provides secure login access for administrators to manage backend operations efficiently. Admins can generate analytical reports to monitor trends, official performance, and ward-wise activities, aiding in data-driven decision-making. The management feature allows viewing, assigning, or reassigning tasks to officials while tracking their progress.
+
+The Field Officials Module supports officials responsible for verifying and resolving tasks. After secure login, officials can access their profiles, view assigned tasks, upload resolved photos, and update statuses. They can also verify citizen-reported issues, maintain a record of resolved cases in the history section, and ensure accountability in task handling, thus promoting efficient and transparent operations.
+
+4.2 Detailed Design
+Detailed design is the second level of the design process. During detailed design, we specify how the modules in the system interact with each other and the internal logic of each of the modules specified during system design is decided, hence it is also called as logic design. Detailed design essentially expands the system design and database design to contain a more detailed description of the processing logic and data structures so that the design is sufficiently complete for coding.
+
+4.2.1 Data Flow Diagram (DFD)
+Data Flow Diagram shows the flow of data through the system. Data Flow Diagrams are also called Data Flow Graphs. It views a system as a function that transforms the inputs into desired outputs. It aims to capture the transformation that has taken place within a system to the input data so that eventually the output data is produced.
+- Context Flow Diagram: Shows input and output of the system. It shows all the external entities that interact with the system and how the data flow between the external entities and the system. (e.g., Citizens -> Tree Canopy System <- Field Officials).
+- Citizens Module DFD: Citizen -> Registration (saves to Users table) -> Profile -> Adopt Tree (saves to Adoptions table) -> View Status (reads from Adoptions table).
+- Admin Module DFD: Admin -> Login -> Manage Users -> Manage Masters (Zones, Divisions, Wards) -> Assign Tasks.
+- Field Officials Module DFD: Official -> Login -> View Assigned Tasks -> Update Status -> Save to History.
+
+4.2.2 Structure Chart
+Structure chart is a top-down modular design, consisting of squares representing different models in a system and lines. Structure chart shows how the program has been partitioned into manageable modules hierarchy and the organization of those modules and communicational interface. For the Tree Canopy Management System, the top level is the Application, branching into the three main user roles (Citizen, Admin, Official), which further branch into their specific functionalities like Registration, Task Management, Reporting, and Authentication.
+
+4.2.3 UML Diagram
+A UML Class Diagram is a structural diagram that represents the classes of a system, their attributes, methods, and the relationships between them. It helps visualize how different components interact with each other in an object-oriented design. This diagram is widely used for planning, analyzing, and documenting software systems.
+Key entities include:
+- User (id, name, email, password, phone, role)
+- Report/Adoption (id, user_id, latitude, longitude, image, description, status)
+- Official (id, name, email, password, zone)
+- Admin (id, name, email, password)
+- Zone/Ward (id, name, boundaries)
+
+4.3 Database Design
+Database design is the process of producing a detailed data model of a database. The data model contains all the needed logical and physical design choices and physical storage parameters needed to generate a design in a data definition language which can then be used to create a database. A fully attributed data model contains detailed attributes for each entity.
+
+4.3.1 Table Descriptions
+- Users Table: id (Primary Key), name, phone, email, address, password.
+- Admin Table: id (Primary Key), email, password.
+- Reports/Adoptions Table: id (Primary Key), latitude, longitude, image, remarks, user_id (Foreign Key), status, ward, updated_image, official_remarks.
+- Officials Table: id (Primary Key), name, phone, email, password, zone, division, ward.
+- Zones/Divisions/Wards Tables: To manage the hierarchical geographical data accurately, ensuring proper mapping of tasks to officials based on their assigned areas.

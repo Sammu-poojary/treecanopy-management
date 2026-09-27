@@ -1,0 +1,29 @@
+5. IMPLEMENTATION DETAILS
+
+5.1 Introduction
+The goal of the coding or implementation phase is to translate the system design, produced during the designing phase, into code in a given programming language which can be executed by a computer and that performs the computation specified by the design. During the implementation, it should be kept in mind that the programs should not be constructed so that they are easy to write, but that they are easy to read and understand.
+
+5.2 Hardware and software tools used
+A set of reliable hardware and software tools is used for developing and operating the Tree Canopy Management System. These tools ensure smooth reporting, tracking, and management of data with real-time accuracy. The selected technologies provide scalability, security, and easy maintenance for efficient system performance.
+
+5.2.1 Software Requirements
+5.2.1.1 Frontend Technologies
+- HTML5 and CSS3: Used to create the structure of the web pages, while CSS3 adds style, color, and layout to make the design attractive and responsive. Together, they help build a clean and user-friendly interface that works well on all devices.
+- JavaScript & React: Makes the web pages interactive and dynamic. Helps in real-time validation, state management, component-based architecture, and smooth communication between the frontend and backend without reloading the page.
+- Tailwind CSS / Bootstrap: Used to design responsive and mobile-friendly web pages. It provides ready-made components, ensuring a consistent and neat layout across all screen sizes.
+
+5.2.1.2 Backend Technologies
+- Node.js & Express: Used as the main backend framework for developing the application. It helps manage routes, handle authentication, process REST API requests, and connect with the database efficiently. Its non-blocking architecture ensures better performance and scalability of the project.
+- MongoDB / MySQL: Serves as the database for storing user details, reports, locations, and admin records. It provides fast, secure, and reliable data management for the system.
+
+5.2.1.3 Development Tools
+- Visual Studio Code: A lightweight, open-source code editor that supports numerous programming languages and extensions. It provides features like intelligent code completion, debugging, Git integration, and a customizable interface, making it ideal for web development.
+- Postman: Used for testing REST API endpoints during backend development.
+
+5.2.2 Hardware Requirements
+- Processor: Intel core processor with 64-Bit support, Recommended: 2.8GHz or faster processor.
+- RAM: Minimum 4 GB (8 GB recommended).
+- Hard Disk: 10 GB free space.
+
+5.3 Source Code
+The project follows a standard MVC (Model-View-Controller) pattern for the backend and a component-based architecture for the frontend. (Detailed code snippets for models like Tree.js, Complaint.js, and routes like trees.js are part of the actual codebase maintained in the project repository).

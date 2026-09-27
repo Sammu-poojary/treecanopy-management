@@ -1,0 +1,21 @@
+6. RESULT AND EVALUATION
+
+6.1 Introduction
+Result and Evaluation is an investigation conducted to provide stakeholders with information about the quality of the product or service under test. It has been defined as the process of analyzing a software item to detect the differences between existing and required conditions and to evaluate the features of the software item.
+
+It involves the operation of a system or application under controlled conditions and evaluating the results. The controlled conditions should include both normal and abnormal conditions. The objective of this is to intentionally introduce faults into the system to verify whether the functions perform correctly under specific conditions. It is essentially a detection-oriented process.
+
+6.2 Test Scenario
+A test scenario is a high-level description of a functionality or feature that needs to be tested within a software application. It represents a real-world situation that a user might encounter while using the system. The purpose of creating test scenarios is to ensure that every aspect of the application is covered during testing and that the system behaves as expected under different conditions. Test scenarios help testers understand what to test without focusing on the exact steps, providing a broad view of the system's behavior and business flow.
+
+For the Tree Canopy Management System, scenarios include citizen registration, adopting a tree, raising an issue with location data, admin assigning a task, and an official updating the status.
+
+6.3 Test Cases
+A test case is a software testing document, which consists of event, action, input, output, expected result, and actual result. Clinically defined, a test case is an input and an expected result. This can be pragmatic as ‘for condition x your derived result is y’, whereas other test cases describe in more detail the input scenario and what results might be expected. It can occasionally be a series of steps but one with expected results or expected outcome. A test case should also contain a place for the actual result. White box and black box testing are applicable at the unit, integration, and system levels of the software testing process.
+
+Sample Test Cases:
+- Registration Form: Test empty fields, invalid email format, mismatched passwords, successful registration. Expected: Validation errors for incorrect data; successful redirect to login upon valid data.
+- Login Form: Test incorrect credentials, correct credentials, unverified accounts. Expected: Dashboard access granted only for valid, verified accounts.
+- Adopt Tree / Raise Report: Test without GPS location, without mandatory image, with valid data. Expected: System prompts to allow location access; accepts valid submissions and generates an ID.
+- Admin Dashboard: Test generating reports for a specific date range, assigning an official to a task. Expected: Accurate data representation in reports; official receives task in their queue.
+- Official Updating Status: Test uploading a resolution image and marking task as complete. Expected: Task status updates globally, and citizen is notified.
