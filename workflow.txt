@@ -121,4 +121,42 @@ Work Orders board (/task). The task follows a strict 3-step field workflow:
 - Tree Encyclopedia:
   * All users can browse the Tree Encyclopedia (/tree-encyclopedia) to read about
     protected tree species, pruning regulations, and conservation guidelines.
+--------------------------------------------------------------------------------
+7. FUNCTIONAL REQUIREMENTS
+--------------------------------------------------------------------------------
+
+7.1 Citizens Module (/citizen-dashboard, /eco-store)
+- Registration & Authentication: Allows citizens to create an account by providing name, mobile number, address, email, and password, or register using Google OAuth.
+- Login: Verifies credentials (or Google tokens), issuing JWT tokens for session access across citizen endpoints.
+- Profile Management: Displays citizen profile details, Eco-Point balances, reported issue history, and past store orders.
+- Raise Complaints (/report-issue): Enables reporting of black spots or tree hazards by uploading photos (Cloudinary), selecting urgency levels, providing text descriptions, and fetching latitude/longitude via browser geolocation or Leaflet map picking.
+- Track Status & Complaint Details (/track): Displays real-time status tracking for reported issues across a 5-stage progress pipeline (Reported -> Assigned -> In Progress -> Work Completed -> Closed) with timeline details and proof photos.
+- Green Marketplace & Digital Gate Pass (/eco-store): Allows citizens to browse eco-products (compost, mulch, biochar, saplings), add items to cart, select home delivery or yard self-pickup, pay via Razorpay or redeem Eco-Points, and view/download a QR code digital gate pass for pickup verification.
+
+7.2 Admin & Official Module (/dashboard, /scheduler, /timber-management)
+- Administrative Authentication: Secure login for BBMP officials and system administrators to access global analytics, management panels, and scheduling boards.
+- Executive Dashboard & Reports: Displays global KPIs (Active Reports, Pending Dispatches, Cutters on Duty, Biomass Volumes), ward-wise metrics, and official performance logs.
+- Complaint & Dispatch Management (/scheduler): Allows administrators to review citizen complaints, assign tasks to field arborists/cutters, set priority levels, assign target completion dates, and reassign work orders.
+- User & Field Staff Oversight: Manages registered citizens, tree cutters, yard supervisors, and timber merchants; includes viewing attendance logs and equipment requests.
+- Masters & Geographic Setup: Configures geographic zones, divisions, wards, and designated municipal processing yards/dumping depots.
+- Official Timber Salvage Management (/timber-management): Monitors timber inventory, converts weighbridge intake logs into commercial auction lots, sets reserve prices, tracks active bidding, awards lots, and issues downloadable Municipal Allotment Certificates.
+
+7.3 Tree Cutters / Arborists Module (/task, /attendance)
+- Login & Attendance Verification (/attendance): Secure authentication enabling field workers to perform GPS/biometric-verified daily check-in and check-out operations.
+- Work Orders Board (/task): Displays all assigned field tasks categorized by priority, ward location, and scheduled due date.
+- 3-Step Field Execution Wizard:
+  * Step 1 (Arrival Proof): Confirms arrival at site and uploads pre-work photo.
+  * Step 2 (Work Execution): Updates status to "In Progress", uploads work-in-progress and post-execution photos.
+  * Step 3 (Waste Segregation & Disposal): Logs segregated waste weights (Foliage/Leaves, Branches/Twigs, Heavy Wood Logs), tree species, number of logs, average log diameter, vehicle registration details, and uploads disposal proof.
+- Equipment & Gear Management (/purchase-equipment): Allows field staff to browse required safety equipment and purchase gear through an integrated Razorpay checkout.
+
+7.4 Processing Yard Module (/processing)
+- Weighbridge Intake Verification: Reviews intake submissions logged by tree cutters, verifies weighed biomass loads, and approves incoming biomass for composting or timber salvaging.
+- Composting Lifecycle Tracker: Monitors organic waste maturation through 5 distinct stages: Collection -> Shredding/Inoculation -> Aerobic Decomposition (logging temperature & moisture) -> Screening/Curing -> Packaged Yield.
+- Retail Store Inventory Management: Converts cured compost yields into packaged products (e.g., 5kg/10kg bags), manages stock levels, sets Rupee and Eco-Point prices, and updates the Citizen Green Store inventory in real time.
+
+7.5 Commercial Timber Salvage Auction Module (/timber-auction)
+- Commercial Merchant Registration: Enables B2B merchants and commercial sawmills to register by submitting company details, GSTIN, Trade License numbers, and authorized contact information.
+- Live Auction Bidding Portal: Displays active salvage timber lots with detailed specifications (volume m³, weight kg, wood species, moisture content, grade). Includes live countdown timers, automated bid placement validation, and dynamic "Highest Bidder" / "Outbid" status alerts.
+- Allotment Retrieval & Gate Pass: Allows winning bidders to view closed auction results, verify payment fulfillment, and retrieve official municipal gate passes for lot collection.
 ================================================================================
