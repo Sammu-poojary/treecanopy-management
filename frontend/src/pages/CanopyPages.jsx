@@ -9274,9 +9274,13 @@ export function AdminConsolePage() {
                 {filteredUsers.map(([initials, name, id, role, sector, sync, status, dbId]) => (
                   <tr key={id}>
                     <td>
-                      <span className="avatar small">{initials}</span>
-                      <b>{name}</b>
-                      <small>{id}</small>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span className="avatar small">{initials}</span>
+                        <div>
+                          <b style={{ display: 'block', fontSize: '0.92rem', lineHeight: 1.3 }}>{name}</b>
+                          <small style={{ display: 'block', fontSize: '0.78rem', marginTop: '2px', opacity: 0.85 }}>{id}</small>
+                        </div>
+                      </div>
                     </td>
                     <td>{role}</td>
                     <td>{sector}</td>
@@ -9289,7 +9293,21 @@ export function AdminConsolePage() {
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <button
                         onClick={() => handleEditRole(name, role, dbId, [initials, name, id, role, sector, sync, status])}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4b5563', padding: '4px', marginRight: '6px' }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#64748b',
+                          padding: '6px',
+                          marginRight: '6px',
+                          borderRadius: '6px',
+                          transition: 'all 0.2s',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-subtle, #f1f5f9)'; e.currentTarget.style.color = 'var(--brand, #059669)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
                         title="View Details & Reports"
                       >
                         <Pencil size={18} />
@@ -9297,7 +9315,21 @@ export function AdminConsolePage() {
 
                       <button
                         onClick={() => handleDeleteUser(name, dbId)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px', marginRight: '8px' }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#ef4444',
+                          padding: '6px',
+                          marginRight: '8px',
+                          borderRadius: '6px',
+                          transition: 'all 0.2s',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                         title="Delete User Account"
                       >
                         <Trash2 size={18} />
