@@ -6167,7 +6167,7 @@ export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
     });
   };
 
-  const createMaintenanceTask = (event) => {
+  const createMaintenanceTask = async (event) => {
     event.preventDefault();
     if (!maintenanceForm.title.trim() || !maintenanceForm.location.trim()) {
       showNotice('Add a task title and location before creating maintenance work.');
@@ -6185,10 +6185,33 @@ export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
       return;
     }
 
+    let serverComplaintId = null;
+    try {
+      const res = await fetch(`${API_URL}/api/complaints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          issueType: 'routine',
+          description: maintenanceForm.title,
+          location: maintenanceForm.location,
+          assignedTo: maintenanceForm.cutter,
+          status: 'Scheduled',
+          priority: maintenanceForm.priority,
+          scheduledDate: maintenanceForm.dueDate ? new Date(maintenanceForm.dueDate).toISOString() : new Date().toISOString()
+        })
+      });
+      const data = await res.json();
+      if (data.complaint && data.complaint._id) {
+        serverComplaintId = data.complaint._id;
+      }
+    } catch (e) {
+      console.error('Failed to persist maintenance to backend', e);
+    }
+
     const task = {
-      id: `MT-${Date.now().toString().slice(-5)}`,
+      id: serverComplaintId ? `WO-${serverComplaintId.slice(-4).toUpperCase()}` : `MT-${Date.now().toString().slice(-5)}`,
       source: 'Maintenance',
-      complaintId: null,
+      complaintId: serverComplaintId,
       title: maintenanceForm.title,
       location: maintenanceForm.location,
       cutter: maintenanceForm.cutter,
