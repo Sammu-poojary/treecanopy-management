@@ -7486,18 +7486,24 @@ export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
                               )}
                             </div>
 
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%' }}>
                               <select
                                 value={assigningCutterId[sub._id] !== undefined ? assigningCutterId[sub._id] : (sub.assignedCutterId || '')}
                                 onChange={(e) => setAssigningCutterId(prev => ({ ...prev, [sub._id]: e.target.value }))}
                                 style={{
-                                  flex: 1,
-                                  padding: '0.45rem 0.65rem',
+                                  flex: '1 1 auto',
+                                  minWidth: 0,
+                                  width: '100%',
+                                  padding: '0.5rem 0.65rem',
                                   fontSize: '0.825rem',
-                                  borderRadius: '6px',
+                                  fontWeight: 500,
+                                  borderRadius: '8px',
                                   border: '1px solid var(--border, rgba(255,255,255,0.2))',
                                   background: 'var(--bg-elevated, #061a14)',
-                                  color: 'var(--text-primary, #ffffff)'
+                                  color: 'var(--text-primary, #ffffff)',
+                                  outline: 'none',
+                                  textOverflow: 'ellipsis',
+                                  cursor: 'pointer'
                                 }}
                               >
                                 <option value="">-- Choose Municipal Cutter --</option>
@@ -7514,18 +7520,26 @@ export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
                               <button
                                 onClick={() => handleAssignCutterToTree(sub._id)}
                                 style={{
-                                  padding: '0.45rem 0.85rem',
-                                  background: '#059669',
+                                  flexShrink: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '5px',
+                                  padding: '0.5rem 0.9rem',
+                                  background: sub.assignedCutterId ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                                   color: '#FFFFFF',
                                   border: 'none',
-                                  borderRadius: '6px',
+                                  borderRadius: '8px',
                                   fontSize: '0.8rem',
-                                  fontWeight: 600,
+                                  fontWeight: 700,
                                   cursor: 'pointer',
-                                  whiteSpace: 'nowrap'
+                                  whiteSpace: 'nowrap',
+                                  boxShadow: sub.assignedCutterId ? '0 2px 8px rgba(16, 185, 129, 0.3)' : '0 2px 8px rgba(59, 130, 246, 0.3)',
+                                  transition: 'all 0.15s ease'
                                 }}
                               >
-                                {sub.assignedCutterId ? 'Reassign' : 'Assign'}
+                                <UserCheck size={14} />
+                                <span>{sub.assignedCutterId ? 'Reassign' : 'Assign'}</span>
                               </button>
                             </div>
                           </div>
