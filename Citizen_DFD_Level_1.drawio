@@ -1,0 +1,181 @@
+<mxfile host="app.diagrams.net" modified="2026-09-30T06:15:00.000Z" agent="Antigravity" version="21.0.0" type="device">
+  
+  <!-- ======================================================== -->
+  <!-- PAGE 1: SIMPLIFIED DFD LEVEL 1 (Clean, Compact, Minimal) -->
+  <!-- ======================================================== -->
+  <diagram id="simple-level-1" name="Simple DFD (Level 1)">
+    <mxGraphModel dx="1200" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="680" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="t1" value="Data Flow Diagram (Level 1) — Citizen Module" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Entity: Citizen -->
+        <mxCell id="c_user" value="CITIZEN&#xa;(User)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=13;fontStyle=1;fontColor=#000000;arcSize=15;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="110" height="190" as="geometry" />
+        </mxCell>
+
+        <!-- 5 Simplified Processes (Stacked neatly) -->
+        <!-- P1: Authentication -->
+        <mxCell id="sp1" value="1.0&#xa;User Authentication" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="280" y="90" width="160" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- P2: AI Tree Scan -->
+        <mxCell id="sp2" value="2.0&#xa;AI Tree Scanning &amp;&#xa;Identification" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="280" y="200" width="160" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- P3: Tree Adoption & Care -->
+        <mxCell id="sp3" value="3.0&#xa;Tree Adoption &amp;&#xa;Care Stewardship" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="280" y="310" width="160" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- P4: Hazard Reporting -->
+        <mxCell id="sp4" value="4.0&#xa;Hazard &amp; Complaint&#xa;Reporting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="280" y="420" width="160" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- P5: Eco-Store & Rewards -->
+        <mxCell id="sp5" value="5.0&#xa;Eco-Store &amp;&#xa;Points Redemption" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="280" y="530" width="160" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- External APIs (Right Column - Top) -->
+        <mxCell id="ext_ai" value="External Services&#xa;(Pl@ntNet AI &amp; Cloudinary)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="540" y="195" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ext_pay" value="Payment Gateway&#xa;(Razorpay WPG)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=10;fontStyle=1;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="540" y="530" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- 4 Consolidated Data Stores (Far Right Column) -->
+        <mxCell id="sd1" value="D1&#xa;User Accounts" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="810" y="85" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sd2" value="D2&#xa;Trees &amp; Registry" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="810" y="240" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sd3" value="D3&#xa;Complaints &amp; Hazards" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="810" y="395" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sd4" value="D4&#xa;Eco-Points &amp; Orders" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="810" y="525" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Flow Lines: Citizen <-> Processes -->
+        <!-- P1: Auth -->
+        <mxCell id="l_c_p1" value="Credentials / Auth Token" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="c_user" target="sp1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="270" />
+              <mxPoint x="200" y="117" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P2: Scan -->
+        <mxCell id="l_c_p2" value="Photo + GPS / Species Card" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="c_user" target="sp2" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="220" y="310" />
+              <mxPoint x="220" y="227" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P3: Adoption -->
+        <mxCell id="l_c_p3" value="Adoption &amp; Proof / Certificate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="c_user" target="sp3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="230" y="337" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P4: Hazard -->
+        <mxCell id="l_c_p4" value="Report Hazard / Ticket ID" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="c_user" target="sp4" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="220" y="380" />
+              <mxPoint x="220" y="447" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- P5: Store -->
+        <mxCell id="l_c_p5" value="Product Order / OTP Confirmation" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="c_user" target="sp5" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="410" />
+              <mxPoint x="200" y="557" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow Lines: Processes <-> Services -->
+        <mxCell id="l_p2_ai" value="Image / Identification" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.2;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="sp2" target="ext_ai" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l_p5_pay" value="Payment Request / Status" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.2;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="sp5" target="ext_pay" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Flow Lines: Processes <-> Data Stores -->
+        <mxCell id="l_p1_d1" value="User Record" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="sp1" target="sd1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l_p2_d2" value="Match Tree" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="sp2" target="sd2" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="490" y="240" />
+              <mxPoint x="490" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="l_p3_d2" value="Update Status" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="sp3" target="sd2" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="325" />
+              <mxPoint x="500" y="285" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="l_p3_d4" value="+Points / Badge" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=block;endFill=1;fontSize=9;fontColor=#000000;" edge="1" source="sp3" target="sd4" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="480" y="350" />
+              <mxPoint x="480" y="540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="l_p4_d3" value="Log Hazard Record" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="sp4" target="sd3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l_p5_d4" value="Deduct Points &amp; Record Order" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=classic;startArrow=classic;fontSize=9;fontColor=#000000;" edge="1" source="sp5" target="sd4" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="555" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+</mxfile>

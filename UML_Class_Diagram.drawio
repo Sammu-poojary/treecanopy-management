@@ -1,0 +1,196 @@
+<mxfile host="app.diagrams.net" modified="2026-09-30T06:35:00.000Z" agent="Antigravity" version="21.0.0" type="device">
+  <diagram id="uml-class-diagram" name="UML Class Diagram">
+    <mxGraphModel dx="1420" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="1400" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ==================== CLASS: TreeCutter ==================== -->
+        <mxCell id="c_treecutter" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;TreeCutter&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- userId: ObjectId&lt;br/&gt;- name: String&lt;br/&gt;- phone: String&lt;br/&gt;- status: Enum&lt;br/&gt;- currentLocation: String&lt;br/&gt;- totalTasksCompleted: Number&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ viewTaskCards()&lt;br/&gt;+ navigateToSite()&lt;br/&gt;+ uploadBeforePhoto()&lt;br/&gt;+ uploadAfterPhoto()&lt;br/&gt;+ logBiomassWeight()&lt;br/&gt;+ geoCheckIn()&lt;br/&gt;+ borrowEquipment()&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="220" height="235" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLASS: WorkOrder ==================== -->
+        <mxCell id="c_workorder" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;WorkOrder&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- orderId: ObjectId&lt;br/&gt;- complaintId: ObjectId&lt;br/&gt;- assignedCutterId: ObjectId&lt;br/&gt;- priority: Enum&lt;br/&gt;- hazardLocation: String&lt;br/&gt;- beforeImages: String[]&lt;br/&gt;- afterImages: String[]&lt;br/&gt;- biomassWeightKg: Number&lt;br/&gt;- status: Enum&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ submitBeforePhoto(img)&lt;br/&gt;+ submitAfterPhoto(img)&lt;br/&gt;+ logBiomassWeight(kg)&lt;br/&gt;+ getStatusHistory()&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="420" y="40" width="220" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLASS: AttendanceRecord ==================== -->
+        <mxCell id="c_attendance" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;AttendanceRecord&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- recordId: ObjectId&lt;br/&gt;- cutterId: ObjectId&lt;br/&gt;- checkInTime: Date&lt;br/&gt;- checkInLat: Number&lt;br/&gt;- checkInLng: Number&lt;br/&gt;- shiftStatus: Enum&lt;br/&gt;- hoursWorked: Number&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ markPresent()&lt;br/&gt;+ markAbsent()&lt;br/&gt;+ calculateHours()&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="420" y="295" width="220" height="190" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLASS: EquipmentDepotItem ==================== -->
+        <mxCell id="c_equipment" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;EquipmentDepotItem&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- itemId: ObjectId&lt;br/&gt;- toolName: String&lt;br/&gt;- totalQty: Number&lt;br/&gt;- availableQty: Number&lt;br/&gt;- condition: String&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ borrowItem(cutterId)&lt;br/&gt;+ returnItem(cutterId)&lt;br/&gt;+ checkAvailability()&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="420" y="510" width="220" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLASS: CompostBatch ==================== -->
+        <mxCell id="c_compost" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;CompostBatch&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- batchNumber: String&lt;br/&gt;- cToNRatio: Number&lt;br/&gt;- moisturePct: Number&lt;br/&gt;- tempCelsius: Number&lt;br/&gt;- status: Enum&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ advanceStage()&lt;br/&gt;+ calcCtoN()&lt;br/&gt;+ packageToStore()&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="420" y="700" width="220" height="165" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLASS: WasteIntake ==================== -->
+        <mxCell id="c_wasteintake" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;WasteIntake&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- intakeId: ObjectId&lt;br/&gt;- complaintRef: ObjectId&lt;br/&gt;- grossWeightKg: Number&lt;br/&gt;- tareWeightKg: Number&lt;br/&gt;- netWeightKg: Number&lt;br/&gt;- materialType: Enum&lt;br/&gt;- receivedAt: Date&lt;br/&gt;- yardLocation: String&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ calculateNet()&lt;br/&gt;+ linkToCompostBatch(batchId)&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="780" y="340" width="230" height="195" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLASS: DeliveryPartner ==================== -->
+        <mxCell id="c_deliverypartner" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;DeliveryPartner&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- partnerId: ObjectId&lt;br/&gt;- name: String&lt;br/&gt;- phone: String&lt;br/&gt;- shiftStatus: Enum&lt;br/&gt;- currentLat: Number&lt;br/&gt;- currentLng: Number&lt;br/&gt;- deliveriesCompleted: Number&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ acceptDelivery()&lt;br/&gt;+ navigateRoute()&lt;br/&gt;+ verifyOtp()&lt;br/&gt;+ updateAvailability()&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="890" width="220" height="205" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLASS: EcoOrder ==================== -->
+        <mxCell id="c_ecoorder" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;EcoOrder&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- orderId: ObjectId&lt;br/&gt;- citizenId: ObjectId&lt;br/&gt;- items: String&lt;br/&gt;- totalInr: Number&lt;br/&gt;- pointsUsed: Number&lt;br/&gt;- finalInr: Number&lt;br/&gt;- deliveryOtp: String&lt;br/&gt;- deliveryPartnerId: ObjectId&lt;br/&gt;- orderStatus: Enum&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ verifyOtp(input)&lt;br/&gt;+ markDelivered()&lt;br/&gt;+ generateConfirmationEmail()&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="420" y="890" width="230" height="215" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CLASS: TimberMerchant ==================== -->
+        <mxCell id="c_timbermerchant" value="&lt;p style=&quot;margin:0px;text-align:center;&quot;&gt;&lt;b&gt;&amp;laquo;Class&amp;raquo;&lt;/b&gt;&lt;br/&gt;&lt;b&gt;TimberMerchant&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;- merchantId: ObjectId&lt;br/&gt;- businessName: String&lt;br/&gt;- gstIn: String&lt;br/&gt;- securityDeposit: Number&lt;br/&gt;- status: Enum&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;border-color:#000000;&quot;/&gt;&lt;p style=&quot;margin:2px 0px;padding-left:4px;&quot;&gt;+ viewActiveLots()&lt;br/&gt;+ placeBid(amount)&lt;br/&gt;+ validateBid()&lt;br/&gt;+ downloadCertificate(lotId)&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1.5;fontColor=#000000;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1120" width="220" height="180" as="geometry" />
+        </mxCell>
+
+
+        <!-- ==================== RELATIONSHIPS & CONNECTORS ==================== -->
+
+        <!-- 1. TreeCutter to WorkOrder: executes -->
+        <mxCell id="rel_executes" value="executes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=open;endFill=0;fontSize=10;fontColor=#000000;" edge="1" source="c_treecutter" target="c_workorder" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="310" />
+              <mxPoint x="310" y="155" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <!-- Cardinality 1 -->
+        <mxCell id="card_tc_wo_1" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_executes">
+          <mxGeometry x="-0.85" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <!-- Cardinality 0..* -->
+        <mxCell id="card_tc_wo_many" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_executes">
+          <mxGeometry x="0.85" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2. TreeCutter to AttendanceRecord: has -->
+        <mxCell id="rel_has" value="has" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=open;endFill=0;fontSize=10;fontColor=#000000;" edge="1" source="c_treecutter" target="c_attendance" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="360" />
+              <mxPoint x="340" y="390" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_tc_att_1" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_has">
+          <mxGeometry x="-0.8" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_tc_att_many" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_has">
+          <mxGeometry x="0.8" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3. TreeCutter to EquipmentDepotItem: borrows -->
+        <mxCell id="rel_borrows" value="borrows" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=open;endFill=0;fontSize=10;fontColor=#000000;" edge="1" source="c_treecutter" target="c_equipment" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="410" />
+              <mxPoint x="310" y="595" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_tc_eq_1" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_borrows">
+          <mxGeometry x="-0.85" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_tc_eq_many" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_borrows">
+          <mxGeometry x="0.85" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4. WorkOrder to WasteIntake: generates -->
+        <mxCell id="rel_generates" value="generates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=open;endFill=0;fontSize=10;fontColor=#000000;" edge="1" source="c_workorder" target="c_wasteintake" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="155" />
+              <mxPoint x="740" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_wo_wi_1" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_generates">
+          <mxGeometry x="-0.8" y="1" relative="1" as="geometry">
+            <mxPoint x="8" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_wo_wi_opt" value="0..1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_generates">
+          <mxGeometry x="0.8" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5. CompostBatch to WasteIntake: aggregates -->
+        <mxCell id="rel_aggregates" value="aggregates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1.3;startArrow=diamond;startFill=0;endArrow=none;fontSize=10;fontColor=#000000;" edge="1" source="c_compost" target="c_wasteintake" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="780" />
+              <mxPoint x="740" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_cb_wi_many" value="1..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_aggregates">
+          <mxGeometry x="0.8" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 6. DeliveryPartner to EcoOrder: delivers -->
+        <mxCell id="rel_delivers" value="delivers" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=open;endFill=0;fontSize=10;fontColor=#000000;" edge="1" source="c_deliverypartner" target="c_ecoorder" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="945" />
+              <mxPoint x="340" y="945" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_dp_eo_1" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_delivers">
+          <mxGeometry x="-0.75" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_dp_eo_many" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_delivers">
+          <mxGeometry x="0.75" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 7. EcoOrder to DeliveryPartner: assigned to -->
+        <mxCell id="rel_assigned" value="assigned to" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1.3;endArrow=open;endFill=0;fontSize=10;fontColor=#000000;" edge="1" source="c_ecoorder" target="c_deliverypartner" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="1005" />
+              <mxPoint x="340" y="1005" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_eo_dp_many" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_assigned">
+          <mxGeometry x="-0.75" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="card_eo_dp_1" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#000000;" vertex="1" connectable="0" parent="rel_assigned">
+          <mxGeometry x="0.75" y="1" relative="1" as="geometry">
+            <mxPoint x="-15" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
