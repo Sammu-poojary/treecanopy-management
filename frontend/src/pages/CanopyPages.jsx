@@ -4543,8 +4543,25 @@ export function SchedulerPage() {
     ])
       .then(([complaintsData, cuttersData, subscriptionsData]) => {
         const fetchedComplaints = complaintsData.complaints || [];
-        const combined = fetchedComplaints.length > 0 ? fetchedComplaints : defaultSampleTasks;
-        const activeComplaints = combined.filter(c => !deletedIds.includes(c._id) && !deletedIds.includes(c.id));
+        let savedLocalTasks = [];
+        try {
+          savedLocalTasks = JSON.parse(localStorage.getItem('scheduled_tasks') || '[]');
+        } catch {
+          savedLocalTasks = [];
+        }
+
+        const mapById = new Map();
+        
+        // Include default sample tasks
+        defaultSampleTasks.forEach(t => mapById.set(t._id, t));
+
+        // Include fetched complaints from backend (these will override sample tasks if matching ID)
+        fetchedComplaints.forEach(t => mapById.set(t._id || t.id, t));
+
+        // Include locally saved scheduled tasks (retains any user-created tasks seamlessly)
+        savedLocalTasks.forEach(t => mapById.set(t._id || t.id, t));
+
+        const activeComplaints = Array.from(mapById.values()).filter(c => !deletedIds.includes(c._id) && !deletedIds.includes(c.id));
 
         // Process subscription care duties into schedule items
         const subList = Array.isArray(subscriptionsData) ? subscriptionsData : [];
@@ -4618,7 +4635,14 @@ export function SchedulerPage() {
       })
       .catch(err => {
         console.error('Failed to load scheduler data', err);
-        setComplaints(defaultSampleTasks.filter(c => !deletedIds.includes(c._id)));
+        let savedLocalTasks = [];
+        try {
+          savedLocalTasks = JSON.parse(localStorage.getItem('scheduled_tasks') || '[]');
+        } catch {
+          savedLocalTasks = [];
+        }
+        const fallbackTasks = [...defaultSampleTasks, ...savedLocalTasks];
+        setComplaints(fallbackTasks.filter(c => !deletedIds.includes(c._id) && !deletedIds.includes(c.id)));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -4823,6 +4847,7 @@ export function SchedulerPage() {
           assignedTo: scheduleForm.assignedTo,
           status: 'Scheduled',
           priority: scheduleForm.priority,
+          equipment: scheduleForm.equipment,
           scheduledDate: scheduledDateObj.toISOString(),
         }),
       });
@@ -4833,7 +4858,7 @@ export function SchedulerPage() {
         createdComplaint = {
           _id: 'sched_' + Date.now(),
           issueType: scheduleForm.issueType,
-          description: scheduleForm.description || 'Routine Tree Care Task',
+          description: scheduleForm.description || scheduleForm.title || 'Routine Tree Care Task',
           location: scheduleForm.location,
           assignedTo: scheduleForm.assignedTo,
           status: 'Scheduled',
@@ -4845,6 +4870,16 @@ export function SchedulerPage() {
       } else {
         createdComplaint.scheduledDate = scheduledDateObj.toISOString();
         if (scheduleForm.assignedTo) createdComplaint.assignedTo = scheduleForm.assignedTo;
+        if (scheduleForm.equipment) createdComplaint.equipment = scheduleForm.equipment;
+      }
+
+      // Persist to local storage for backup/instant recovery
+      try {
+        const currentSaved = JSON.parse(localStorage.getItem('scheduled_tasks') || '[]');
+        const updated = [createdComplaint, ...currentSaved.filter(c => (c._id || c.id) !== (createdComplaint._id || createdComplaint.id))];
+        localStorage.setItem('scheduled_tasks', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to save to localStorage:', err);
       }
 
       setComplaints(prev => [createdComplaint, ...prev]);
@@ -4865,7 +4900,7 @@ export function SchedulerPage() {
       const fallback = {
         _id: 'sched_' + Date.now(),
         issueType: scheduleForm.issueType,
-        description: scheduleForm.description || 'Routine Tree Care Task',
+        description: scheduleForm.description || scheduleForm.title || 'Routine Tree Care Task',
         location: scheduleForm.location,
         assignedTo: scheduleForm.assignedTo,
         status: 'Scheduled',
@@ -4874,6 +4909,15 @@ export function SchedulerPage() {
         scheduledDate: new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0).toISOString(),
         createdAt: new Date().toISOString()
       };
+
+      try {
+        const currentSaved = JSON.parse(localStorage.getItem('scheduled_tasks') || '[]');
+        const updated = [fallback, ...currentSaved.filter(c => (c._id || c.id) !== fallback._id)];
+        localStorage.setItem('scheduled_tasks', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save fallback to localStorage:', e);
+      }
+
       setComplaints(prev => [fallback, ...prev]);
       setSelectedDay(parts[2]);
       setStatusFilter('All');
@@ -4904,6 +4948,12 @@ export function SchedulerPage() {
       const data = await res.json();
       if (data.complaint) {
         setComplaints(prev => prev.map(c => c._id === complaintId ? data.complaint : c));
+        try {
+          const currentSaved = JSON.parse(localStorage.getItem('scheduled_tasks') || '[]');
+          localStorage.setItem('scheduled_tasks', JSON.stringify(currentSaved.map(c => (c._id || c.id) === complaintId ? { ...c, assignedTo: cutterName, status: 'Scheduled' } : c)));
+        } catch (e) {
+          console.error(e);
+        }
       }
       Swal.fire({
         icon: 'success',
@@ -4936,6 +4986,13 @@ export function SchedulerPage() {
     const newDeletedIds = Array.from(new Set([...deletedIds, targetId, complaintObj?._id, complaintObj?.id].filter(Boolean)));
     setDeletedIds(newDeletedIds);
     localStorage.setItem('deleted_complaint_ids', JSON.stringify(newDeletedIds));
+
+    try {
+      const currentSaved = JSON.parse(localStorage.getItem('scheduled_tasks') || '[]');
+      localStorage.setItem('scheduled_tasks', JSON.stringify(currentSaved.filter(c => (c._id || c.id) !== targetId)));
+    } catch (e) {
+      console.error('Failed to update localStorage after delete', e);
+    }
 
     setComplaints(prev => prev.filter(c => (c._id || c.id) !== targetId));
 

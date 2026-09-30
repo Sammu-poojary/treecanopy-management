@@ -26,7 +26,7 @@ async function notify(targetRole, targetUserId, type, title, message, relatedId 
 // @access  Public
 router.post('/', async (req, res) => {
   try {
-    const { issueType, description, location, photoUrl, submittedBy, submittedByUserId, assignedTo, status, scheduledDate } = req.body;
+    const { issueType, description, location, photoUrl, submittedBy, submittedByUserId, assignedTo, status, scheduledDate, priority, equipment } = req.body;
 
     if (!issueType) {
       return res.status(400).json({ msg: 'Issue type is required' });
@@ -41,6 +41,8 @@ router.post('/', async (req, res) => {
       submittedByUserId: submittedByUserId || null,
       assignedTo: assignedTo || null,
       status: status || 'Pending',
+      priority: priority || 'Medium',
+      equipment: equipment || '',
     };
 
     if (scheduledDate) {

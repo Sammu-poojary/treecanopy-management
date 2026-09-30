@@ -5,7 +5,20 @@ const complaintSchema = new mongoose.Schema(
     issueType: {
       type: String,
       required: true,
-      enum: ['damaged', 'overhanging', 'dead', 'pest', 'roots', 'fallen'],
+      enum: ['damaged', 'overhanging', 'dead', 'pest', 'roots', 'fallen', 'routine', 'care_duty', 'replant', 'pruning', 'inspection', 'maintenance', 'other'],
+    },
+    priority: {
+      type: String,
+      enum: ['Low', 'Medium', 'High', 'Critical', 'Routine', 'Emergency'],
+      default: 'Medium',
+    },
+    equipment: {
+      type: String,
+      default: '',
+    },
+    scheduledDate: {
+      type: Date,
+      default: null,
     },
     description: {
       type: String,
