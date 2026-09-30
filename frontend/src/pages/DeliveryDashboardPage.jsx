@@ -26,7 +26,13 @@ import {
   Sparkles,
   CreditCard,
   Check,
-  Receipt
+  Receipt,
+  Lock,
+  Sun,
+  Moon,
+  Fingerprint,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import { Topbar } from './CanopyPages';
 
@@ -126,11 +132,158 @@ export default function DeliveryDashboardPage() {
     } catch (e) {}
   }, []);
 
-  // Attendance state
-  const [shiftStatus, setShiftStatus] = useState('Checked In');
-  const [clockInTime, setClockInTime] = useState('09:15 AM');
+  // Live Clock & Time-based Shift State
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const getActiveShift = (d) => {
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const total = h * 60 + m;
+    if (total >= 9 * 60 && total < 12 * 60) return { id: 'Morning', name: 'Morning Shift', hours: '09:00 AM – 12:00 PM' };
+    if (total >= 12 * 60 && total < 15 * 60) return { id: 'Afternoon', name: 'Afternoon Shift', hours: '12:00 PM – 03:00 PM' };
+    if (total >= 15 * 60 && total < 17 * 60) return { id: 'Evening', name: 'Evening Shift', hours: '03:00 PM – 05:00 PM' };
+    return null;
+  };
+
+  const currentShift = getActiveShift(currentTime);
+  const todayStr = currentTime.toISOString().slice(0, 10);
+
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [markingAtt, setMarkingAtt] = useState(false);
+  const [checkingOutAtt, setCheckingOutAtt] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ reason: '', date: new Date().toISOString().slice(0, 10), leaveType: 'Casual Leave' });
+
+  const fetchAttendance = async () => {
+    try {
+      const partnerId = partner._id || partner.id || 'del_partner';
+      const res = await fetch(`${API_URL}/api/attendance/me?userId=${partnerId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const recs = data.records || data.attendances || [];
+        setAttendanceRecords(recs);
+      }
+    } catch (e) {
+      console.error('Fetch delivery attendance error:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchAttendance();
+  }, [partner]);
+
+  const todayAttendance = currentShift ? attendanceRecords.find(a => a.date === todayStr && a.shift === currentShift.id) : null;
+  const latestTodayAttendance = attendanceRecords.find(a => a.date === todayStr);
+
+  const handleClockIn = async () => {
+    if (!currentShift) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Outside Operating Hours',
+        text: 'Delivery shift sessions run from 09:00 AM to 05:00 PM. Shifts are closed currently.',
+        confirmButtonColor: '#0284c7'
+      });
+      return;
+    }
+
+    setMarkingAtt(true);
+    const partnerId = partner._id || partner.id || 'del_partner';
+    const checkInTimeStr = currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    try {
+      const res = await fetch(`${API_URL}/api/attendance/mark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: partnerId,
+          userName: partner.name,
+          role: 'Delivery Partner',
+          userRole: 'Delivery Partner',
+          shift: currentShift.id,
+          date: todayStr,
+          checkInTime: checkInTimeStr,
+          location: partner.deliveryZone || 'Udupi Central & Manipal Sector'
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        const saved = data.attendance || {
+          userId: partnerId,
+          userName: partner.name,
+          role: 'Delivery Partner',
+          shift: currentShift.id,
+          date: todayStr,
+          checkInTime: checkInTimeStr,
+          status: 'Present'
+        };
+        setAttendanceRecords(prev => [saved, ...prev.filter(a => !(a.date === todayStr && a.shift === currentShift.id))]);
+        Swal.fire({
+          icon: 'success',
+          title: `${currentShift.name} Clock-In Confirmed!`,
+          text: `Logged attendance at ${saved.checkInTime || checkInTimeStr} for ${currentShift.name}. Have a safe delivery route!`,
+          confirmButtonColor: '#0284c7'
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Clock-In Rejected',
+          text: data.msg || 'Unable to mark attendance for this shift.',
+          confirmButtonColor: '#0284c7'
+        });
+      }
+    } catch (err) {
+      console.error('Delivery clock in error:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Network Error',
+        text: 'Failed to connect to attendance server.',
+        confirmButtonColor: '#0284c7'
+      });
+    } finally {
+      setMarkingAtt(false);
+    }
+  };
+
+  const handleClockOut = async () => {
+    const target = todayAttendance || latestTodayAttendance;
+    if (!target) return;
+    setCheckingOutAtt(true);
+    const checkOutTimeStr = currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    try {
+      await fetch(`${API_URL}/api/attendance/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: partner._id || partner.id || 'del_partner',
+          date: target.date,
+          shift: target.shift,
+          checkOutTime: checkOutTimeStr
+        })
+      });
+      const updated = {
+        ...target,
+        checkOutTime: checkOutTimeStr,
+        status: 'Completed Shift'
+      };
+      setAttendanceRecords(prev => prev.map(a => (a.date === updated.date && a.shift === updated.shift) ? updated : a));
+      Swal.fire({
+        icon: 'info',
+        title: 'Shift Completed & Clocked Out',
+        text: `Checked out at ${checkOutTimeStr} for ${target.shift} shift. Great work today!`,
+        confirmButtonColor: '#0284c7'
+      });
+    } catch (err) {
+      console.error('Checkout error:', err);
+    } finally {
+      setCheckingOutAtt(false);
+    }
+  };
 
   // Map & Handover modals
   const [activeNavOrder, setActiveNavOrder] = useState(null);
@@ -760,8 +913,22 @@ export default function DeliveryDashboardPage() {
                   <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: t.textPrimary }}>
                     {partner.name}
                   </h1>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: isDark ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7', color: isDark ? '#34d399' : '#047857' }}>
-                    🟢 Shift Active
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 10px',
+                    borderRadius: '999px',
+                    background: todayAttendance
+                      ? (todayAttendance.checkOutTime ? (isDark ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe') : (isDark ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7'))
+                      : (currentShift ? (isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7') : (isDark ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2')),
+                    color: todayAttendance
+                      ? (todayAttendance.checkOutTime ? (isDark ? '#60a5fa' : '#1d4ed8') : (isDark ? '#34d399' : '#047857'))
+                      : (currentShift ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#f87171' : '#b91c1c')),
+                    border: `1px solid ${todayAttendance ? (todayAttendance.checkOutTime ? '#3b82f6' : '#10b981') : (currentShift ? '#f59e0b' : '#ef4444')}`
+                  }}>
+                    {todayAttendance
+                      ? (todayAttendance.checkOutTime ? `✓ Completed (${todayAttendance.shift})` : `🟢 ${todayAttendance.shift} Active`)
+                      : (currentShift ? `⏳ ${currentShift.name} Open` : '🔒 Shift Sessions Closed')}
                   </span>
                 </div>
                 <div style={{ fontSize: '13px', color: t.textSecondary, marginTop: '2px' }}>
@@ -771,11 +938,62 @@ export default function DeliveryDashboardPage() {
             </div>
 
             {/* Attendance & Shift Card */}
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: t.bgCardSubtle, padding: '8px 14px', borderRadius: '12px', border: `1px solid ${t.border}`, boxShadow: t.cardShadow }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: t.bgCardSubtle, padding: '8px 14px', borderRadius: '12px', border: `1px solid ${t.border}`, boxShadow: t.cardShadow, flexWrap: 'wrap' }}>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '11px', color: t.textSecondary, textTransform: 'uppercase', fontWeight: 600 }}>Shift Clock-in</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: isDark ? '#38bdf8' : '#0284c7' }}>{clockInTime} (Morning)</div>
+                <div style={{ fontSize: '10px', color: t.textSecondary, textTransform: 'uppercase', fontWeight: 700 }}>
+                  {currentShift ? currentShift.name : 'Operating Hours (9 AM–5 PM)'}
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: todayAttendance ? '#10b981' : (currentShift ? '#0284c7' : t.textMuted) }}>
+                  {todayAttendance
+                    ? (todayAttendance.checkOutTime ? `Out: ${todayAttendance.checkOutTime}` : `In: ${todayAttendance.checkInTime}`)
+                    : (currentShift ? currentShift.hours : 'Sessions Closed')}
+                </div>
               </div>
+
+              {/* Dynamic Clock In / Clock Out Button */}
+              {todayAttendance && !todayAttendance.checkOutTime ? (
+                <button
+                  onClick={handleClockOut}
+                  disabled={checkingOutAtt}
+                  style={{
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    border: 'none',
+                    color: '#ffffff',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
+                  }}
+                >
+                  <UserX size={13} /> {checkingOutAtt ? 'Clocking Out...' : 'Clock Out'}
+                </button>
+              ) : currentShift && !todayAttendance ? (
+                <button
+                  onClick={handleClockIn}
+                  disabled={markingAtt}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+                    border: 'none',
+                    color: '#ffffff',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+                  }}
+                >
+                  <UserCheck size={13} /> {markingAtt ? 'Clocking In...' : `Clock In (${currentShift.id})`}
+                </button>
+              ) : null}
 
               {/* Cash in Hand Indicator for COD Handover */}
               <div style={{
@@ -1774,8 +1992,26 @@ export default function DeliveryDashboardPage() {
               <button onClick={() => setShowLeaveModal(false)} style={{ background: 'none', border: 'none', color: t.textMuted, cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
+              try {
+                const partnerId = partner._id || partner.id || 'del_partner';
+                await fetch(`${API_URL}/api/attendance/leaves`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: partnerId,
+                    userName: partner.name,
+                    userRole: 'Delivery Partner',
+                    leaveType: leaveForm.leaveType,
+                    startDate: leaveForm.date,
+                    endDate: leaveForm.date,
+                    reason: leaveForm.reason || 'Delivery shift leave request'
+                  })
+                });
+              } catch (err) {
+                console.error('Leave submission error:', err);
+              }
               Swal.fire({
                 icon: 'success',
                 title: 'Leave Request Submitted',

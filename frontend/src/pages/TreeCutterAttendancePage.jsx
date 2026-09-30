@@ -15,10 +15,102 @@ import {
   ShieldAlert,
   Info,
   History,
-  Activity
+  Activity,
+  Lock,
+  Sun,
+  Moon,
+  Sparkles,
+  Check
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+// Official Shift Schedule Configuration (IST Timings)
+const SHIFT_SCHEDULE = [
+  {
+    id: 'Morning',
+    name: 'Morning Shift',
+    startHour: 9,
+    startMinute: 0,
+    endHour: 12,
+    endMinute: 0,
+    timeRange: '09:00 AM – 12:00 PM',
+    icon: Sun,
+    iconColor: '#f59e0b',
+    desc: 'Primary field pruning, hazard scouting & branch trimming'
+  },
+  {
+    id: 'Afternoon',
+    name: 'Afternoon Shift',
+    startHour: 12,
+    startMinute: 0,
+    endHour: 15,
+    endMinute: 0,
+    timeRange: '12:00 PM – 03:00 PM',
+    icon: Sun,
+    iconColor: '#10b981',
+    desc: 'Mid-day hazard clearance, logs loading & site safety'
+  },
+  {
+    id: 'Evening',
+    name: 'Evening Shift',
+    startHour: 15,
+    startMinute: 0,
+    endHour: 17,
+    endMinute: 0,
+    timeRange: '03:00 PM – 05:00 PM',
+    icon: Moon,
+    iconColor: '#6366f1',
+    desc: 'Emergency response, equipment check-in & wrap-up'
+  }
+];
+
+// Helper: Determine shift status from current local time
+function getShiftStatusByTime(dateObj) {
+  const h = dateObj.getHours();
+  const m = dateObj.getMinutes();
+  const currentMinutes = h * 60 + m;
+
+  for (const s of SHIFT_SCHEDULE) {
+    const startMins = s.startHour * 60 + s.startMinute;
+    const endMins = s.endHour * 60 + s.endMinute;
+    if (currentMinutes >= startMins && currentMinutes < endMins) {
+      return {
+        active: true,
+        shift: s,
+        statusText: `Active (${s.timeRange})`,
+        isClosed: false,
+        reason: 'Session Open for Live Check-In'
+      };
+    }
+  }
+
+  // Outside operational hours
+  if (currentMinutes < 9 * 60) {
+    return {
+      active: false,
+      shift: null,
+      statusText: 'Shift Not Started',
+      isClosed: true,
+      reason: 'Morning shift opens today at 09:00 AM'
+    };
+  }
+  return {
+    active: false,
+    shift: null,
+    statusText: 'Shift Sessions Closed',
+    isClosed: true,
+    reason: 'All operational shifts closed for today (09:00 AM – 05:00 PM)'
+  };
+}
+
+// Helper: Format date as YYYY-MM-DD
+function getLocalDateString(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export default function TreeCutterAttendancePage() {
   const navigate = useNavigate();
@@ -36,39 +128,24 @@ export default function TreeCutterAttendancePage() {
   const cutterName = currentUser.name || currentUser.username || 'Snow';
   const cutterId = currentUser.id || currentUser._id || 'snow-id';
 
-  // Live ticking clock
+  // Live ticking clock (1s interval)
   useEffect(() => {
     const timer = setInterval(() => setTimeNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // ── Today's Attendance State ──
-  const [todayAttendance, setTodayAttendance] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`attendance_${cutterId}_${new Date().toISOString().slice(0,10)}`);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  // ── Selected Shift State (Morning, Afternoon, Evening) ──
-  const [selectedShift, setSelectedShift] = useState(() => {
-    const hr = new Date().getHours();
-    if (hr < 12) return 'Morning';
-    if (hr < 17) return 'Afternoon';
-    return 'Evening';
-  });
+  const todayStr = useMemo(() => getLocalDateString(timeNow), [timeNow]);
+  const shiftInfo = useMemo(() => getShiftStatusByTime(timeNow), [timeNow]);
 
   // ── Leave Form State ──
   const [leaveForm, setLeaveForm] = useState({
     leaveType: 'Sick Leave',
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+    startDate: getLocalDateString(new Date()),
+    endDate: getLocalDateString(new Date(Date.now() + 86400000)),
     reason: ''
   });
 
-  // ── History & Leaves State (Initializes empty or from localStorage) ──
+  // ── History & Leaves State ──
   const [attendanceHistory, setAttendanceHistory] = useState(() => {
     try {
       const saved = localStorage.getItem(`attendance_history_${cutterId}`);
@@ -88,9 +165,11 @@ export default function TreeCutterAttendancePage() {
   });
 
   const [submittingLeave, setSubmittingLeave] = useState(false);
-  const [activeTab, setActiveTab] = useState('attendance'); // Default to attendance tab
+  const [markingAttendance, setMarkingAttendance] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'leaves'
 
-  // Fetch Attendance & Leaves History
+  // Fetch Attendance & Leaves History from API
   const fetchRecords = async () => {
     try {
       // 1. Fetch Leaves
@@ -104,10 +183,6 @@ export default function TreeCutterAttendancePage() {
           const userLeaves = savedLeaves.filter(l => l.userId === cutterId || (l.userName && l.userName.toLowerCase().includes(cutterName.toLowerCase())));
           setLeaveApplications(userLeaves);
         }
-      } else {
-        const savedLeaves = JSON.parse(localStorage.getItem('officialLeaves') || '[]');
-        const userLeaves = savedLeaves.filter(l => l.userId === cutterId || (l.userName && l.userName.toLowerCase().includes(cutterName.toLowerCase())));
-        setLeaveApplications(userLeaves);
       }
 
       // 2. Fetch Attendance
@@ -117,19 +192,11 @@ export default function TreeCutterAttendancePage() {
         const recs = dataAtt.records || dataAtt.attendances;
         if (recs && recs.length > 0) {
           setAttendanceHistory(recs);
-        } else {
-          setAttendanceHistory([]);
+          localStorage.setItem(`attendance_history_${cutterId}`, JSON.stringify(recs));
         }
-      } else {
-        setAttendanceHistory([]);
       }
     } catch (err) {
       console.error('Error fetching records:', err);
-      const savedLeaves = JSON.parse(localStorage.getItem('officialLeaves') || '[]');
-      const userLeaves = savedLeaves.filter(l => l.userId === cutterId || (l.userName && l.userName.toLowerCase().includes(cutterName.toLowerCase())));
-      setLeaveApplications(userLeaves);
-      const savedHistory = JSON.parse(localStorage.getItem(`attendance_history_${cutterId}`) || '[]');
-      setAttendanceHistory(savedHistory);
     }
   };
 
@@ -137,18 +204,34 @@ export default function TreeCutterAttendancePage() {
     fetchRecords();
   }, []);
 
+  // Today's attendance records for this cutter
+  const todayRecords = useMemo(() => {
+    return attendanceHistory.filter(a => a.date === todayStr);
+  }, [attendanceHistory, todayStr]);
+
+  // Attendance for the currently active shift (if any)
+  const activeShiftRecord = useMemo(() => {
+    if (!shiftInfo.active || !shiftInfo.shift) return null;
+    return todayRecords.find(a => a.shift === shiftInfo.shift.id) || null;
+  }, [shiftInfo, todayRecords]);
+
+  // Most recent attendance record today (for check-out if open)
+  const latestTodayRecord = useMemo(() => {
+    if (todayRecords.length === 0) return null;
+    return todayRecords[0];
+  }, [todayRecords]);
+
   // Calculate Active Leave Status
   const activeLeave = useMemo(() => {
-    const todayStr = timeNow.toISOString().slice(0, 10);
     return leaveApplications.find(l => {
       if (l.status === 'Rejected') return false;
       const start = l.startDate;
       const end = l.endDate;
       return todayStr >= start && todayStr <= end;
     });
-  }, [leaveApplications, timeNow]);
+  }, [leaveApplications, todayStr]);
 
-  // Mark Daily Attendance (Check-In)
+  // Mark Daily Attendance (Check-In) — strictly time-based
   const handleCheckIn = async () => {
     if (activeLeave) {
       Swal.fire({
@@ -160,94 +243,126 @@ export default function TreeCutterAttendancePage() {
       return;
     }
 
-    const checkInRecord = {
-      _id: `att-${Date.now()}`,
+    const currentShiftDetails = getShiftStatusByTime(new Date());
+    if (!currentShiftDetails.active || !currentShiftDetails.shift) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Outside Operating Hours',
+        text: currentShiftDetails.reason || 'Shift sessions are closed. Check-in is only permitted during active shift windows (09:00 AM – 05:00 PM).',
+        confirmButtonColor: '#10b981'
+      });
+      return;
+    }
+
+    const activeShift = currentShiftDetails.shift;
+    const checkInTimeStr = timeNow.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    const checkInPayload = {
       userId: cutterId,
       userName: cutterName,
       role: 'Tree Cutter',
       userRole: 'Tree Cutter',
-      date: timeNow.toISOString().slice(0, 10),
-      shift: selectedShift,
-      checkInTime: timeNow.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      checkOutTime: null,
+      date: todayStr,
+      shift: activeShift.id,
+      checkInTime: checkInTimeStr,
       status: 'Present',
       location: 'Udupi Central Operations Field'
     };
 
+    setMarkingAttendance(true);
     try {
       const res = await fetch(`${API_URL}/api/attendance/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(checkInRecord)
+        body: JSON.stringify(checkInPayload)
       });
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
-        setTodayAttendance(data.attendance || checkInRecord);
+        const savedRecord = data.attendance || { ...checkInPayload, _id: `att-${Date.now()}` };
+        setAttendanceHistory(prev => {
+          const filtered = prev.filter(a => !(a.date === savedRecord.date && a.shift === savedRecord.shift));
+          const updated = [savedRecord, ...filtered];
+          localStorage.setItem(`attendance_history_${cutterId}`, JSON.stringify(updated));
+          return updated;
+        });
+
+        Swal.fire({
+          icon: 'success',
+          title: `${activeShift.name} Check-In Marked!`,
+          html: `Checked in successfully at <b>${savedRecord.checkInTime}</b> for <b>${activeShift.name}</b> (${activeShift.timeRange}).<br/><br/>Have a safe and productive session!`,
+          confirmButtonColor: '#10b981'
+        });
       } else {
-        const errData = await res.json().catch(() => ({}));
-        console.warn('Attendance mark note:', errData.msg);
-        setTodayAttendance(checkInRecord);
+        Swal.fire({
+          icon: 'error',
+          title: 'Check-In Rejected',
+          text: data.msg || 'Cannot mark attendance for this shift session.',
+          confirmButtonColor: '#10b981'
+        });
       }
-    } catch {
-      setTodayAttendance(checkInRecord);
+    } catch (err) {
+      console.error('Attendance mark error:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Connection Error',
+        text: 'Unable to reach the attendance server. Please verify your connection.',
+        confirmButtonColor: '#10b981'
+      });
+    } finally {
+      setMarkingAttendance(false);
     }
-
-    localStorage.setItem(`attendance_${cutterId}_${checkInRecord.date}`, JSON.stringify(checkInRecord));
-    
-    setAttendanceHistory(prev => {
-      const filtered = prev.filter(a => a.date !== checkInRecord.date);
-      const updated = [checkInRecord, ...filtered];
-      localStorage.setItem(`attendance_history_${cutterId}`, JSON.stringify(updated));
-      return updated;
-    });
-
-    Swal.fire({
-      icon: 'success',
-      title: `${selectedShift} Shift Check-In Marked!`,
-      text: `Checked in at ${checkInRecord.checkInTime} for ${selectedShift} shift. Have a safe working day!`,
-      confirmButtonColor: '#10b981'
-    });
   };
 
   // Mark Shift Check-Out
-  const handleCheckOut = async () => {
-    if (!todayAttendance) return;
+  const handleCheckOut = async (recordToCheckout) => {
+    const target = recordToCheckout || activeShiftRecord || latestTodayRecord;
+    if (!target) return;
+
     const checkOutTimeStr = timeNow.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-    const updated = {
-      ...todayAttendance,
-      checkOutTime: checkOutTimeStr,
-      status: 'Completed Shift'
-    };
-    setTodayAttendance(updated);
-    localStorage.setItem(`attendance_${cutterId}_${todayAttendance.date}`, JSON.stringify(updated));
-    
+    setCheckingOut(true);
+
     try {
-      await fetch(`${API_URL}/api/attendance/checkout`, {
+      const res = await fetch(`${API_URL}/api/attendance/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: cutterId,
-          date: todayAttendance.date || timeNow.toISOString().slice(0, 10),
-          shift: selectedShift,
+          date: target.date,
+          shift: target.shift,
           checkOutTime: checkOutTimeStr
         })
       });
+
+      const updated = {
+        ...target,
+        checkOutTime: checkOutTimeStr,
+        status: 'Completed Shift'
+      };
+
+      setAttendanceHistory(prev => {
+        const updatedList = prev.map(a => (a.date === updated.date && a.shift === updated.shift) ? updated : a);
+        localStorage.setItem(`attendance_history_${cutterId}`, JSON.stringify(updatedList));
+        return updatedList;
+      });
+
+      Swal.fire({
+        icon: 'info',
+        title: 'Shift Completed & Checked Out',
+        html: `Checked out at <b>${checkOutTimeStr}</b> for <b>${target.shift} Shift</b>.<br/>Thank you for your dedicated field service!`,
+        confirmButtonColor: '#10b981'
+      });
     } catch (err) {
       console.error('Error recording checkout:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Check-Out Error',
+        text: 'Failed to record checkout. Please try again.',
+        confirmButtonColor: '#10b981'
+      });
+    } finally {
+      setCheckingOut(false);
     }
-
-    setAttendanceHistory(prev => {
-      const updatedList = prev.map(a => a.date === updated.date ? updated : a);
-      localStorage.setItem(`attendance_history_${cutterId}`, JSON.stringify(updatedList));
-      return updatedList;
-    });
-
-    Swal.fire({
-      icon: 'info',
-      title: 'Shift Completed & Checked Out',
-      text: `Checked out at ${updated.checkOutTime}. Thank you for your field service!`,
-      confirmButtonColor: '#10b981'
-    });
   };
 
   // Submit Leave Application
@@ -279,7 +394,7 @@ export default function TreeCutterAttendancePage() {
       endDate: leaveForm.endDate,
       totalDays: diffDays,
       reason: leaveForm.reason.trim() || `${leaveForm.leaveType} application for ${cutterName}`,
-      status: 'Approved', // Auto-activated for field cutters so assignment blocking is instant
+      status: 'Approved',
       createdAt: new Date().toISOString()
     };
 
@@ -306,8 +421,8 @@ export default function TreeCutterAttendancePage() {
     setSubmittingLeave(false);
     setLeaveForm({
       leaveType: 'Sick Leave',
-      startDate: new Date().toISOString().slice(0, 10),
-      endDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+      startDate: getLocalDateString(new Date()),
+      endDate: getLocalDateString(new Date(Date.now() + 86400000)),
       reason: ''
     });
 
@@ -333,23 +448,25 @@ export default function TreeCutterAttendancePage() {
             <span className="task-pill" style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399' }}>Arborist Self-Service</span>
             <h2 style={{ margin: '8px 0 4px', fontSize: '1.4rem' }}>Daily Attendance & Leave Management</h2>
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Mark daily shift check-ins, submit leave requests for unavailable dates, and view your attendance log.
+              Attendance is strictly time-based. Shifts automatically activate according to municipal operating hours.
             </p>
           </div>
           <div className="task-hero-stats">
             <div className="task-stat-chip">
               <span>Today's Status</span>
-              <strong style={{ color: activeLeave ? '#ef4444' : todayAttendance ? '#10b981' : '#f59e0b' }}>
-                {activeLeave ? 'On Leave' : todayAttendance ? 'Present' : 'Not Checked In'}
+              <strong style={{ color: activeLeave ? '#ef4444' : todayRecords.length > 0 ? '#10b981' : '#f59e0b' }}>
+                {activeLeave ? 'On Leave' : todayRecords.length > 0 ? 'Present' : 'Not Checked In'}
               </strong>
             </div>
             <div className="task-stat-chip">
-              <span>Total Leaves</span>
-              <strong>{leaveApplications.length}</strong>
+              <span>Current Session</span>
+              <strong style={{ color: shiftInfo.active ? '#10b981' : '#94a3b8' }}>
+                {shiftInfo.active ? shiftInfo.shift.name : 'Closed'}
+              </strong>
             </div>
             <div className="task-stat-chip">
-              <span>Shift Time</span>
-              <strong>{timeNow.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</strong>
+              <span>Live Clock (IST)</span>
+              <strong>{timeNow.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</strong>
             </div>
           </div>
         </section>
@@ -365,7 +482,7 @@ export default function TreeCutterAttendancePage() {
             <div>
               <b style={{ fontSize: '1.05rem', color: '#ffffff', display: 'block' }}>You Are Currently Marked ON LEAVE / UNAVAILABLE</b>
               <span style={{ fontSize: '0.85rem' }}>
-                Leave Period: <b>{activeLeave.startDate}</b> to <b>{activeLeave.endDate}</b> ({activeLeave.leaveType}). Admins & Officials are blocked from assigning tasks to you during this period.
+                Leave Period: <b>{activeLeave.startDate}</b> to <b>{activeLeave.endDate}</b> ({activeLeave.leaveType}). Work orders and shift check-ins are disabled during approved leave.
               </span>
             </div>
           </div>
@@ -374,7 +491,7 @@ export default function TreeCutterAttendancePage() {
         {/* 2-Column Main Workspace */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }} className="task-workspace-grid">
 
-          {/* ── CARD 1: Daily Shift Attendance Check-In ── */}
+          {/* ── CARD 1: Time-Based Shift Attendance (NO DROPDOWN) ── */}
           <div className="cg-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
               <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--title)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -385,92 +502,227 @@ export default function TreeCutterAttendancePage() {
               </span>
             </div>
 
-            <div style={{ padding: '16px', borderRadius: '14px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Current Active Shift Information Badge */}
+            <div style={{
+              padding: '16px', borderRadius: '14px',
+              background: shiftInfo.active ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)',
+              border: `1px solid ${shiftInfo.active ? 'rgba(16,185,129,0.25)' : 'rgba(245,158,11,0.25)'}`,
+              display: 'flex', flexDirection: 'column', gap: '12px'
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>Arborist Specialist:</span>
                 <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{cutterName}</strong>
               </div>
-              {/* Shift Session Selector (Morning, Afternoon, Evening) */}
+
+              {/* Real-time Time-Based Shift Indicator (Replaces Dropdown) */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>Shift Session:</span>
-                <select
-                  value={todayAttendance?.shift || selectedShift}
-                  onChange={e => setSelectedShift(e.target.value)}
-                  disabled={Boolean(todayAttendance)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    background: 'var(--bg-surface)',
-                    color: 'var(--text-primary)',
-                    border: '1px solid var(--border)',
-                    outline: 'none',
-                    cursor: todayAttendance ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <option value="Morning">🌅 Morning Shift (08:00 AM - 01:00 PM)</option>
-                  <option value="Afternoon">☀️ Afternoon Shift (01:00 PM - 05:00 PM)</option>
-                  <option value="Evening">🌙 Evening Shift (05:00 PM - 09:00 PM)</option>
-                </select>
+                <span style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>Current Active Shift:</span>
+                {shiftInfo.active ? (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px', borderRadius: '8px', fontSize: '0.84rem', fontWeight: 800,
+                    background: 'rgba(16,185,129,0.2)', color: '#34d399', border: '1px solid rgba(16,185,129,0.3)'
+                  }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
+                    {shiftInfo.shift.name} ({shiftInfo.shift.timeRange})
+                  </span>
+                ) : (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px', borderRadius: '8px', fontSize: '0.84rem', fontWeight: 700,
+                    background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)'
+                  }}>
+                    <Lock size={14} /> Outside Shift Hours (Closed)
+                  </span>
+                )}
               </div>
 
+              {/* Status breakdown for the active shift session */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>Check-In Status:</span>
+                <span style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>Session Check-In Status:</span>
                 <span style={{
-                  fontSize: '0.82rem', padding: '3px 10px', borderRadius: '6px', fontWeight: 800,
-                  background: todayAttendance ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)',
-                  color: todayAttendance ? '#10b981' : '#f59e0b'
+                  fontSize: '0.82rem', padding: '4px 12px', borderRadius: '6px', fontWeight: 800,
+                  background: activeShiftRecord
+                    ? (activeShiftRecord.checkOutTime ? 'rgba(59,130,246,0.2)' : 'rgba(16,185,129,0.2)')
+                    : (shiftInfo.active ? 'rgba(245,158,11,0.2)' : 'rgba(100,116,139,0.2)'),
+                  color: activeShiftRecord
+                    ? (activeShiftRecord.checkOutTime ? '#60a5fa' : '#34d399')
+                    : (shiftInfo.active ? '#f59e0b' : '#94a3b8')
                 }}>
-                  {todayAttendance ? `✓ Checked In (${todayAttendance.shift || selectedShift}) at ${todayAttendance.checkInTime}` : 'Not Checked In Yet'}
+                  {activeShiftRecord
+                    ? (activeShiftRecord.checkOutTime
+                      ? `✓ Completed (Out: ${activeShiftRecord.checkOutTime})`
+                      : `✓ Checked In at ${activeShiftRecord.checkInTime}`)
+                    : (shiftInfo.active ? 'Not Checked In Yet' : 'No Active Session')}
                 </span>
               </div>
-              {todayAttendance?.checkOutTime && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>Check-Out Status:</span>
-                  <span style={{ fontSize: '0.82rem', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', padding: '3px 10px', borderRadius: '6px', fontWeight: 800 }}>
-                    Checked Out at {todayAttendance.checkOutTime}
-                  </span>
+
+              {/* Policy note */}
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                <Info size={14} color="#60a5fa" />
+                <span>Attendance is locked to the live clock. Manual shift selection is prohibited by municipal policy.</span>
+              </div>
+            </div>
+
+            {/* 3-Shift Timeline Visualizer Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Today's Shift Operational Windows
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {SHIFT_SCHEDULE.map(s => {
+                  const IconComp = s.icon;
+                  const isCurrent = shiftInfo.active && shiftInfo.shift?.id === s.id;
+                  const record = todayRecords.find(r => r.shift === s.id);
+                  const isCheckedIn = Boolean(record);
+                  const isCompleted = Boolean(record?.checkOutTime);
+
+                  // Determine card state
+                  let statusBadge = 'Upcoming';
+                  let badgeBg = 'rgba(255,255,255,0.06)';
+                  let badgeColor = 'var(--text-secondary)';
+
+                  const nowMins = timeNow.getHours() * 60 + timeNow.getMinutes();
+                  const endMins = s.endHour * 60 + s.endMinute;
+                  const startMins = s.startHour * 60 + s.startMinute;
+
+                  if (isCheckedIn) {
+                    statusBadge = isCompleted ? 'Completed' : 'Checked In';
+                    badgeBg = isCompleted ? 'rgba(59,130,246,0.2)' : 'rgba(16,185,129,0.2)';
+                    badgeColor = isCompleted ? '#60a5fa' : '#34d399';
+                  } else if (isCurrent) {
+                    statusBadge = 'Active Now';
+                    badgeBg = 'rgba(16,185,129,0.25)';
+                    badgeColor = '#10b981';
+                  } else if (nowMins >= endMins) {
+                    statusBadge = 'Ended';
+                    badgeBg = 'rgba(239,68,68,0.1)';
+                    badgeColor = '#ef4444';
+                  }
+
+                  return (
+                    <div
+                      key={s.id}
+                      style={{
+                        padding: '10px',
+                        borderRadius: '10px',
+                        background: isCurrent ? 'rgba(16,185,129,0.12)' : 'var(--bg-elevated)',
+                        border: isCurrent ? '1.5px solid #10b981' : '1px solid var(--border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <IconComp size={16} color={s.iconColor} />
+                        <span style={{ fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px', background: badgeBg, color: badgeColor, fontWeight: 800 }}>
+                          {statusBadge}
+                        </span>
+                      </div>
+                      <div>
+                        <b style={{ fontSize: '0.82rem', color: isCurrent ? '#10b981' : 'var(--text-primary)', display: 'block' }}>{s.name}</b>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'block' }}>{s.timeRange}</span>
+                      </div>
+                      {record && (
+                        <div style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 700, marginTop: 'auto', paddingTop: '4px', borderTop: '1px dashed var(--border)' }}>
+                          In: {record.checkInTime} {record.checkOutTime ? `| Out: ${record.checkOutTime}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Attendance Action Button Area */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {activeLeave ? (
+                <button
+                  type="button"
+                  disabled
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                    background: '#475569', color: '#94a3b8', fontWeight: 800, fontSize: '0.95rem',
+                    cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                  }}
+                >
+                  <ShieldAlert size={18} /> Attendance Blocked (Approved Leave Active)
+                </button>
+              ) : !shiftInfo.active ? (
+                // Outside operating hours
+                latestTodayRecord && !latestTodayRecord.checkOutTime ? (
+                  <button
+                    type="button"
+                    onClick={() => handleCheckOut(latestTodayRecord)}
+                    disabled={checkingOut}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                      color: '#ffffff', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      boxShadow: '0 4px 16px rgba(59,130,246,0.35)'
+                    }}
+                  >
+                    <UserX size={18} /> {checkingOut ? 'Recording Check-Out...' : `Complete ${latestTodayRecord.shift} Shift & Check Out`}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                      background: 'rgba(100,116,139,0.25)', color: '#94a3b8', fontWeight: 800, fontSize: '0.92rem',
+                      cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      border: '1px solid rgba(148,163,184,0.2)'
+                    }}
+                  >
+                    <Lock size={16} /> Check-In Closed (Operating Hours: 09:00 AM – 05:00 PM)
+                  </button>
+                )
+              ) : !activeShiftRecord ? (
+                // Active shift open and not checked in yet
+                <button
+                  type="button"
+                  onClick={handleCheckIn}
+                  disabled={markingAttendance}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                    background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+                    color: '#ffffff', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    boxShadow: '0 4px 16px rgba(16,185,129,0.35)'
+                  }}
+                >
+                  <UserCheck size={18} /> {markingAttendance ? 'Marking Attendance...' : `Mark Present & Check In (${shiftInfo.shift.name})`}
+                </button>
+              ) : !activeShiftRecord.checkOutTime ? (
+                // Checked in for active shift, not yet checked out
+                <button
+                  type="button"
+                  onClick={() => handleCheckOut(activeShiftRecord)}
+                  disabled={checkingOut}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    color: '#ffffff', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    boxShadow: '0 4px 16px rgba(59,130,246,0.35)'
+                  }}
+                >
+                  <UserX size={18} /> {checkingOut ? 'Recording Check-Out...' : `Complete ${shiftInfo.shift.name} & Check Out`}
+                </button>
+              ) : (
+                // Checked in and checked out for active shift
+                <div style={{
+                  padding: '12px', textAlign: 'center', background: 'rgba(16,185,129,0.15)',
+                  borderRadius: '10px', color: '#34d399', fontWeight: 700, fontSize: '0.88rem',
+                  border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                }}>
+                  <Check size={16} /> Today's {shiftInfo.shift.name} completed and logged (Out: {activeShiftRecord.checkOutTime}).
                 </div>
               )}
             </div>
-
-            {/* Attendance Action Buttons */}
-            {!todayAttendance ? (
-              <button
-                type="button"
-                onClick={handleCheckIn}
-                disabled={Boolean(activeLeave)}
-                style={{
-                  width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-                  background: activeLeave ? '#64748b' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-                  color: '#ffffff', fontWeight: 800, fontSize: '0.95rem',
-                  cursor: activeLeave ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  boxShadow: activeLeave ? 'none' : '0 4px 16px rgba(16,185,129,0.35)'
-                }}
-              >
-                <UserCheck size={18} /> Mark Present & Check In ({selectedShift} Shift)
-              </button>
-            ) : !todayAttendance.checkOutTime ? (
-              <button
-                type="button"
-                onClick={handleCheckOut}
-                style={{
-                  width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                  color: '#ffffff', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  boxShadow: '0 4px 16px rgba(59,130,246,0.35)'
-                }}
-              >
-                <UserX size={18} /> Complete Shift & Check Out
-              </button>
-            ) : (
-              <div style={{ padding: '12px', textAlign: 'center', background: 'rgba(16,185,129,0.15)', borderRadius: '10px', color: '#34d399', fontWeight: 700, fontSize: '0.88rem' }}>
-                ✓ Today's {todayAttendance.shift || selectedShift} shift completed and logged.
-              </div>
-            )}
           </div>
 
           {/* ── CARD 2: Apply Leave / Mark Unavailable Period ── */}
@@ -623,7 +875,7 @@ export default function TreeCutterAttendancePage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {attendanceHistory.map((att, idx) => (
-                  <div key={idx} style={{
+                  <div key={att._id || idx} style={{
                     padding: '12px 16px', borderRadius: '12px', background: 'var(--bg-elevated)',
                     border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                   }}>
@@ -648,3 +900,4 @@ export default function TreeCutterAttendancePage() {
     </div>
   );
 }
+

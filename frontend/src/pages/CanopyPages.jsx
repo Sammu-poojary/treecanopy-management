@@ -12956,20 +12956,19 @@ export function AttendancePage() {
   const todayShiftsCount = todayShiftsPresent.length;
 
   const handleMarkAttendance = async () => {
-    const shift = selectedShift || activeShift;
-    if (!shift) {
-      setMarkResult({ success: false, msg: 'No active shift session is currently open for today!' });
+    if (!activeShift) {
+      setMarkResult({ success: false, msg: 'No active shift session is currently open for today (Operating Hours: 09:00 AM – 05:00 PM)!' });
       return;
     }
-    const status = getShiftStatus(shift);
+    const status = getShiftStatus(activeShift);
     if (status.closed) {
-      setMarkResult({ success: false, msg: `Cannot mark attendance: ${shift} shift is locked (${status.reason})!` });
+      setMarkResult({ success: false, msg: `Cannot mark attendance: ${activeShift} shift session is closed (${status.reason})!` });
       return;
     }
 
-    const alreadyMarked = (myRecords || []).some(r => r.date === todayDateStr && r.shift === shift);
+    const alreadyMarked = (myRecords || []).some(r => r.date === todayDateStr && r.shift === activeShift);
     if (alreadyMarked) {
-      setMarkResult({ success: false, msg: `You have already marked attendance for ${shift} shift today!` });
+      setMarkResult({ success: false, msg: `You have already marked attendance for ${activeShift} shift today!` });
       return;
     }
 
@@ -12981,7 +12980,7 @@ export function AttendancePage() {
       userId: effectiveUserId,
       userName: effectiveName,
       role: effectiveRole,
-      shift,
+      shift: activeShift,
       date: todayDateStr,
       markedAt: new Date().toISOString(),
       status: 'Present',
@@ -12996,17 +12995,22 @@ export function AttendancePage() {
           userId: effectiveUserId,
           userName: effectiveName,
           role: effectiveRole,
-          shift,
+          shift: activeShift,
+          date: todayDateStr,
         }),
       });
       const data = await res.json();
-      setMarkResult({ success: true, msg: data.msg || `Attendance marked successfully for ${shift} shift!` });
-      setAllRecords(prev => [newRecord, ...prev]);
-      setMyRecords(prev => [newRecord, ...prev]);
+      if (!res.ok) {
+        setMarkResult({ success: false, msg: data.msg || `Cannot mark attendance: Shift session is closed or invalid.` });
+        setMarking(false);
+        return;
+      }
+      const savedRecord = data.attendance || newRecord;
+      setMarkResult({ success: true, msg: data.msg || `Attendance marked successfully for ${activeShift} shift!` });
+      setAllRecords(prev => [savedRecord, ...prev]);
+      setMyRecords(prev => [savedRecord, ...prev]);
     } catch {
-      setMarkResult({ success: true, msg: `Attendance recorded locally for ${shift} shift!` });
-      setAllRecords(prev => [newRecord, ...prev]);
-      setMyRecords(prev => [newRecord, ...prev]);
+      setMarkResult({ success: false, msg: `Unable to connect to attendance server. Please check your network connection.` });
     }
     setMarking(false);
   };
@@ -13257,18 +13261,36 @@ export function AttendancePage() {
                     <h3 style={{ margin: '16px 0 8px', fontSize: '1rem', color: '#74c69d' }}>Mark Presence for Today</h3>
 
                     <div className="shifts" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginTop: '8px' }}>
-                      {shiftInfo.map(s => {
+                      {[
+                        { name: 'Morning', label: 'Morning Shift', hours: '9:00 AM – 12:00 PM', icon: <Sun size={18} color="#f59e0b" /> },
+                        { name: 'Afternoon', label: 'Afternoon Shift', hours: '12:00 PM – 3:00 PM', icon: <Sun size={18} color="#10b981" /> },
+                        { name: 'Evening', label: 'Evening Shift', hours: '3:00 PM – 5:00 PM', icon: <Moon size={18} color="#6366f1" /> },
+                      ].map(s => {
                         const status = getShiftStatus(s.name);
-                        const isClosed = status.closed;
-                        const isSelected = (selectedShift === s.name) || (!selectedShift && activeShift === s.name && !isClosed);
+                        const isCurrentActive = activeShift === s.name;
+                        const isMarked = (myRecords || []).some(r => r.date === todayDateStr && r.shift === s.name);
+
+                        let badgeText = 'Upcoming';
+                        let badgeBg = 'rgba(255, 255, 255, 0.08)';
+                        let badgeColor = '#94a3b8';
+
+                        if (isMarked) {
+                          badgeText = '✓ Marked';
+                          badgeBg = 'rgba(52, 211, 153, 0.2)';
+                          badgeColor = '#34d399';
+                        } else if (isCurrentActive) {
+                          badgeText = '🟢 Active Now';
+                          badgeBg = 'rgba(16, 185, 129, 0.25)';
+                          badgeColor = '#10b981';
+                        } else if (status.closed) {
+                          badgeText = '🔒 Ended';
+                          badgeBg = 'rgba(239, 68, 68, 0.15)';
+                          badgeColor = '#f87171';
+                        }
 
                         return (
-                          <button
+                          <div
                             key={s.name}
-                            type="button"
-                            className={`shift-btn-item ${isSelected ? 'selected' : ''}`}
-                            disabled={isClosed}
-                            onClick={() => !isClosed && setSelectedShift(s.name)}
                             style={{
                               display: 'flex',
                               flexDirection: 'column',
@@ -13276,29 +13298,27 @@ export function AttendancePage() {
                               justifyContent: 'center',
                               padding: '12px 10px',
                               borderRadius: '12px',
-                              border: isClosed ? '1px dashed rgba(239, 68, 68, 0.35)' : (isSelected ? '2px solid #34d399' : '1px solid rgba(82, 183, 136, 0.3)'),
-                              background: isClosed ? 'rgba(15, 23, 42, 0.6)' : (isSelected ? '#134a33' : '#061a14'),
-                              opacity: isClosed ? 0.6 : 1,
-                              cursor: isClosed ? 'not-allowed' : 'pointer',
+                              border: isCurrentActive ? '2px solid #34d399' : '1px solid rgba(82, 183, 136, 0.3)',
+                              background: isCurrentActive ? '#134a33' : '#061a14',
                               gap: '4px'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isClosed ? '#94a3b8' : '#ffffff', fontWeight: 700, fontSize: '0.88rem' }}>
-                              {s.icon} {s.name}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ffffff', fontWeight: 700, fontSize: '0.88rem' }}>
+                              {s.icon} {s.label}
                             </div>
-                            <small style={{ fontSize: '0.7rem', color: isClosed ? '#64748b' : '#b7e4c7' }}>{s.hours}</small>
+                            <small style={{ fontSize: '0.7rem', color: '#b7e4c7' }}>{s.hours}</small>
                             <span style={{
                               fontSize: '0.68rem',
                               fontWeight: 700,
-                              color: isClosed ? '#f87171' : '#34d399',
-                              background: isClosed ? 'rgba(239, 68, 68, 0.15)' : 'rgba(52, 211, 153, 0.15)',
+                              color: badgeColor,
+                              background: badgeBg,
                               padding: '2px 6px',
                               borderRadius: '4px',
                               marginTop: '2px'
                             }}>
-                              {isClosed ? `🔒 ${status.reason}` : (isSelected ? '✓ Selected' : 'Select')}
+                              {badgeText}
                             </span>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -13311,16 +13331,15 @@ export function AttendancePage() {
                     )}
 
                     {(() => {
-                      const effectiveTargetShift = selectedShift || activeShift;
-                      const targetStatus = effectiveTargetShift ? getShiftStatus(effectiveTargetShift) : { closed: true, reason: 'Shifts closed for today' };
-                      const isAlreadyMarked = effectiveTargetShift ? (myRecords || []).some(r => r.date === todayDateStr && r.shift === effectiveTargetShift) : false;
-                      const isBtnDisabled = marking || targetStatus.closed || isAlreadyMarked || !effectiveTargetShift;
+                      const isAlreadyMarked = activeShift ? (myRecords || []).some(r => r.date === todayDateStr && r.shift === activeShift) : false;
+                      const targetStatus = activeShift ? getShiftStatus(activeShift) : { closed: true, reason: 'Shifts closed for today' };
+                      const isBtnDisabled = marking || !activeShift || targetStatus.closed || isAlreadyMarked;
 
-                      let btnText = `Mark My Presence (${effectiveTargetShift || 'Shift'} Shift)`;
-                      if (!effectiveTargetShift || targetStatus.closed) {
-                        btnText = `🔒 Shifts Closed for Today (No active session)`;
+                      let btnText = `Mark My Presence (${activeShift || 'Shift'} Shift)`;
+                      if (!activeShift || targetStatus.closed) {
+                        btnText = `🔒 Shifts Closed for Today (Operating Hours: 09:00 AM – 05:00 PM)`;
                       } else if (isAlreadyMarked) {
-                        btnText = `✓ Attendance Already Marked for ${effectiveTargetShift} Shift Today`;
+                        btnText = `✓ Attendance Already Marked for ${activeShift} Shift Today`;
                       } else if (marking) {
                         btnText = 'Marking Presence...';
                       }

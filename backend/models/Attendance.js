@@ -13,7 +13,7 @@ const attendanceSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['Official', 'Tree Cutter'],
+      enum: ['Official', 'Tree Cutter', 'Delivery Partner', 'Delivery', 'Admin'],
       required: true,
     },
     date: {
