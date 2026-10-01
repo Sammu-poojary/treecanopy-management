@@ -4551,7 +4551,7 @@ export function SchedulerPage() {
         }
 
         const mapById = new Map();
-        
+
         // Include default sample tasks
         defaultSampleTasks.forEach(t => mapById.set(t._id, t));
 
@@ -8110,8 +8110,8 @@ export function OfficialManagementPage({ initialView = 'complaints' } = {}) {
                     {calendarModalSub.assignedCutterName
                       ? `This tree is actively assigned to ${calendarModalSub.assignedCutterName}. Routine care tasks will appear here as soon as the arborist uploads proof photos from the field.`
                       : calendarModalSub.adoptionType === 'self'
-                      ? `This is a Citizen Self-Adoption pledge by ${calendarModalSub.userName || 'the user'}. The citizen can submit self-care proof logs.`
-                      : 'No tree cutter has been assigned yet. Please assign a tree cutter from the adoptions desk to initiate routine field care visits.'}
+                        ? `This is a Citizen Self-Adoption pledge by ${calendarModalSub.userName || 'the user'}. The citizen can submit self-care proof logs.`
+                        : 'No tree cutter has been assigned yet. Please assign a tree cutter from the adoptions desk to initiate routine field care visits.'}
                   </p>
                 </div>
               ) : (
@@ -11923,7 +11923,7 @@ export function ViewTreePage() {
       setAdoptingId(null);
     }
   };
- 
+
   const executeSelfAdopt = async () => {
     if (!adoptModalTree) return;
     const treeId = adoptModalTree._id || adoptModalTree.id;
@@ -17941,7 +17941,7 @@ export function TreeCutterDutiesPage() {
               cutterName={cutterName}
               theme={theme}
               darkMode={true}
-              onNavigate={(task) => {}}
+              onNavigate={(task) => { }}
             />
           </div>
         </main>
