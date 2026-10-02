@@ -259,7 +259,7 @@ function SubscriptionsTabPanel({ user, onTabChange }) {
         </div>
       </div>
 
-      {subs.length === 0 ? (
+      {subs.filter(s => s.status !== 'cancelled').length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 24px', background: 'var(--bg-surface)', borderRadius: '20px', border: '1px solid var(--border)' }}>
           <div style={{ fontSize: '4rem', marginBottom: '16px' }}>🌱</div>
           <h3 style={{ color: '#34d399', margin: '0 0 8px', fontWeight: 800 }}>No Adoptions Yet</h3>
@@ -273,7 +273,7 @@ function SubscriptionsTabPanel({ user, onTabChange }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {subs.map(sub => {
+          {subs.filter(sub => sub.status !== 'cancelled').map(sub => {
             const sc = statusColor(sub.status);
             const isExpanded = expandedId === sub._id;
             const renewalDate = sub.nextRenewalDate ? new Date(sub.nextRenewalDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
@@ -556,6 +556,7 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
   const [adoptPlan, setAdoptPlan] = useState('self'); // 'self', 'monthly', 'yearly'
   const [pledgeAgreed, setPledgeAgreed] = useState(false);
   const [showPledgeModal, setShowPledgeModal] = useState(false);
+  const [cancelAdoptionLoading, setCancelAdoptionLoading] = useState(false);
 
   // Profile Management State
   const [profileData, setProfileData] = useState(() => {
@@ -753,6 +754,76 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
       })
       .catch(() => {});
   };
+
+  const handleCancelAdoption = async (adoption) => {
+    const isSelf = adoption.adoptionType === 'self' || adoption.planType === 'self' ||
+      (!adoption.planType && !adoption.subscriptionPlan && !adoption.plan && (!adoption.amount || adoption.amount === 0) && adoption.adoptionType !== 'subscription');
+    if (!isSelf) {
+      Swal.fire({ icon: 'info', title: 'Cannot Cancel', text: 'Only self-care (pledge) adoptions can be cancelled here. For paid subscriptions, please contact support.' });
+      return;
+    }
+
+    // Compute actual deduction: capped at what the user actually has
+    const currentPts = adoption.totalEcoPoints || 0;
+    const MAX_PENALTY = 150;
+    const actualDeduction = Math.min(currentPts, MAX_PENALTY);
+    const hasPoints = actualDeduction > 0;
+
+    const debtAmount = Math.max(0, MAX_PENALTY - currentPts);
+
+    const penaltyHtml = hasPoints
+      ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;color:#991b1b;font-weight:700;font-size:0.95rem">
+           ❌ Penalty: <span style="font-size:1.1rem">−150 Eco-Points</span> applied.
+           ${debtAmount > 0
+             ? `<div style="margin-top:6px;font-size:0.82rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:6px 8px;color:#9a3412">
+                  ⚠️ You only have <strong>${currentPts} pts</strong> — ${actualDeduction} pts deducted now, <strong>${debtAmount} pts carried as debt</strong> and auto-deducted from your next earnings.
+                </div>` : ''}
+         </div>`
+      : `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px;color:#9a3412;font-weight:700;font-size:0.95rem">
+           ⚠️ You have <strong>0 Eco-Points</strong>. The full <strong>150 pts debt</strong> will be automatically deducted from your future earnings.
+         </div>`;
+
+    const result = await Swal.fire({
+      title: '⚠️ Cancel Adoption?',
+      html: `<p style="margin:0 0 10px">You are about to relinquish your pledge for <strong>${adoption.nickname || adoption.treeName}</strong>.</p>
+             ${penaltyHtml}
+             <p style="margin:10px 0 0;color:#64748b;font-size:0.85rem">This action cannot be undone. The tree will be freed up for other citizens to adopt.</p>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: '🗑️ Yes, Cancel Adoption',
+      cancelButtonText: 'Keep My Pledge',
+      reverseButtons: true,
+    });
+    if (!result.isConfirmed) return;
+    setCancelAdoptionLoading(adoption._id);
+    try {
+      const res = await fetch(`${API_URL}/api/adoptions/${adoption._id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.msg || 'Failed to cancel adoption');
+      const deducted = data.pointsDeducted ?? 150;
+      const debt = data.remainingDebt ?? 0;
+      await Swal.fire({
+        icon: debt > 0 ? 'warning' : 'success',
+        title: 'Adoption Cancelled',
+        html: `<p>Your pledge for <strong>${adoption.nickname || adoption.treeName}</strong> has been relinquished.</p>
+               <p style="color:#dc2626;font-weight:700">−${deducted} Eco-Points penalty applied.</p>
+               ${debt > 0
+                 ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px;margin-top:8px;color:#9a3412;font-size:0.88rem">
+                      ⚠️ <strong>${debt} pts debt</strong> carried forward — will be automatically deducted from your next earned points.
+                    </div>`
+                 : `<p style="color:#059669;font-weight:600">New balance: ${data.newBalance ?? 0} pts</p>`}`,
+        confirmButtonColor: '#059669',
+      });
+      fetchAdoptions();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Could not cancel adoption. Try again.' });
+    } finally {
+      setCancelAdoptionLoading(false);
+    }
+  };
+
 
   const handleAdoptTree = (tree, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -1700,6 +1771,28 @@ const CitizenDashboard = ({ user, activeTab, onTabChange }) => {
                             <Clock size={14} color="#059669" /> Timeline ({cLogsCount})
                           </button>
                         </div>
+
+                        {/* Cancel Adoption — only for self-care pledges */}
+                        {(item.adoptionType === 'self' || item.planType === 'self' || (!item.planType && !item.subscriptionPlan && !item.plan && (!item.amount || item.amount === 0) && item.adoptionType !== 'subscription')) && (
+                          <button
+                            onClick={() => handleCancelAdoption(item)}
+                            disabled={cancelAdoptionLoading === item._id}
+                            style={{
+                              marginTop: '8px', width: '100%', padding: '8px',
+                              background: cancelAdoptionLoading === item._id ? 'rgba(220,38,38,0.1)' : 'rgba(220,38,38,0.08)',
+                              border: '1px solid rgba(220,38,38,0.35)',
+                              borderRadius: '8px', fontWeight: 700, fontSize: '0.75rem',
+                              color: '#dc2626', cursor: cancelAdoptionLoading === item._id ? 'not-allowed' : 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={e => { if (cancelAdoptionLoading !== item._id) e.currentTarget.style.background = 'rgba(220,38,38,0.18)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = cancelAdoptionLoading === item._id ? 'rgba(220,38,38,0.1)' : 'rgba(220,38,38,0.08)'; }}
+                          >
+                            <Ban size={13} />
+                            {cancelAdoptionLoading === item._id ? 'Cancelling…' : 'Cancel Adoption (−150 pts)'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );

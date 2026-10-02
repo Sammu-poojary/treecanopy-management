@@ -173,6 +173,16 @@ router.get('/my-adoptions', async (req, res) => {
 
     let adoptions = await Adoption.find(userFilter).sort({ createdAt: -1 });
 
+    // Also fetch all relinquished adoptions for this user so the auto-sync skip check works
+    const relinquishedAdoptions = await Adoption.find({
+      $or: [
+        { userId: strUserId },
+        ...(strEmail ? [{ userEmail: strEmail }] : [])
+      ],
+      status: 'Relinquished'
+    }).select('treeId').lean();
+    const relinquishedTreeIds = new Set(relinquishedAdoptions.map(a => a.treeId ? a.treeId.toString() : ''));
+
     let subscriptions = [];
     // Auto-synthesize Adoption records for any active Subscriptions that haven't synced yet
     try {
@@ -186,8 +196,11 @@ router.get('/my-adoptions', async (req, res) => {
       subscriptions = await Subscription.find(subFilter);
 
       for (const sub of subscriptions) {
-        const exists = adoptions.some(a => Boolean(a.treeId) && Boolean(sub.treeId) && (a.treeId.toString() === sub.treeId.toString()));
-        if (!exists) {
+        const subTreeId = sub.treeId ? sub.treeId.toString() : '';
+        const exists = adoptions.some(a => Boolean(a.treeId) && Boolean(sub.treeId) && (a.treeId.toString() === subTreeId));
+        // Skip if a Relinquished adoption already exists for this tree — user cancelled it
+        const wasRelinquished = subTreeId && relinquishedTreeIds.has(subTreeId);
+        if (!exists && !wasRelinquished) {
           const isSelf = sub.adoptionType === 'self' || !sub.plan || sub.amount === 0;
           const autoAdoption = new Adoption({
             userId: sub.userId ? sub.userId.toString() : strUserId,
@@ -218,11 +231,9 @@ router.get('/my-adoptions', async (req, res) => {
           await autoAdoption.save().catch(() => {});
           adoptions.push(autoAdoption);
 
-          // Award +100 Eco-Points transaction if missing
-          const txExists = await EcoPointsTransaction.findOne({
-            $or: [{ userId: strUserId }, ...(strEmail ? [{ userEmail: strEmail }] : [])],
-            adoptionId: autoAdoption._id.toString()
-          });
+          // Award +100 Eco-Points transaction if missing — use stable referenceId keyed on treeId
+          const stableRef = `adopt_welcome_${subTreeId}`;
+          const txExists = await EcoPointsTransaction.findOne({ userId: strUserId, referenceId: stableRef });
           if (!txExists) {
             await new EcoPointsTransaction({
               userId: strUserId,
@@ -230,7 +241,9 @@ router.get('/my-adoptions', async (req, res) => {
               adoptionId: autoAdoption._id.toString(),
               type: 'EARN',
               points: 100,
-              description: `Adopted ${sub.treeName} (${sub.plan ? sub.plan + ' subscription' : 'Self-Care'})`
+              description: `Adopted ${sub.treeName} (${sub.plan ? sub.plan + ' subscription' : 'Self-Care'})`,
+              referenceId: stableRef,
+              balanceAfter: 100,
             }).save().catch(() => {});
           }
         }
@@ -562,17 +575,72 @@ router.get('/leaderboard', async (req, res) => {
 });
 
 // @route   DELETE /api/adoptions/:id
-// @desc    Relinquish / cancel a tree adoption
+// @desc    Relinquish / cancel a tree adoption with eco-points deduction penalty
 // @access  Public / Citizen
+const CANCEL_PENALTY_POINTS = 150;
+
 router.delete('/:id', async (req, res) => {
   try {
-    const adoption = await Adoption.findById(req.params.id);
+    const mongoose = require('mongoose');
+    let adoption = null;
+    if (mongoose.isValidObjectId(req.params.id)) {
+      adoption = await Adoption.findById(req.params.id);
+    }
+    if (!adoption) {
+      try { adoption = await Adoption.findOne({ _id: req.params.id }); } catch (_) {}
+    }
     if (!adoption) {
       return res.status(404).json({ msg: 'Adoption record not found' });
     }
+
+    const previousPoints = adoption.totalEcoPoints || 0;
+    // Adoption record can't go below 0
+    const newAdoptionBalance = Math.max(0, previousPoints - CANCEL_PENALTY_POINTS);
+    // The full penalty is ALWAYS recorded — shortfall becomes a debt offset by future earnings
+    const remainingDebt = Math.max(0, CANCEL_PENALTY_POINTS - previousPoints);
+    // Ledger running balance (can be negative = debt owed)
+    const ledgerBalanceAfter = previousPoints - CANCEL_PENALTY_POINTS;
+
+    adoption.totalEcoPoints = newAdoptionBalance;
     adoption.status = 'Relinquished';
     await adoption.save();
-    res.json({ msg: 'Tree adoption has been safely relinquished.' });
+
+    // Log REDEEM — always full penalty so ledger tracks debt correctly
+    try {
+      const deductTx = new EcoPointsTransaction({
+        userId: adoption.userId.toString(),
+        adoptionId: adoption._id.toString(),
+        type: 'REDEEM',
+        points: -CANCEL_PENALTY_POINTS,
+        description: `Adoption Cancellation Penalty: ${adoption.nickname || adoption.treeName} (relinquished)${remainingDebt > 0 ? ` — ${remainingDebt} pts debt carried forward` : ''}`,
+        referenceId: `cancel_${adoption._id}`,
+        balanceAfter: ledgerBalanceAfter,
+      });
+      await deductTx.save();
+    } catch (_) {}
+
+    // Mark tree as unadopted in Tree collection
+    try {
+      if (mongoose.isValidObjectId(adoption.treeId)) {
+        await Tree.findByIdAndUpdate(adoption.treeId, { isAdopted: false });
+      }
+    } catch (_) {}
+
+    // Cancel the linked Subscription so the auto-sync in my-adoptions doesn't recreate this adoption
+    try {
+      await Subscription.updateOne(
+        { treeId: adoption.treeId ? adoption.treeId.toString() : null, status: { $in: ['active', 'assigned'] } },
+        { $set: { status: 'cancelled' } }
+      );
+    } catch (_) {}
+
+    res.json({
+      msg: 'Tree adoption has been safely relinquished.',
+      pointsDeducted: CANCEL_PENALTY_POINTS,
+      previousBalance: previousPoints,
+      newBalance: newAdoptionBalance,
+      remainingDebt,
+    });
   } catch (err) {
     res.status(500).json({ msg: 'Server error relinquishing adoption' });
   }

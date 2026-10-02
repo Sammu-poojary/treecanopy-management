@@ -340,8 +340,29 @@ router.get('/points-history', async (req, res) => {
       return res.json({ transactions: synthesized, netBalance: cumulativeBalance });
     }
 
-    const { netBalance } = await calculateUserNetBalance(strUserId);
-    res.json({ transactions, netBalance });
+    // Re-compute running balanceAfter from scratch — allow negative to show debt
+    // Sort ascending (oldest first) to build cumulative sum
+    const sorted = [...transactions].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    let running = 0;
+    const withBalance = sorted.map(tx => {
+      running += tx.points; // positive for EARN, negative for REDEEM (can go negative = debt)
+      return { ...tx.toObject(), balanceAfter: running };
+    });
+    // Return newest first for display
+    withBalance.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Deduplicate by referenceId (keeps first seen = earliest duplicate)
+    const seen = new Set();
+    const deduped = withBalance.filter(tx => {
+      const key = tx.referenceId || tx._id.toString();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // netBalance: actual running sum (negative = debt user owes from future earnings)
+    const netBalance = running;
+    res.json({ transactions: deduped, netBalance });
   } catch (err) {
     console.error('Error fetching points history:', err);
     res.status(500).json({ msg: 'Server error fetching points history' });
