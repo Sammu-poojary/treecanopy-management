@@ -11177,7 +11177,15 @@ export function TreeInventoryPage() {
                       onFocus={() => lookupResults.length > 0 && setLookupVisible(true)}
                       onBlur={() => setTimeout(() => setLookupVisible(false), 200)}
                       placeholder="e.g. Chiku, Sapota, Mango, Banyan..."
-                      style={{ flex: 1, background: 'var(--bg-elevated, #061a14)', color: '#fff', border: '1px solid rgba(82,183,136,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.9rem' }}
+                      style={{
+                        flex: 1,
+                        background: 'var(--bg-surface, #ffffff)',
+                        color: 'var(--text-primary, #0f172a)',
+                        border: '1px solid var(--border-strong, rgba(82,183,136,0.3))',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        fontSize: '0.9rem'
+                      }}
                     />
                     <button
                       type="button"
@@ -11214,22 +11222,22 @@ export function TreeInventoryPage() {
                   </div>
                   {/* Lookup Dropdown */}
                   {lookupVisible && lookupResults.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: '#0b2518', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '10px', boxShadow: '0 12px 32px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: '4px' }}>
-                      <div style={{ padding: '6px 14px', fontSize: '0.72rem', color: '#6b7280', fontWeight: 700, borderBottom: '1px solid rgba(52,211,153,0.15)', background: 'rgba(52,211,153,0.05)' }}>🌿 Perenual Plant Database — Select to Auto-fill</div>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, background: 'var(--bg-surface, #ffffff)', border: '1px solid var(--border-strong, rgba(52,211,153,0.3))', borderRadius: '10px', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', overflow: 'hidden', marginTop: '4px' }}>
+                      <div style={{ padding: '6px 14px', fontSize: '0.72rem', color: 'var(--text-secondary, #6b7280)', fontWeight: 700, borderBottom: '1px solid var(--border, rgba(52,211,153,0.15))', background: 'rgba(52,211,153,0.08)' }}>🌿 Perenual Plant Database — Select to Auto-fill</div>
                       {lookupResults.map(plant => (
                         <div
                           key={plant.id}
                           onMouseDown={() => applyLookupResult(plant)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid rgba(82,183,136,0.1)', transition: 'background 0.15s' }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.1)'}
+                          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border, rgba(82,183,136,0.1))', transition: 'background 0.15s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.12)'}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
                           {plant.image_url && <img src={plant.image_url} alt={plant.common_name} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(52,211,153,0.3)' }} />}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.88rem' }}>{plant.common_name || plant.scientific_name}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#95d5b2', fontStyle: 'italic' }}>{plant.scientific_name} {plant.family ? `· ${plant.family}` : ''}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary, #0f172a)', fontSize: '0.88rem' }}>{plant.common_name || plant.scientific_name}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #64748b)', fontStyle: 'italic' }}>{plant.scientific_name} {plant.family ? `· ${plant.family}` : ''}</div>
                           </div>
-                          <span style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 700, whiteSpace: 'nowrap' }}>Auto-fill ↗</span>
+                          <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700, whiteSpace: 'nowrap' }}>Auto-fill ↗</span>
                         </div>
                       ))}
                     </div>
@@ -11262,7 +11270,7 @@ export function TreeInventoryPage() {
                 <div className="form-row">
                   <label>Native Region<input value={form.nativeRegion || ''} onChange={(e) => setForm({ ...form, nativeRegion: e.target.value })} placeholder="e.g. South Asia" /></label>
                   <label>IUCN Conservation Status
-                    <select value={form.iucnStatus || ''} onChange={(e) => setForm({ ...form, iucnStatus: e.target.value })} style={{ background: 'var(--bg-elevated, #061a14)', color: 'var(--text-primary, #fff)', border: '1px solid rgba(82,183,136,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.9rem', width: '100%' }}>
+                    <select value={form.iucnStatus || ''} onChange={(e) => setForm({ ...form, iucnStatus: e.target.value })} style={{ background: 'var(--bg-surface, #ffffff)', color: 'var(--text-primary, #0f172a)', border: '1px solid var(--border-strong, rgba(82,183,136,0.3))', borderRadius: '8px', padding: '10px 14px', fontSize: '0.9rem', width: '100%' }}>
                       <option value="">— Select Status —</option>
                       <option>Least Concern</option>
                       <option>Near Threatened</option>
