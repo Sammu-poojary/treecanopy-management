@@ -25,5 +25,8 @@
     "nodemailer": "^10.0.13",
     "nodemon": "^3.1.14",
     "razorpay": "^2.9.8"
+  },
+  "overrides": {
+    "chokidar": "^4.0.3"
   }
 }
