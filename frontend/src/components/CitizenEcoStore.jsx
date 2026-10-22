@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DummyPaymentGateway from './DummyPaymentGateway';
 import {
   ShoppingBag,
   Leaf,
@@ -70,10 +71,14 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [locationSuccess, setLocationSuccess] = useState('');
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('razorpay'); // 'razorpay' | 'cod' | 'points'
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' (dummy gateway) | 'cod' | 'points'
   const [placingOrder, setPlacingOrder] = useState(false);
   const [completedOrder, setCompletedOrder] = useState(null);
   const [orderError, setOrderError] = useState('');
+
+  // Dummy Payment Gateway modal state
+  const [showDummyGateway, setShowDummyGateway] = useState(false);
+  const [pendingCheckoutData, setPendingCheckoutData] = useState(null);
 
   // Orders Tab State
   const [activeSubTab, setActiveSubTab] = useState('browse'); // 'browse' | 'my-orders'
@@ -301,22 +306,19 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
     );
   };
 
-  // Razorpay SDK Script Loader
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
+  // ── RAZORPAY SDK COMMENTED OUT – Dummy Payment Gateway Active ──
+  // const loadRazorpayScript = () => {
+  //   return new Promise((resolve) => {
+  //     if (window.Razorpay) { resolve(true); return; }
+  //     const script = document.createElement('script');
+  //     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  //     script.onload = () => resolve(true);
+  //     script.onerror = () => resolve(false);
+  //     document.body.appendChild(script);
+  //   });
+  // };
 
-  // Handle Checkout Submission (Razorpay Online, Cash on Delivery, or 100% Eco-Points)
+  // Handle Checkout Submission (Dummy Online Gateway, Cash on Delivery, or 100% Eco-Points)
   const handlePlaceOrder = async (e) => {
     if (e) e.preventDefault();
     if (cart.length === 0) return;
@@ -331,6 +333,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
 
     try {
       const isFullPoints = finalTotalInr === 0;
+      // Map 'online' to the label stored in DB (keeping 'Razorpay Online' so existing data is unaffected)
       const selectedPayMethod = isFullPoints ? 'Eco-Points Full Redemption' : paymentMethod === 'cod' ? 'Cash on Delivery' : 'Razorpay Online';
 
       const payload = {
@@ -377,123 +380,80 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
         return;
       }
 
-      // 2. Open Official Razorpay Payment Gateway Modal (if real keys exist) or Sandbox Test Verification
-      if (data.isDemo || !data.razorpayOrderId || data.razorpayOrderId.startsWith('order_demo_')) {
-        // Test Sandbox Mode when Razorpay keys are not configured in backend/.env
-        const verifyRes = await fetch(`${API_URL}/api/eco-orders/verify-payment`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: data.orderId || data.order?._id,
-            razorpay_order_id: data.razorpayOrderId || `order_test_${Date.now()}`,
-            razorpay_payment_id: `pay_test_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-            razorpay_signature: 'sandbox_test_signature',
-            isDemo: true
-          })
-        });
+      // 2. Open Dummy Payment Gateway (replaces Razorpay)
+      // Store pending checkout data so onSuccess handler can call verify-payment
+      setPendingCheckoutData(data);
+      setShowDummyGateway(true);
+      setPlacingOrder(false);
 
-        const verifyData = await verifyRes.json();
-        if (!verifyRes.ok) {
-          throw new Error(verifyData.error || 'Payment verification failed');
-        }
+      // ── RAZORPAY COMMENTED OUT ──────────────────────────────────────────
+      // The original Razorpay sandbox/demo auto-verify path:
+      // if (data.isDemo || !data.razorpayOrderId || data.razorpayOrderId.startsWith('order_demo_')) {
+      //   const verifyRes = await fetch(`${API_URL}/api/eco-orders/verify-payment`, { ... });
+      //   ...
+      // }
+      //
+      // The original Razorpay live SDK checkout:
+      // const isSdkLoaded = await loadRazorpayScript();
+      // if (!isSdkLoaded || !window.Razorpay) { throw new Error('Razorpay Payment Gateway SDK failed to load...'); }
+      // const keyId = data.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+      // const options = { key: keyId, amount: orderAmountPaise, ... handler: async (response) => { ... } };
+      // const rzp = new window.Razorpay(options);
+      // rzp.on('payment.failed', function (response) { ... });
+      // rzp.open();
+      // ───────────────────────────────────────────────────────────────────
 
-        setCompletedOrder(verifyData.order || data.order);
-        setCart([]);
-        setPointsToRedeem(0);
-        setCheckoutStep('success');
-
-        if (onPointsUpdated && data.order?.totalEcoPointsUsed) {
-          onPointsUpdated(Math.max(0, userEcoPoints - data.order.totalEcoPointsUsed));
-        }
-        setPlacingOrder(false);
-        return;
-      }
-
-      // Live / Test Razorpay SDK Checkout
-      const isSdkLoaded = await loadRazorpayScript();
-      if (!isSdkLoaded || !window.Razorpay) {
-        throw new Error('Razorpay Payment Gateway SDK failed to load. Please check your internet connection.');
-      }
-
-      const keyId = data.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
-      const orderAmountPaise = data.amountPaise || Math.round((data.amountInr || finalTotalInr) * 100);
-
-      const options = {
-        key: keyId,
-        amount: orderAmountPaise,
-        currency: data.currency || 'INR',
-        name: 'CanopyGuard Eco-Store',
-        description: `Order #${data.orderNumber} Payment`,
-        image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&q=80',
-        order_id: data.razorpayOrderId,
-        prefill: {
-          name: user?.name || user?.username || 'Eco Citizen',
-          email: user?.email || 'citizen@canopyguard.org',
-          contact: deliveryAddress.phone || user?.phone || '9876543210'
-        },
-        notes: {
-          orderNumber: data.orderNumber,
-          fulfillmentType: deliveryMethod === 'pickup' ? 'Yard Pickup' : 'Home Delivery',
-          userId: user?._id || user?.id || 'citizen'
-        },
-        theme: {
-          color: '#059669'
-        },
-        modal: {
-          ondismiss: () => {
-            setPlacingOrder(false);
-          }
-        },
-        handler: async (response) => {
-          try {
-            setPlacingOrder(true);
-            setOrderError('');
-            const verifyRes = await fetch(`${API_URL}/api/eco-orders/verify-payment`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orderId: data.orderId || data.order?._id,
-                razorpay_order_id: response.razorpay_order_id || data.razorpayOrderId,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                isDemo: false
-              })
-            });
-
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) {
-              throw new Error(verifyData.error || 'Payment verification failed on server');
-            }
-
-            setCompletedOrder(verifyData.order || data.order);
-            setCart([]);
-            setPointsToRedeem(0);
-            setCheckoutStep('success');
-
-            if (onPointsUpdated && data.order?.totalEcoPointsUsed) {
-              onPointsUpdated(Math.max(0, userEcoPoints - data.order.totalEcoPointsUsed));
-            }
-          } catch (verifyErr) {
-            console.error('Razorpay verification error:', verifyErr);
-            setOrderError('Payment verification error: ' + (verifyErr.message || 'Please contact support.'));
-          } finally {
-            setPlacingOrder(false);
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response) {
-        console.warn('Razorpay payment failed or dismissed:', response?.error);
-        setOrderError(response?.error?.description || 'Payment was unsuccessful or cancelled.');
-        setPlacingOrder(false);
-      });
-      rzp.open();
     } catch (err) {
       console.error('Order creation failed:', err);
       setOrderError(err.message || 'Failed to complete order. Please try again.');
       setPlacingOrder(false);
     }
+  };
+
+  // ── Handle Dummy Gateway success callback ─────────────────────────────
+  const handleDummyPaymentSuccess = async (paymentResult) => {
+    setShowDummyGateway(false);
+    if (!pendingCheckoutData) return;
+    setPlacingOrder(true);
+    setOrderError('');
+    try {
+      const verifyRes = await fetch(`${API_URL}/api/eco-orders/verify-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: pendingCheckoutData.orderId || pendingCheckoutData.order?._id,
+          razorpay_order_id: paymentResult.razorpay_order_id || pendingCheckoutData.razorpayOrderId || `order_demo_${Date.now()}`,
+          razorpay_payment_id: paymentResult.razorpay_payment_id,
+          razorpay_signature: paymentResult.razorpay_signature || 'dummy_sig',
+          isDemo: true
+        })
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+
+      setCompletedOrder(verifyData.order || pendingCheckoutData.order);
+      setCart([]);
+      setPointsToRedeem(0);
+      setCheckoutStep('success');
+      if (onPointsUpdated && pendingCheckoutData.order?.totalEcoPointsUsed) {
+        onPointsUpdated(Math.max(0, userEcoPoints - pendingCheckoutData.order.totalEcoPointsUsed));
+      }
+    } catch (err) {
+      setOrderError('Payment verification error: ' + (err.message || 'Please contact support.'));
+    } finally {
+      setPlacingOrder(false);
+      setPendingCheckoutData(null);
+    }
+  };
+
+  // ── Handle Dummy Gateway cancel/failure ───────────────────────────────
+  const handleDummyPaymentFailure = (err) => {
+    setShowDummyGateway(false);
+    setPendingCheckoutData(null);
+    if (err?.message && err.message !== 'Payment cancelled by user.') {
+      setOrderError(err.message || 'Payment was unsuccessful or cancelled.');
+    }
+    setPlacingOrder(false);
   };
 
   return (
@@ -1731,15 +1691,15 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                           </div>
                           <div>
                             <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0f172a' }}>
-                              Razorpay Online (UPI / Cards / NetBanking)
+                              Online Payment (UPI / Cards / NetBanking)
                             </div>
                             <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
-                              Instant verified payment gateway
+                              Instant simulated dummy payment gateway
                             </div>
                           </div>
                         </div>
                         <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: '6px', fontWeight: 800 }}>
-                          SECURE UPI
+                          SIMULATED
                         </span>
                       </div>
 
@@ -1843,7 +1803,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 size={18} /> {paymentMethod === 'cod' ? `Place COD Order (₹${finalTotalInr})` : `Pay ₹${finalTotalInr.toLocaleString()} via Razorpay`}
+                          <CheckCircle2 size={18} /> {paymentMethod === 'cod' ? `Place COD Order (₹${finalTotalInr})` : `Pay ₹${finalTotalInr.toLocaleString()} via Gateway`}
                         </>
                       )}
                     </button>
@@ -1871,7 +1831,7 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
                     ) : completedOrder.paymentMethod === 'Eco-Points Full Redemption' ? (
                       <span>🪙 Paid via Eco-Points Redemption</span>
                     ) : (
-                      <span>✓ Payment Verified via Razorpay Online</span>
+                      <span>✓ Payment Verified via Online Gateway (Demo)</span>
                     )}
                   </div>
 
@@ -1941,6 +1901,19 @@ export default function CitizenEcoStore({ user, userEcoPoints = 0, onPointsUpdat
         </div>
       )}
 
+
+
+      {/* ── Dummy Payment Gateway Modal (replaces Razorpay) ── */}
+      <DummyPaymentGateway
+        isOpen={showDummyGateway}
+        onClose={() => { setShowDummyGateway(false); setPendingCheckoutData(null); setPlacingOrder(false); }}
+        onSuccess={handleDummyPaymentSuccess}
+        onFailure={handleDummyPaymentFailure}
+        amount={pendingCheckoutData?.amountInr || 0}
+        orderNumber={pendingCheckoutData?.orderNumber || ''}
+        description={`CanopyGuard Eco-Store Order ${pendingCheckoutData?.orderNumber || ''}`}
+        prefill={{ name: user?.name || user?.username || 'Eco Citizen', email: user?.email || '', contact: user?.phone || '' }}
+      />
 
     </div>
   );

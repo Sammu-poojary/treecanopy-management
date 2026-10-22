@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
+import DummyPaymentGateway from '../components/DummyPaymentGateway';
 import NotificationBell from '../components/NotificationBell';
 import CitizenDashboard from '../components/CitizenDashboard';
 import AdminDashboard from '../components/AdminDashboard';
@@ -11723,6 +11724,8 @@ export function ViewTreePage() {
   const [adoptStep, setAdoptStep] = useState('plan'); // 'plan' | 'processing' | 'success'
   const [showPledgeModal, setShowPledgeModal] = useState(false);
   const [pledgeAgreed, setPledgeAgreed] = useState(false);
+  const [showAdoptDummyGateway, setShowAdoptDummyGateway] = useState(false);
+  const [pendingAdoptOrder, setPendingAdoptOrder] = useState(null);
 
   const currentUser = (() => {
     try {
@@ -11814,14 +11817,15 @@ export function ViewTreePage() {
     setAdoptStep('plan');
   };
 
-  const loadRazorpay = () => new Promise(resolve => {
-    if (window.Razorpay) return resolve(true);
-    const s = document.createElement('script');
-    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    s.onload = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
+  // ── RAZORPAY SDK COMMENTED OUT – Dummy Payment Gateway Active ──
+  // const loadRazorpay = () => new Promise(resolve => {
+  //   if (window.Razorpay) return resolve(true);
+  //   const s = document.createElement('script');
+  //   s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  //   s.onload = () => resolve(true);
+  //   s.onerror = () => resolve(false);
+  //   document.body.appendChild(s);
+  // });
 
   const handleConfirmAdoption = async () => {
     if (!adoptModalTree) return;
@@ -11834,12 +11838,12 @@ export function ViewTreePage() {
       return;
     }
 
-    // Paid subscription via Razorpay
+    // Paid subscription via Dummy Payment Gateway (Razorpay commented out)
     setIsSubmittingAdoption(true);
-    setAdoptStep('processing');
     try {
-      const ok = await loadRazorpay();
-      if (!ok) throw new Error('Razorpay SDK failed to load');
+      // ── RAZORPAY loadRazorpay() CALL COMMENTED OUT ──
+      // const ok = await loadRazorpay();
+      // if (!ok) throw new Error('Razorpay SDK failed to load');
 
       const orderRes = await fetch(`${API_URL}/api/subscriptions/create-order`, {
         method: 'POST',
@@ -11849,78 +11853,78 @@ export function ViewTreePage() {
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.error || 'Could not create order');
 
-      // If Razorpay live keys failed authentication (401) or demo mode is triggered:
-      if (orderData.isDemo) {
-        const verifyRes = await fetch(`${API_URL}/api/subscriptions/verify-payment`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: orderData.orderId,
-            razorpay_payment_id: `pay_test_${Date.now()}`,
-            razorpay_signature: 'sandbox_test_signature',
-            isDemo: true,
-            treeId, plan: adoptPlan,
-            userId: effectiveUserId, userName: effectiveUserName,
-            userEmail: effectiveUserEmail,
-            userPhone: currentUser.phone || ''
-          })
-        });
-        const verifyData = await verifyRes.json();
-        if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
-        setAdoptStep('success');
-        setAdoptSuccessMsg(`🌳 Adoption confirmed! (Test Mode) Certificate: ${verifyData.subscription?.certificateNumber || ''}`);
-        setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
-        if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
-          setSelectedTree(prev => ({ ...prev, isAdopted: true }));
-        }
-        setTimeout(() => { setAdoptModalTree(null); setAdoptStep('plan'); navigate('/citizen-dashboard?tab=subscriptions'); }, 2500);
-        return;
-      }
+      // Open interactive Dummy Payment Gateway modal
+      setPendingAdoptOrder(orderData);
+      setShowAdoptDummyGateway(true);
 
-      const options = {
-        key: orderData.keyId,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'TreeCanopy Management',
-        description: `${adoptPlan === 'monthly' ? 'Monthly' : 'Yearly'} Tree Adoption – ${adoptModalTree.name}`,
-        image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&q=80',
-        order_id: orderData.orderId,
-        handler: async (response) => {
-          try {
-            const verifyRes = await fetch(`${API_URL}/api/subscriptions/verify-payment`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                ...response,
-                treeId, plan: adoptPlan,
-                userId: effectiveUserId, userName: effectiveUserName,
-                userEmail: effectiveUserEmail,
-                userPhone: currentUser.phone || ''
-              })
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
-            setAdoptStep('success');
-            setAdoptSuccessMsg(`🌳 Adoption confirmed! Certificate: ${verifyData.subscription?.certificateNumber || ''}`);
-            setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
-            if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
-              setSelectedTree(prev => ({ ...prev, isAdopted: true }));
-            }
-            setTimeout(() => { setAdoptModalTree(null); setAdoptStep('plan'); navigate('/citizen-dashboard?tab=subscriptions'); }, 2500);
-          } catch (err) { alert('Payment verification error: ' + err.message); setAdoptStep('plan'); }
-          finally { setIsSubmittingAdoption(false); setAdoptingId(null); }
-        },
-        prefill: { name: effectiveUserName, email: effectiveUserEmail, contact: currentUser.phone || '' },
-        theme: { color: '#10b981' },
-        modal: { ondismiss: () => { setAdoptStep('plan'); setIsSubmittingAdoption(false); setAdoptingId(null); } }
-      };
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      // ── RAZORPAY LIVE CHECKOUT COMMENTED OUT ──
+      // const options = {
+      //   key: orderData.keyId, amount: orderData.amount, currency: orderData.currency,
+      //   name: 'TreeCanopy Management',
+      //   description: `${adoptPlan === 'monthly' ? 'Monthly' : 'Yearly'} Tree Adoption – ${adoptModalTree.name}`,
+      //   order_id: orderData.orderId,
+      //   handler: async (response) => { ... verify-payment ... },
+      //   theme: { color: '#10b981' },
+      //   modal: { ondismiss: () => { setAdoptStep('plan'); ... } }
+      // };
+      // const rzp = new window.Razorpay(options);
+      // rzp.open();
+
     } catch (err) {
       alert(err.message || 'Error initiating payment');
       setAdoptStep('plan');
+    } finally {
       setIsSubmittingAdoption(false);
       setAdoptingId(null);
+    }
+  };
+
+  const handleDummyAdoptSuccess = async (paymentResult) => {
+    setShowAdoptDummyGateway(false);
+    if (!pendingAdoptOrder || !adoptModalTree) return;
+    const treeId = adoptModalTree._id || adoptModalTree.id;
+    setIsSubmittingAdoption(true);
+    setAdoptStep('processing');
+    try {
+      const verifyRes = await fetch(`${API_URL}/api/subscriptions/verify-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: pendingAdoptOrder.orderId,
+          razorpay_payment_id: paymentResult.razorpay_payment_id,
+          razorpay_signature: paymentResult.razorpay_signature || 'dummy_gateway_sandbox_sig',
+          isDemo: true,
+          treeId, plan: adoptPlan,
+          userId: effectiveUserId, userName: effectiveUserName,
+          userEmail: effectiveUserEmail,
+          userPhone: currentUser.phone || ''
+        })
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) throw new Error(verifyData.error || 'Payment verification failed');
+      setAdoptStep('success');
+      setAdoptSuccessMsg(`🌳 Adoption confirmed! Certificate: ${verifyData.subscription?.certificateNumber || ''}`);
+      setTrees(prev => prev.map(t => ((t._id || t.id) === treeId ? { ...t, isAdopted: true } : t)));
+      if (selectedTree && ((selectedTree._id || selectedTree.id) === treeId)) {
+        setSelectedTree(prev => ({ ...prev, isAdopted: true }));
+      }
+      setTimeout(() => { setAdoptModalTree(null); setAdoptStep('plan'); navigate('/citizen-dashboard?tab=subscriptions'); }, 2500);
+    } catch (err) {
+      alert(err.message || 'Payment verification error');
+      setAdoptStep('plan');
+    } finally {
+      setIsSubmittingAdoption(false);
+      setAdoptingId(null);
+      setPendingAdoptOrder(null);
+    }
+  };
+
+  const handleDummyAdoptFailure = (err) => {
+    setShowAdoptDummyGateway(false);
+    setPendingAdoptOrder(null);
+    setAdoptStep('plan');
+    if (err?.message && err.message !== 'Payment cancelled by user.') {
+      alert(err.message);
     }
   };
 
@@ -12735,6 +12739,24 @@ export function ViewTreePage() {
     );
   };
 
+  const renderAdoptDummyGateway = () => {
+    if (!showAdoptDummyGateway || !adoptModalTree) return null;
+    const monthlyPrice = adoptModalTree.monthlyAdoptionFee || 500;
+    const yearlyPrice = adoptModalTree.yearlyAdoptionFee || 6000;
+    return (
+      <DummyPaymentGateway
+        isOpen={showAdoptDummyGateway}
+        onClose={() => { setShowAdoptDummyGateway(false); setPendingAdoptOrder(null); }}
+        onSuccess={handleDummyAdoptSuccess}
+        onFailure={handleDummyAdoptFailure}
+        amount={pendingAdoptOrder ? (pendingAdoptOrder.amount / 100) : (adoptPlan === 'monthly' ? monthlyPrice : yearlyPrice)}
+        orderNumber={pendingAdoptOrder?.orderId || `TREE-${adoptModalTree.name}`}
+        description={`${adoptPlan === 'monthly' ? 'Monthly' : 'Yearly'} Tree Adoption – ${adoptModalTree.name}`}
+        prefill={{ name: effectiveUserName, email: effectiveUserEmail, contact: currentUser.phone || '' }}
+      />
+    );
+  };
+
   const renderPledgeModal = () => {
     if (!showPledgeModal) return null;
     return (
@@ -12813,6 +12835,7 @@ export function ViewTreePage() {
           {renderAdoptModal()}
           {renderPledgeModal()}
           {renderGalleryLightbox()}
+          {renderAdoptDummyGateway()}
         </div>
       );
     } else {
@@ -12825,6 +12848,7 @@ export function ViewTreePage() {
             {renderAdoptModal()}
             {renderPledgeModal()}
             {renderGalleryLightbox()}
+            {renderAdoptDummyGateway()}
           </div>
         </div>
       );
@@ -12854,6 +12878,7 @@ export function ViewTreePage() {
         {renderAdoptModal()}
         {renderPledgeModal()}
         {renderGalleryLightbox()}
+        {renderAdoptDummyGateway()}
       </div>
     );
   } else {
@@ -12866,6 +12891,7 @@ export function ViewTreePage() {
           {renderAdoptModal()}
           {renderPledgeModal()}
           {renderGalleryLightbox()}
+          {renderAdoptDummyGateway()}
         </div>
       </div>
     );

@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const Razorpay = require('razorpay');
+// ── RAZORPAY COMMENTED OUT – Dummy Payment Gateway Active ──
+// const Razorpay = require('razorpay');
 const EcoOrder = require('../models/EcoOrder');
 const EcoProduct = require('../models/EcoProduct');
 const EcoPointsTransaction = require('../models/EcoPointsTransaction');
@@ -13,18 +14,21 @@ const {
   sendDeliveredEmail
 } = require('../services/orderEmailService');
 
+// ── Dummy Payment Gateway (replaces Razorpay) ──
+// Returns null to trigger demo/sandbox mode for all online payments
 const getRazorpayClient = () => {
-  const keyId = (process.env.RAZORPAY_KEY_ID || '').trim();
-  const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
-  if (keyId && keySecret && !keyId.includes('placeholder')) {
-    try {
-      return new Razorpay({ key_id: keyId, key_secret: keySecret });
-    } catch (err) {
-      console.warn('Razorpay initialization notice:', err.message);
-      return null;
-    }
-  }
-  return null;
+  // RAZORPAY DISABLED – using dummy payment gateway simulation
+  // const keyId = (process.env.RAZORPAY_KEY_ID || '').trim();
+  // const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+  // if (keyId && keySecret && !keyId.includes('placeholder')) {
+  //   try {
+  //     return new Razorpay({ key_id: keyId, key_secret: keySecret });
+  //   } catch (err) {
+  //     console.warn('Razorpay initialization notice:', err.message);
+  //     return null;
+  //   }
+  // }
+  return null; // Always use dummy/demo mode
 };
 
 // ── GET /api/eco-orders/my and /api/eco-orders/my-orders?userId=xxx&userEmail=yyy
@@ -452,31 +456,33 @@ router.post('/verify-payment', async (req, res) => {
     const order = await EcoOrder.findById(orderId);
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
-
-    if (!isDemo && razorpay_order_id && !razorpay_order_id.startsWith('order_demo_') && keySecret && !keySecret.includes('placeholder')) {
-      try {
-        const expectedSig = crypto
-          .createHmac('sha256', keySecret)
-          .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-          .digest('hex');
-        if (expectedSig !== razorpay_signature) {
-          return res.status(400).json({ error: 'Payment signature verification failed' });
-        }
-      } catch (sigErr) {
-        console.warn('Signature verification check notice:', sigErr.message);
-        return res.status(400).json({ error: 'Payment verification failed: ' + sigErr.message });
-      }
-    }
+    // ── RAZORPAY SIGNATURE VERIFICATION COMMENTED OUT – Dummy Gateway Active ──
+    // const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+    // if (!isDemo && razorpay_order_id && !razorpay_order_id.startsWith('order_demo_') && keySecret && !keySecret.includes('placeholder')) {
+    //   try {
+    //     const expectedSig = crypto
+    //       .createHmac('sha256', keySecret)
+    //       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    //       .digest('hex');
+    //     if (expectedSig !== razorpay_signature) {
+    //       return res.status(400).json({ error: 'Payment signature verification failed' });
+    //     }
+    //   } catch (sigErr) {
+    //     console.warn('Signature verification check notice:', sigErr.message);
+    //     return res.status(400).json({ error: 'Payment verification failed: ' + sigErr.message });
+    //   }
+    // }
+    // Dummy payment gateway: all payments are accepted automatically
+    console.log('[DummyGateway] Payment verification bypassed for orderId:', orderId, '| txnId:', razorpay_payment_id);
 
     order.paymentStatus = 'Paid';
-    order.razorpayPaymentId = razorpay_payment_id || `pay_${Date.now()}`;
+    order.razorpayPaymentId = razorpay_payment_id || `pay_dummy_${Date.now()}`;
     if (razorpay_order_id) order.razorpayOrderId = razorpay_order_id;
     order.statusTimeline.push({
       status: 'Payment Verified',
       timestamp: new Date(),
-      note: `Online payment of ₹${order.totalAmountInr} verified via Razorpay Gateway (${order.razorpayPaymentId})`,
-      updatedBy: 'Razorpay Gateway'
+      note: `Online payment of ₹${order.totalAmountInr} verified via Dummy Payment Gateway (Ref: ${order.razorpayPaymentId})`,
+      updatedBy: 'Dummy Payment Gateway'
     });
 
     await order.save();

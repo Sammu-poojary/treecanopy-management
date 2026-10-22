@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Razorpay = require('razorpay');
+// ── RAZORPAY COMMENTED OUT – Dummy Payment Gateway Active ──
+// const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const cloudinary = require('cloudinary').v2;
 const nodemailer = require('nodemailer');
@@ -16,15 +17,16 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// ── Dummy Payment Gateway (replaces Razorpay) ──
 let razorpay = null;
-try {
-  razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret',
-  });
-} catch (err) {
-  console.warn('Razorpay initialization notice:', err.message);
-}
+// try {
+//   razorpay = new Razorpay({
+//     key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+//     key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret',
+//   });
+// } catch (err) {
+//   console.warn('Razorpay initialization notice:', err.message);
+// }
 
 
 const transporter = nodemailer.createTransport({
@@ -120,37 +122,36 @@ router.post('/create-order', async (req, res) => {
 
     const amount = plan === 'monthly' ? (tree.monthlyAdoptionFee || 500) : (tree.yearlyAdoptionFee || 6000);
 
+    // ── RAZORPAY ORDER CREATION COMMENTED OUT – Dummy Gateway Active ──
     let order = null;
-    let isDemo = false;
+    let isDemo = true; // Always demo mode
 
-    try {
-      if (razorpay && process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.includes('placeholder')) {
-        order = await razorpay.orders.create({
-          amount: amount * 100,
-          currency: 'INR',
-          receipt: `sub_${Date.now()}`,
-          notes: { treeId: treeId.toString(), userId: userId.toString(), plan },
-        });
-      }
-    } catch (rzpErr) {
-      console.warn('Razorpay live order creation failed (falling back to sandbox demo mode):', rzpErr?.error || rzpErr?.message);
-      isDemo = true;
-    }
+    // try {
+    //   if (razorpay && process.env.RAZORPAY_KEY_ID && !process.env.RAZORPAY_KEY_ID.includes('placeholder')) {
+    //     order = await razorpay.orders.create({
+    //       amount: amount * 100,
+    //       currency: 'INR',
+    //       receipt: `sub_${Date.now()}`,
+    //       notes: { treeId: treeId.toString(), userId: userId.toString(), plan },
+    //     });
+    //   }
+    // } catch (rzpErr) {
+    //   console.warn('Razorpay live order creation failed (falling back to sandbox demo mode):', rzpErr?.error || rzpErr?.message);
+    //   isDemo = true;
+    // }
 
-    if (!order) {
-      isDemo = true;
-      order = {
-        id: `order_demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        amount: amount * 100,
-        currency: 'INR',
-      };
-    }
+    // Dummy payment gateway: generate a simulated order
+    order = {
+      id: `order_demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      amount: amount * 100,
+      currency: 'INR',
+    };
 
     res.json({
       orderId: order.id,
       amount: amount * 100,
       currency: 'INR',
-      keyId: isDemo ? 'rzp_test_demo' : process.env.RAZORPAY_KEY_ID,
+      keyId: 'dummy_payment_gateway',
       treeName: tree.name,
       treeLocation: tree.origin || '',
       planAmount: amount,
@@ -173,15 +174,18 @@ router.post('/verify-payment', async (req, res) => {
 
     const isDemoOrder = isDemo || (razorpay_order_id && razorpay_order_id.startsWith('order_demo_'));
 
-    if (!isDemoOrder) {
-      const expectedSig = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest('hex');
-      if (expectedSig !== razorpay_signature) {
-        return res.status(400).json({ error: 'Payment signature verification failed' });
-      }
-    }
+    // ── RAZORPAY SIGNATURE VERIFICATION COMMENTED OUT – Dummy Gateway Active ──
+    // if (!isDemoOrder) {
+    //   const expectedSig = crypto
+    //     .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
+    //     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    //     .digest('hex');
+    //   if (expectedSig !== razorpay_signature) {
+    //     return res.status(400).json({ error: 'Payment signature verification failed' });
+    //   }
+    // }
+    // Dummy payment gateway: all payments accepted
+    console.log('[DummyGateway] Subscription payment verified for tree:', treeId, '| txn:', razorpay_payment_id);
 
     const tree = await Tree.findById(treeId);
     if (!tree) return res.status(404).json({ error: 'Tree not found' });
@@ -593,13 +597,18 @@ router.post('/:id/renew-order', async (req, res) => {
       ? (tree ? tree.monthlyAdoptionFee : 500) || 500
       : (tree ? tree.yearlyAdoptionFee : 6000) || 6000;
 
-    const order = await razorpay.orders.create({
-      amount: amount * 100,
-      currency: 'INR',
-      receipt: `renew_${sub._id}_${Date.now()}`,
-      notes: { subscriptionId: sub._id.toString(), plan: sub.plan, renew: 'true' },
-    });
-    res.json({ orderId: order.id, amount: amount * 100, currency: 'INR', keyId: process.env.RAZORPAY_KEY_ID, planAmount: amount });
+    // ── RAZORPAY COMMENTED OUT – Dummy Gateway Active ──
+    // const order = await razorpay.orders.create({
+    //   amount: amount * 100,
+    //   currency: 'INR',
+    //   receipt: `renew_${sub._id}_${Date.now()}`,
+    //   notes: { subscriptionId: sub._id.toString(), plan: sub.plan, renew: 'true' },
+    // });
+    // Dummy order generation
+    const order = {
+      id: `order_demo_renew_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    };
+    res.json({ orderId: order.id, amount: amount * 100, currency: 'INR', keyId: 'dummy_payment_gateway', planAmount: amount, isDemo: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -607,11 +616,15 @@ router.post('/:id/renew-order', async (req, res) => {
 router.post('/:id/verify-renewal', async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-    const expectedSig = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
-    if (expectedSig !== razorpay_signature) return res.status(400).json({ error: 'Signature verification failed' });
+
+    // ── RAZORPAY SIGNATURE VERIFICATION COMMENTED OUT – Dummy Gateway Active ──
+    // const expectedSig = crypto
+    //   .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    //   .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    //   .digest('hex');
+    // if (expectedSig !== razorpay_signature) return res.status(400).json({ error: 'Signature verification failed' });
+    // Dummy gateway: accept all renewals
+    console.log('[DummyGateway] Renewal payment accepted for sub:', req.params.id, '| txn:', razorpay_payment_id);
 
     const sub = await Subscription.findById(req.params.id);
     if (!sub) return res.status(404).json({ error: 'Subscription not found' });
@@ -624,7 +637,7 @@ router.post('/:id/verify-renewal', async (req, res) => {
 
     sub.nextRenewalDate = newRenewal;
     sub.status = sub.assignedCutterId ? 'assigned' : 'active';
-    sub.razorpayPaymentId = razorpay_payment_id;
+    sub.razorpayPaymentId = razorpay_payment_id || `pay_dummy_renew_${Date.now()}`;
     sub.paymentHistory.push({
       razorpayOrderId: razorpay_order_id, razorpayPaymentId: razorpay_payment_id,
       amount: sub.amount, plan: sub.plan, paidAt: now, periodStart: now, periodEnd: newRenewal,

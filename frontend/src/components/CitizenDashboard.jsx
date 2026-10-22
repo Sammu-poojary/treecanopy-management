@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DummyPaymentGateway from './DummyPaymentGateway';
 import { PlusCircle, FileText, CheckCircle, AlertTriangle, Clock, Landmark, MapPin, TreePine, Search, X, ChevronLeft, Leaf, Droplet, Activity, ShieldAlert, Ban, ChevronRight, Star, Heart, Award, Sparkles, Trophy, Calendar, Check, Flame, ShieldCheck, Share2, User, Mail, Phone, Shield, Camera, Edit3, Save, ExternalLink, Gift, Tag, QrCode, History, Target, TrendingUp, CheckCircle2, ListOrdered, UploadCloud, ShoppingBag } from 'lucide-react';
 import Swal from 'sweetalert2';
 import TreeGuardianCertificateModal from './TreeGuardianCertificateModal';
@@ -140,6 +141,9 @@ function SubscriptionsTabPanel({ user, onTabChange }) {
   const [expandedId, setExpandedId] = React.useState(null);
   const [renewingId, setRenewingId] = React.useState(null);
   const [cancellingId, setCancellingId] = React.useState(null);
+  const [showRenewModal, setShowRenewModal] = React.useState(false);
+  const [pendingRenewData, setPendingRenewData] = React.useState(null);
+  const [pendingRenewSub, setPendingRenewSub] = React.useState(null);
 
   const userId = user?.id || user?._id || user?.userId;
   const userEmail = user?.email || '';
@@ -152,52 +156,83 @@ function SubscriptionsTabPanel({ user, onTabChange }) {
       .catch(() => setLoading(false));
   }, [userId, userEmail]);
 
-  const loadRazorpay = () => new Promise(resolve => {
-    if (window.Razorpay) return resolve(true);
-    const s = document.createElement('script');
-    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    s.onload = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
+  // ── RAZORPAY SDK COMMENTED OUT – Dummy Payment Gateway Active ──
+  // const loadRazorpay = () => new Promise(resolve => {
+  //   if (window.Razorpay) return resolve(true);
+  //   const s = document.createElement('script');
+  //   s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  //   s.onload = () => resolve(true);
+  //   s.onerror = () => resolve(false);
+  //   document.body.appendChild(s);
+  // });
 
   const handleRenew = async (sub) => {
     setRenewingId(sub._id);
     try {
-      const ok = await loadRazorpay();
-      if (!ok) throw new Error('Razorpay SDK could not be loaded');
+      // ── RAZORPAY loadRazorpay() COMMENTED OUT ──
+      // const ok = await loadRazorpay();
+      // if (!ok) throw new Error('Razorpay SDK could not be loaded');
 
       const orderRes = await fetch(`${API_URL}/api/subscriptions/${sub._id}/renew-order`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.error || 'Could not create renewal order');
 
-      const options = {
-        key: orderData.keyId,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'TreeCanopy Management',
-        description: `Renewal – ${sub.treeName}`,
-        order_id: orderData.orderId,
-        handler: async (response) => {
-          try {
-            const vRes = await fetch(`${API_URL}/api/subscriptions/${sub._id}/verify-renewal`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(response)
-            });
-            const vData = await vRes.json();
-            if (!vRes.ok) throw new Error(vData.error);
-            setSubs(prev => prev.map(s => s._id === sub._id ? vData.subscription : s));
-            alert('✅ Renewal confirmed! Your subscription has been extended.');
-          } catch (err) { alert('Renewal verification failed: ' + err.message); }
-          finally { setRenewingId(null); }
-        },
-        prefill: { name: user?.name || '', email: user?.email || '' },
-        theme: { color: '#10b981' },
-        modal: { ondismiss: () => setRenewingId(null) }
-      };
-      new window.Razorpay(options).open();
-    } catch (err) { alert(err.message); setRenewingId(null); }
+      // Open interactive Dummy Payment Gateway modal for user simulation
+      setPendingRenewData(orderData);
+      setPendingRenewSub(sub);
+      setShowRenewModal(true);
+
+      // ── RAZORPAY LIVE RENEWAL CHECKOUT COMMENTED OUT ──
+      // const options = {
+      //   key: orderData.keyId, amount: orderData.amount, currency: orderData.currency,
+      //   name: 'TreeCanopy Management', description: `Renewal – ${sub.treeName}`,
+      //   order_id: orderData.orderId,
+      //   handler: async (response) => { ... verify-renewal ... },
+      //   prefill: { name: user?.name || '', email: user?.email || '' },
+      //   theme: { color: '#10b981' },
+      //   modal: { ondismiss: () => setRenewingId(null) }
+      // };
+      // new window.Razorpay(options).open();
+
+    } catch (err) { alert(err.message); }
+    finally { setRenewingId(null); }
+  };
+
+  const handleDummyRenewSuccess = async (paymentResult) => {
+    setShowRenewModal(false);
+    if (!pendingRenewSub || !pendingRenewData) return;
+    const sub = pendingRenewSub;
+    setRenewingId(sub._id);
+    try {
+      const vRes = await fetch(`${API_URL}/api/subscriptions/${sub._id}/verify-renewal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: pendingRenewData.orderId,
+          razorpay_payment_id: paymentResult.razorpay_payment_id,
+          razorpay_signature: paymentResult.razorpay_signature || 'dummy_gateway_sandbox_sig'
+        })
+      });
+      const vData = await vRes.json();
+      if (!vRes.ok) throw new Error(vData.error);
+      setSubs(prev => prev.map(s => s._id === sub._id ? vData.subscription : s));
+      alert('✅ Renewal confirmed! Your subscription has been extended.');
+    } catch (err) {
+      alert('Renewal verification failed: ' + err.message);
+    } finally {
+      setRenewingId(null);
+      setPendingRenewData(null);
+      setPendingRenewSub(null);
+    }
+  };
+
+  const handleDummyRenewFailure = (err) => {
+    setShowRenewModal(false);
+    setPendingRenewData(null);
+    setPendingRenewSub(null);
+    if (err?.message && err.message !== 'Payment cancelled by user.') {
+      alert(err.message);
+    }
   };
 
   const handleCancel = async (sub) => {
@@ -426,6 +461,18 @@ function SubscriptionsTabPanel({ user, onTabChange }) {
           })}
         </div>
       )}
+
+      {/* ── Dummy Payment Gateway Modal (replaces Razorpay) ── */}
+      <DummyPaymentGateway
+        isOpen={showRenewModal}
+        onClose={() => { setShowRenewModal(false); setPendingRenewData(null); setPendingRenewSub(null); }}
+        onSuccess={handleDummyRenewSuccess}
+        onFailure={handleDummyRenewFailure}
+        amount={pendingRenewData ? (pendingRenewData.planAmount || pendingRenewData.amount / 100) : 500}
+        orderNumber={pendingRenewData?.orderId || `RENEW-${pendingRenewSub?.treeName || ''}`}
+        description={`Subscription Renewal – ${pendingRenewSub?.treeName || 'Tree'}`}
+        prefill={{ name: user?.name || '', email: user?.email || '', contact: user?.phone || '' }}
+      />
     </div>
   );
 }

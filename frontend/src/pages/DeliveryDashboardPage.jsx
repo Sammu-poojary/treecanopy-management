@@ -38,19 +38,18 @@ import { Topbar } from './CanopyPages';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const loadRazorpaySdk = () => {
-  return new Promise((resolve) => {
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
+// ── RAZORPAY SDK COMMENTED OUT – Dummy Payment Gateway Active ──
+// const loadRazorpaySdk = () => {
+//   return new Promise((resolve) => {
+//     if (window.Razorpay) { resolve(true); return; }
+//     const script = document.createElement('script');
+//     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+//     script.onload = () => resolve(true);
+//     script.onerror = () => resolve(false);
+//     document.body.appendChild(script);
+//   });
+// };
+// Using dummy simulation instead (see handleSimulateRazorpaySuccess)
 
 // Mock yard location for Udupi Municipal Biomass Center
 const YARD_COORDS = { lat: 13.3409, lng: 74.7421, name: 'Ajjarkadu Municipal Biomass Center' };
@@ -469,7 +468,7 @@ export default function DeliveryDashboardPage() {
     }
   };
 
-  // ── Launch Razorpay Official Checkout Gateway Modal ──
+  // ── Launch Dummy Payment Gateway (replaces Razorpay) ──
   const handleLaunchRazorpayGateway = async () => {
     if (!handoverOrder) return;
     const amtInr = Number(handoverOrder.totalAmountInr) || 0;
@@ -477,85 +476,14 @@ export default function DeliveryDashboardPage() {
       setDoorstepPaymentStatus('SUCCESS');
       return;
     }
-
-    const sdkLoaded = await loadRazorpaySdk();
-    if (!sdkLoaded) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Gateway Unavailable',
-        text: 'Could not load Razorpay SDK. Please use the UPI QR code or collect cash.'
-      });
-      return;
-    }
-
-    const keyId = doorstepRazorpayData?.keyId || 'rzp_test_1DP5mmOlF5G5ag';
-    const razorpayOrderId = doorstepRazorpayData?.razorpayOrderId;
-
-    const options = {
-      key: keyId,
-      amount: Math.round(amtInr * 100),
-      currency: 'INR',
-      name: 'CanopyGuard Municipal Eco-Store',
-      description: `Doorstep Payment for Order ${handoverOrder.orderNumber}`,
-      image: 'https://cdn-icons-png.flaticon.com/512/628/628283.png',
-      order_id: razorpayOrderId && !razorpayOrderId.startsWith('order_doorstep_') ? razorpayOrderId : undefined,
-      prefill: {
-        name: handoverOrder.userName || 'Citizen',
-        email: handoverOrder.userEmail || 'citizen@canopy.gov.in',
-        contact: handoverOrder.userPhone || ''
-      },
-      theme: { color: '#0284c7' },
-      handler: async function (response) {
-        try {
-          const verifyRes = await fetch(`${API_URL}/api/eco-orders/${handoverOrder._id}/doorstep-razorpay-complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id || razorpayOrderId,
-              razorpay_signature: response.razorpay_signature,
-              paymentMethodChoice: 'Razorpay Online'
-            })
-          });
-
-          const vData = await verifyRes.json();
-          if (verifyRes.ok) {
-            setDoorstepPaymentStatus('SUCCESS');
-            setDoorstepTxnId(response.razorpay_payment_id);
-            Swal.fire({
-              icon: 'success',
-              title: 'Doorstep Payment Received! 💳',
-              text: `₹${amtInr} successfully paid via Razorpay (Txn: ${response.razorpay_payment_id}). Ready for OTP verification.`,
-              confirmButtonColor: '#10b981'
-            });
-          } else {
-            throw new Error(vData.error || 'Verification failed');
-          }
-        } catch (e) {
-          Swal.fire({ icon: 'error', title: 'Payment Verification Error', text: e.message });
-        }
-      },
-      modal: {
-        ondismiss: function () {
-          console.log('Doorstep Razorpay modal closed by user');
-        }
-      }
-    };
-
-    try {
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (resp) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Payment Failed',
-          text: resp?.error?.description || 'Payment was declined or cancelled.'
-        });
-      });
-      rzp.open();
-    } catch (e) {
-      console.warn('Razorpay open notice:', e);
-      handleSimulateRazorpaySuccess();
-    }
+    // ── RAZORPAY LIVE SDK COMMENTED OUT ──
+    // const sdkLoaded = await loadRazorpaySdk();
+    // if (!sdkLoaded) { Swal.fire({ ... }); return; }
+    // const rzp = new window.Razorpay(options);
+    // rzp.open();
+    // ──────────────────────────
+    // Directly use the simulation function instead
+    await handleSimulateRazorpaySuccess();
   };
 
   // ── Simulate / Sandbox Instant Verification ──
